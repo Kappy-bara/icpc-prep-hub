@@ -7,11 +7,23 @@
  * logic — same decoupled pattern this app already uses for "roadmap:changed".
  */
 const Shell = {
+  _lastUserId: undefined, // undefined = not yet resolved; null = signed out; string = that user's id
+
   isCloudMode() {
     return Store._mode === "cloud";
   },
 
   async handleAuthSession(session) {
+    const newUserId = session && session.user ? session.user.id : null;
+    if (newUserId === this._lastUserId) {
+      // Same user as already loaded — Supabase re-emits auth events on things like the tab
+      // regaining focus (it proactively re-validates/refreshes the session), which would
+      // otherwise silently reset in-progress page state (e.g. an active CF-handle
+      // verification) for no real reason. Nothing actually changed, so do nothing.
+      return;
+    }
+    this._lastUserId = newUserId;
+
     if (session && session.user) {
       const userId = session.user.id;
       try {
