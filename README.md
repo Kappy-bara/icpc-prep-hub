@@ -1,12 +1,15 @@
 # ICPC Prep Hub
 
-A free, open-source, **entirely client-side** companion for ICPC prep — regionals
-through World Finals. No backend, no build step, no account. Clone it, open
-`index.html`, or deploy it to GitHub Pages for free, and it just works.
+A free, open-source companion for ICPC prep — regionals through World Finals.
+No build step, works fully offline in local-only mode, and deploys to GitHub
+Pages for free. Clone it, open `index.html`, and it just works.
 
-Everything is stored in your browser's `localStorage`. Nothing you do in this
-app is sent anywhere, except the Codeforces sync request you trigger
-yourself, which goes straight from your browser to the public Codeforces API.
+By default everything is stored in your browser's `localStorage` and nothing
+is sent anywhere except the Codeforces sync request you trigger yourself. An
+optional account layer (backed by [Supabase](https://supabase.com)) lets you
+sign in with a magic link to sync your data across devices instead — see
+[Cloud sync setup](#cloud-sync-setup-optional) below. It's entirely opt-in;
+skip that section and the app is 100% local-only and backend-free.
 
 ## Features
 
@@ -39,6 +42,12 @@ yourself, which goes straight from your browser to the public Codeforces API.
   top-tags breakdown for whichever period you're looking at.
 - **Backup & restore** — export your entire local dataset as JSON, and
   import it back — on this browser or a different one.
+- **Optional cloud sync** — sign in with a passwordless magic link to sync
+  your roadmap, points, and logs across devices. Prove you own a Codeforces
+  handle with a one-time verification (submit a compile-error solution to a
+  specific problem within a time window — the standard trick, since
+  Codeforces has no OAuth) before it's linked to your account. Entirely
+  optional; local-only mode needs none of this.
 - **Polish** — responsive down to ~400px, respects `prefers-color-scheme`
   with a manual light/dark/auto toggle, card-based layout.
 
@@ -73,6 +82,47 @@ Prefer plain branch-based Pages instead? Delete the workflow file, set
 **Settings → Pages → Source** to **Deploy from a branch**, and pick `main` /
 `(root)`. There's no build step either way — it's static files.
 
+## Cloud sync setup (optional)
+
+Skip this entirely if you're happy with local-only mode — the app works
+fully without it. To enable sign-in and cross-device sync:
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Open the SQL editor (left sidebar) and run the contents of
+   [`supabase/schema.sql`](supabase/schema.sql). This creates one table
+   (`profiles`) with row-level security so each user can only ever read or
+   write their own row.
+3. In **Project Settings → API**, copy the **Project URL** and **anon
+   public** key into [`js/config.js`](js/config.js).
+4. In **Authentication → URL Configuration**, add every URL you'll run the
+   app from to **Redirect URLs** — e.g. `http://localhost:8080` for local
+   dev and `https://<your-username>.github.io/icpc-prep-hub/` for
+   production. Magic-link emails won't redirect back correctly without this.
+5. Commit `js/config.js` (or fill it in on your deployment) and reload the
+   app — the Account card will show a sign-in form instead of the "not
+   configured" message.
+
+The `anon` key is Supabase's public client key, meant to be shipped in
+frontend code — it's not a secret, and it's safe to commit. Your data's
+protection comes entirely from the row-level security policies in
+`schema.sql` (each signed-in user can only touch their own row), not from
+keeping this key hidden.
+
+**Known limitations**, honestly stated rather than hidden:
+
+- Codeforces-handle verification is enforced client-side (there's no server
+  function double-checking it), because this app has no multi-user-visible
+  features (no leaderboards, no public profiles) — verifying against
+  yourself only, the stakes of bypassing your own app's UX gate are nil. If
+  a future feature ever shows one user's data to another, that verification
+  needs to move server-side (a Supabase Edge Function) before it can be
+  trusted for that purpose.
+- Cross-device sync is last-write-wins on the whole data blob, not merged —
+  don't actively edit on two devices at the same moment.
+- There's no in-app account deletion flow yet; delete a user from the
+  Supabase dashboard's Authentication tab if needed (their `profiles` row is
+  removed automatically via `on delete cascade`).
+
 ## Contributing
 
 Contributions are welcome — this is meant to be a community-maintained
@@ -86,8 +136,10 @@ resource, not a one-person project.
   Finals archive, or similarly well-established references).
 - App logic is split by concern into small, dependency-free modules under
   `js/` (`storage.js`, `roadmap.js`, `timeline.js`, `gamification.js`,
-  `cf-sync.js`, `reports.js`, `theme.js`, `app.js`) — no build step, no
-  bundler, no framework. Keep it that way; it's what makes this project
+  `cf-sync.js`, `cf-verify.js`, `reports.js`, `theme.js`, `auth.js`,
+  `supabase-client.js`, `app.js`) — no build step, no bundler, no
+  homegrown framework (Supabase's client SDK, loaded from its CDN build, is
+  the one exception). Keep it that way; it's what makes this project
   approachable to clone and hack on.
 - See [`TODO.md`](TODO.md) for planned features that are deliberately out of
   scope for now, including a Codeforces-driven team role-split suggestion

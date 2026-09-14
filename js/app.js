@@ -11,6 +11,21 @@
     return new Date().toISOString().slice(0, 10);
   }
 
+  let verifyState = null; // { problem, startedAtMs } while a CF verification is in progress
+
+  function isCloudMode() {
+    return Store._mode === "cloud";
+  }
+
+  /** Shared gate for the three CF-write entry points: in cloud mode, they require a verified handle. */
+  function requireVerifiedIfCloud() {
+    if (isCloudMode() && !Store.data.profile.cfVerified) {
+      setSyncStatus("Verify your Codeforces handle in the Account card first.", "error");
+      return false;
+    }
+    return true;
+  }
+
   function renderPointsBadge() {
     $("points-badge").textContent = `${Store.data.points.balance} pts`;
   }
@@ -135,6 +150,7 @@
       setSyncStatus("Set your Codeforces handle in the profile card first.", "error");
       return;
     }
+    if (!requireVerifiedIfCloud()) return;
     setSyncStatus("Fetching…", "");
     const result = await CFSync.fetchLive(handle);
     if (!result.ok) {
@@ -153,6 +169,7 @@
       setSyncStatus("Paste the JSON response first.", "error");
       return;
     }
+    if (!requireVerifiedIfCloud()) return;
     try {
       const problems = CFSync.parseManual(text);
       const { added, pointsGained } = CFSync.applyProblems(problems);
@@ -177,6 +194,7 @@
       setSyncStatus("Give the solve a name or a contest ID + index.", "error");
       return;
     }
+    if (!requireVerifiedIfCloud()) return;
 
     const { added, pointsGained } = CFSync.logSingle({ contestId, index, name, rating, tags, solvedDate });
     setSyncStatus(added ? `Logged (+${pointsGained} pts).` : "That problem is already logged.", added ? "success" : "");
@@ -188,8 +206,13 @@
   function wireProfileForm() {
     $("profile-form").addEventListener("submit", (evt) => {
       evt.preventDefault();
+      const newHandle = $("cf-handle-input").value.trim();
       Store.update((d) => {
-        d.profile.cfHandle = $("cf-handle-input").value.trim();
+        if (d.profile.cfHandle !== newHandle) {
+          d.profile.cfVerified = false; // handle changed — needs (re-)verification in cloud mode
+          verifyState = null;
+        }
+        d.profile.cfHandle = newHandle;
         d.profile.gamificationStart = $("gamification-start-input").value || null;
         d.profile.focusTags = parseTags($("focus-tags-input").value);
         d.profile.targetDate = $("target-date-input").value || null;
@@ -198,8 +221,199 @@
       const note = $("profile-saved-note");
       note.hidden = false;
       setTimeout(() => (note.hidden = true), 1800);
+      renderAccountCard();
       renderRoadmapAndDependents();
     });
+  }
+
+  // --- Account card: sign-in, sign-out, CF handle verification ---
+
+  function setSigninStatus(msg, kind) {
+    const el = $("signin-status");
+    if (!el) return;
+    el.textContent = msg;
+    el.className = `sync-status ${kind || ""}`;
+  }
+
+  function showSignedIn(signedIn, email) {
+    $("account-signed-out").hidden = signedIn;
+    $("account-signed-in").hidden = !signedIn;
+    if (signedIn) $("account-email").textContent = email || "";
+  }
+
+  async function markVerified(handle) {
+    Store.update((d) => {
+      d.profile.cfVerified = true;
+    });
+    verifyState = null;
+    if (CLOUD_ENABLED && Store._userId) {
+      try {
+        await supabaseClient.from("profiles").update({ cf_handle: handle, cf_verified: true }).eq("id", Store._userId);
+      } catch (e) {
+        console.error("Failed to persist CF verification.", e);
+      }
+    }
+    renderCFVerifySection();
+    refreshDynamic();
+  }
+
+  function renderCFVerifySection() {
+    const root = $("cf-verify-section");
+    if (!root) return;
+    const { cfHandle, cfVerified } = Store.data.profile;
+
+    if (!cfHandle) {
+      root.innerHTML = `<p class="card-subtitle">Enter a Codeforces handle in the Profile card above, then come back here to verify it.</p>`;
+      return;
+    }
+    if (cfVerified) {
+      root.innerHTML = `<p class="verified-note">✓ Verified as <strong>${escapeHtml(cfHandle)}</strong>.</p>`;
+      return;
+    }
+    if (!verifyState) {
+      root.innerHTML = `
+        <p class="card-subtitle">Prove you own <strong>${escapeHtml(cfHandle)}</strong> to enable cloud sync for it.</p>
+        <button id="start-verify-btn" type="button" class="btn-secondary">Start verification</button>
+      `;
+      $("start-verify-btn").addEventListener("click", () => {
+        verifyState = { problem: CFVerify.pickProblem(), startedAtMs: Date.now() };
+        renderCFVerifySection();
+      });
+      return;
+    }
+
+    const { problem } = verifyState;
+    root.innerHTML = `
+      <p>1. Open <a href="${CFVerify.problemUrl(problem)}" target="_blank" rel="noopener noreferrer">${escapeHtml(problem.name)} (${problem.contestId}${problem.index})</a>.</p>
+      <p>2. Submit ANY code that fails to compile (e.g. delete a semicolon) as <strong>${escapeHtml(cfHandle)}</strong>, within the next ${CFVerify.WINDOW_MINUTES} minutes.</p>
+      <div class="form-actions">
+        <button id="check-verify-btn" type="button" class="btn-primary">I submitted it — check now</button>
+        <button id="cancel-verify-btn" type="button" class="btn-icon">Cancel</button>
+      </div>
+      <span id="verify-status" class="sync-status"></span>
+      <details>
+        <summary>Manual fallback (paste JSON)</summary>
+        <p><a href="${CFSync.apiUrl(cfHandle)}" target="_blank" rel="noopener noreferrer">Open Codeforces API URL →</a></p>
+        <textarea id="verify-manual-json" rows="5" placeholder="Paste the JSON response here"></textarea>
+        <button id="verify-manual-btn" type="button" class="btn-secondary">Check pasted JSON</button>
+      </details>
+    `;
+
+    $("check-verify-btn").addEventListener("click", async () => {
+      const statusEl = $("verify-status");
+      statusEl.textContent = "Checking…";
+      statusEl.className = "sync-status";
+      const result = await CFVerify.checkLive(cfHandle, problem, verifyState.startedAtMs);
+      if (!result.ok) {
+        statusEl.textContent = `Live check failed (${result.error}). Use the manual fallback below.`;
+        statusEl.className = "sync-status error";
+        return;
+      }
+      if (result.verified) {
+        markVerified(cfHandle);
+      } else {
+        statusEl.textContent = "No matching compile-error submission found yet. Submit it, then try again.";
+        statusEl.className = "sync-status error";
+      }
+    });
+
+    $("cancel-verify-btn").addEventListener("click", () => {
+      verifyState = null;
+      renderCFVerifySection();
+    });
+
+    $("verify-manual-btn").addEventListener("click", () => {
+      const text = $("verify-manual-json").value.trim();
+      const statusEl = $("verify-status");
+      try {
+        const ok = CFVerify.checkManual(text, problem, verifyState.startedAtMs);
+        if (ok) {
+          markVerified(cfHandle);
+        } else {
+          statusEl.textContent = "No matching compile-error submission found in that JSON.";
+          statusEl.className = "sync-status error";
+        }
+      } catch (e) {
+        statusEl.textContent = `Couldn't parse that JSON: ${e.message}`;
+        statusEl.className = "sync-status error";
+      }
+    });
+  }
+
+  function renderAccountCard() {
+    if (!CLOUD_ENABLED) return;
+    renderCFVerifySection();
+  }
+
+  async function handleAuthSession(session) {
+    if (session && session.user) {
+      const userId = session.user.id;
+      try {
+        const { data: row, error } = await supabaseClient.from("profiles").select("cf_handle, cf_verified, app_data").eq("id", userId).single();
+        if (error) throw error;
+        const cloudHasData = row.app_data && Object.keys(row.app_data).length > 0;
+        if (!cloudHasData && Store.hasMeaningfulLocalData()) {
+          const importLocal = confirm(
+            "You have local data on this device. Import it into your new account?\n\nOK = import it. Cancel = start fresh in the cloud (your local data stays put and untouched on this device)."
+          );
+          if (importLocal) {
+            await Store.seedCloudFromLocal(userId);
+          } else {
+            Store.enterCloudMode(userId, row);
+          }
+        } else {
+          Store.enterCloudMode(userId, row);
+        }
+      } catch (e) {
+        console.error("Failed to load cloud profile.", e);
+        setSigninStatus(`Couldn't load your account data: ${e.message}`, "error");
+        return;
+      }
+      showSignedIn(true, session.user.email);
+    } else {
+      await Store.exitCloudMode();
+      showSignedIn(false);
+    }
+    verifyState = null;
+    renderProfileForm();
+    renderAccountCard();
+    renderRoadmapAndDependents();
+  }
+
+  function wireAccountCard() {
+    if (!CLOUD_ENABLED) {
+      $("account-card-unavailable").hidden = false;
+      $("account-card-body").hidden = true;
+      return;
+    }
+
+    $("signin-form").addEventListener("submit", async (evt) => {
+      evt.preventDefault();
+      const email = $("signin-email-input").value.trim();
+      if (!email) return;
+      setSigninStatus("Sending magic link…", "");
+      try {
+        await Auth.signInWithEmail(email);
+        setSigninStatus("Check your email for a sign-in link.", "success");
+      } catch (e) {
+        setSigninStatus(`Couldn't send link: ${e.message}`, "error");
+      }
+    });
+
+    $("sign-out-btn").addEventListener("click", async () => {
+      await Auth.signOut();
+    });
+
+    Store.onCloudStatus((status, detail) => {
+      const el = $("cloud-sync-status");
+      if (!el) return;
+      const labels = { saving: "Saving…", saved: "Synced", error: `Sync error: ${detail}` };
+      el.textContent = labels[status] || "";
+      el.className = `sync-status ${status === "error" ? "error" : status === "saved" ? "success" : ""}`;
+    });
+
+    Auth.onChange(handleAuthSession);
+    Auth.init().then((session) => handleAuthSession(session));
   }
 
   function wireSyncCard() {
@@ -246,6 +460,7 @@
         status.textContent = "Import successful.";
         status.className = "sync-status success";
         renderProfileForm();
+        renderAccountCard();
         renderRoadmapAndDependents();
         Theme.apply();
       } catch (e) {
@@ -256,11 +471,13 @@
     });
 
     $("reset-btn").addEventListener("click", () => {
-      if (!confirm("This clears all locally stored ICPC Prep Hub data (roadmap progress, points, logs, rewards). This can't be undone unless you've exported a backup. Continue?")) {
+      const cloudNote = isCloudMode() ? " This also overwrites your synced cloud copy." : "";
+      if (!confirm(`This clears all ICPC Prep Hub data (roadmap progress, points, logs, rewards).${cloudNote} This can't be undone unless you've exported a backup. Continue?`)) {
         return;
       }
       Store.resetAll();
       renderProfileForm();
+      renderAccountCard();
       renderRoadmapAndDependents();
       Theme.apply();
       $("data-status").textContent = "All data reset.";
@@ -275,6 +492,7 @@
     wireSyncCard();
     wireRewardsForm();
     wireDataCard();
+    wireAccountCard();
     renderRoadmapAndDependents();
   });
 })();

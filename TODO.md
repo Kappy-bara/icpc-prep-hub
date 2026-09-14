@@ -25,6 +25,25 @@ This needs some real thought about clustering (simple tag-frequency scoring
 vs. something smarter) and about rate-limiting multiple CF API calls
 client-side, which is why it's being tracked instead of rushed in.
 
+## Cloud sync hardening
+
+Account sign-in + Supabase sync (see [README § Cloud sync
+setup](README.md#cloud-sync-setup-optional)) is in, but a few things are
+deliberately left for later rather than over-built now:
+
+- Codeforces-handle verification is currently enforced client-side only —
+  fine while every user only ever sees their own data (no leaderboards, no
+  public profiles), but it would need to move into a server-side Supabase
+  Edge Function before any feature shows one user's claimed handle to
+  another (e.g. the team-roles feature below, if it ever gains a
+  shared/visible view).
+- Multi-device sync is last-write-wins on the whole data blob — no
+  merge/conflict resolution if you edit on two devices at once.
+- No in-app account deletion flow (delete the user from the Supabase
+  dashboard directly; their data is removed via `on delete cascade`).
+- No password-based login option — magic link only, by design (simpler,
+  fewer footguns), but worth an issue if there's demand for it.
+
 ## Other ideas
 
 - PWA/offline support (service worker + manifest) so the app installs and

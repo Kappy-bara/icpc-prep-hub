@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ICPC Prep Hub</title>
-  <meta name="description" content="A free, static, client-side companion for ICPC prep: a multi-subject roadmap, a smart timeline, Codeforces-powered gamification, and progress reports." />
+  <meta name="description" content="A free companion for ICPC prep: a multi-subject roadmap, a smart timeline, Codeforces-powered gamification, and progress reports. Works fully offline; optional account sign-in syncs your data across devices." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\u{1F3C6}</text></svg>" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -21,10 +21,46 @@
 
   <main class="container">
     <p class="intro">
-      An open-source, no-backend companion for ICPC prep &mdash; regionals through World Finals. Everything
-      lives in this browser's local storage; nothing is sent anywhere except the optional Codeforces sync
-      request you trigger yourself.
+      An open-source companion for ICPC prep &mdash; regionals through World Finals. Works entirely offline,
+      local-only, by default; sign in below only if you want your data synced across devices.
     </p>
+
+    <section class="card" id="account-card">
+      <h2>Account &amp; Cloud Sync</h2>
+
+      <p id="account-card-unavailable" class="card-subtitle" hidden>
+        Cloud sync isn't configured for this deployment (see <code>js/config.js</code> and the README) &mdash;
+        the app works fully in local-only mode without it.
+      </p>
+
+      <div id="account-card-body">
+        <div id="account-signed-out">
+          <p class="card-subtitle">
+            Sign in with a magic link (no password) to sync your roadmap, points, and logs across devices.
+            Local-only mode works fine without this.
+          </p>
+          <form id="signin-form" class="form-grid">
+            <label>
+              Email
+              <input type="email" id="signin-email-input" placeholder="you@example.com" required autocomplete="email" />
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Send magic link</button>
+              <span id="signin-status" class="sync-status"></span>
+            </div>
+          </form>
+        </div>
+
+        <div id="account-signed-in" hidden>
+          <p>
+            Signed in as <strong id="account-email"></strong>.
+            <span id="cloud-sync-status" class="sync-status"></span>
+          </p>
+          <div id="cf-verify-section"></div>
+          <button id="sign-out-btn" type="button" class="btn-secondary">Sign out</button>
+        </div>
+      </div>
+    </section>
 
     <section class="card" id="profile-card">
       <h2>Profile</h2>
@@ -150,7 +186,12 @@
     </p>
   </footer>
 
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/supabase-client.js"></script>
   <script defer src="js/storage.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="js/cf-verify.js"></script>
   <script defer src="js/theme.js"></script>
   <script defer src="js/roadmap-data.js"></script>
   <script defer src="js/roadmap.js"></script>
