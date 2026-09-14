@@ -53,6 +53,31 @@ const Roadmap = {
     });
   },
 
+  /** Compact overall-progress + per-phase summary for the Dashboard, with a link to the full checklist. */
+  renderSummary(container) {
+    if (!container) return;
+    const overall = this.overallProgress();
+    const buckets = this.phaseBuckets();
+    container.innerHTML = `
+      <div class="progress-row">
+        <div class="progress-bar"><div class="progress-fill" style="width:${overall.percent}%"></div></div>
+        <span class="progress-label">${overall.done} / ${overall.total} topics (${overall.percent}%)</span>
+      </div>
+      <div class="report-windows">
+        ${buckets
+          .map(
+            (b) => `
+          <div class="stat-tile">
+            <div class="stat-value">${b.percent}%</div>
+            <div class="stat-label">${escapeHtml(b.phase)} (${b.done}/${b.total})</div>
+          </div>`
+          )
+          .join("")}
+      </div>
+      <p class="card-subtitle"><a href="roadmap.html">View full roadmap &rarr;</a></p>
+    `;
+  },
+
   render(container) {
     container.innerHTML = "";
 

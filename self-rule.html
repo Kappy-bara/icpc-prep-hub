@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Self-rule · ICPC Prep Hub</title>
+  <meta name="description" content="Points, rewards, and redemption history &mdash; turn your own prep discipline into a game." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\u{1F3C6}</text></svg>" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header id="site-nav" class="topbar"></header>
+
+  <main class="container">
+    <section class="card" id="formula-card">
+      <h2>How points work</h2>
+      <p>
+        Base points are <code>round(rating / 100)</code> for rated problems, or a flat <strong>5</strong> for
+        unrated ones. Solves tagged with one of your focus tags (<span id="formula-focus-tags">&mdash;</span>)
+        earn &times;1.5 points. Every solve is worth at least 1 point.
+      </p>
+      <p>
+        Your gamification start date is <span id="formula-start-date">not set</span>. Solves from that date
+        onward earn points; anything solved before it is logged for stats on the
+        <a href="codeforces.html">Codeforces page</a> but scores 0 &mdash; so importing your whole history
+        doesn't hand you a windfall. Change either of these on the <a href="dashboard.html">Dashboard</a>.
+      </p>
+    </section>
+
+    <section class="card" id="rewards-card">
+      <h2>Rewards</h2>
+      <div id="rewards-list" class="rewards-list"></div>
+
+      <details>
+        <summary>Add a reward</summary>
+        <form id="add-reward-form" class="form-grid">
+          <label>Name <input type="text" id="reward-name-input" placeholder="e.g. Movie night" /></label>
+          <label>Cost (points) <input type="number" id="reward-cost-input" min="1" step="1" /></label>
+          <div class="form-actions">
+            <button type="submit" class="btn-secondary">Add reward</button>
+          </div>
+        </form>
+      </details>
+
+      <details>
+        <summary>Redemption history</summary>
+        <div id="redemption-history" class="redemption-history"></div>
+      </details>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      icpc-prep-hub is open source under the MIT License. Contributions welcome &mdash; see
+      <a href="README.md">README.md</a> and <a href="TODO.md">TODO.md</a> for planned features.
+    </p>
+  </footer>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/supabase-client.js"></script>
+  <script defer src="js/storage.js"></script>
+  <script defer src="js/dom-utils.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="js/theme.js"></script>
+  <script defer src="js/nav.js"></script>
+  <script defer src="js/shell.js"></script>
+  <script defer src="js/gamification.js"></script>
+  <script defer src="js/rewards-ui.js"></script>
+  <script defer src="js/pages/self-rule.js"></script>
+</body>
+</html>

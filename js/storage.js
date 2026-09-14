@@ -34,6 +34,19 @@ function defaultData() {
     solvedLog: [
       // { key: "1500A", contestId, index, name, rating, tags: [], solvedDate: ISO, points, source: "cf-sync"|"manual" }
     ],
+    cf: {
+      ratingHistory: [
+        // { contestId, contestName, ratingUpdateTimeSeconds, oldRating, newRating }
+      ],
+      attemptStats: {
+        // { [problemKey]: wrongAttemptCount } — only for problems that are also in solvedLog
+      },
+      unsolvedAttempted: [
+        // { key, contestId, index, name, rating, tags, lastAttemptDate: ISO, attemptCount }
+        // capped to the 100 most-recently-attempted, newest first
+      ],
+      lastRatingSyncAt: null, // ISO timestamp, informational only
+    },
     rewards: [
       { id: "r-youtube", name: "15-minute YouTube break", cost: 20 },
       { id: "r-treat", name: "A small treat / snack", cost: 30 },

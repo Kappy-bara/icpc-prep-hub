@@ -44,8 +44,38 @@ deliberately left for later rather than over-built now:
 - No password-based login option — magic link only, by design (simpler,
   fewer footguns), but worth an issue if there's demand for it.
 
+## Codeforces baseline automation
+
+`js/cf-baseline-data.js` (see [README § Codeforces baseline
+data](README.md#codeforces-baseline-data)) is currently a static file,
+regenerated manually and periodically by running
+`scripts/generate-cf-baseline.js` and committing the result. That's the
+right amount of infrastructure for now, but a natural next step once the
+project has any recurring backend jobs anyway: turn the generator into a
+Supabase Edge Function on a cron schedule, writing into a small table
+instead of a committed file — removes the manual regeneration step
+entirely, and the baseline data would go through the same cache/read path
+as everything else already in `profiles`. Also a natural place to build the
+real top-CF-users leaderboard idea (see Team role-split suggestions above)
+if that's ever picked up, since both need the same kind of scheduled job.
+
 ## Other ideas
 
+- Rating percentile placement ("you're in the top X% of all rated CF
+  users") — cheap, reuses the same `ratedList` data the generator already
+  fetches.
+- "Next problem" recommendations — pull unsolved problems from
+  `problemset.problems` filtered to a user's weakest tags at their
+  comfortable rating, a natural extension of the baseline comparison and
+  unsolved-list features that already exist.
+- Contest-type breakdown (Div1/Div2/Div3/Educational/Global performance
+  shown separately) — some people do well in practice but underperform live,
+  or vice versa.
+- Solve activity heatmap — a GitHub-style calendar of solving consistency.
+- 1:1 rival comparison — pick a friend's handle and see tag/rating profiles
+  side by side; a lighter, immediate version of the team-roles idea above.
+- Rating milestone projection — a rough trend-line extrapolation, clearly
+  caveated as a rough estimate, not a guarantee.
 - PWA/offline support (service worker + manifest) so the app installs and
   works without a network connection at all.
 - Per-subject custom pacing weights (e.g. let the user say "I already know

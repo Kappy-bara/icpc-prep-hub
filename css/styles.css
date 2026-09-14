@@ -90,9 +90,10 @@ a {
   margin: 0 auto;
   padding: 0.75rem 1rem;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem 0.75rem;
 }
 
 .topbar-inner h1 {
@@ -100,10 +101,47 @@ a {
   margin: 0;
 }
 
+.brand {
+  order: 0;
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+
 .topbar-actions {
+  order: 1;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.site-links {
+  order: 2;
+  flex: 1 1 100%;
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+}
+
+.site-links a {
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.site-links a:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.site-links a.active {
+  background: var(--badge-bg);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .points-badge {
@@ -730,6 +768,155 @@ details p {
   text-align: center;
 }
 
+/* Home page */
+.hero {
+  padding: 0.5rem 0 0.25rem;
+}
+
+.hero h1 {
+  font-size: 1.7rem;
+  margin: 0 0 0.4rem;
+}
+
+.page-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.7rem;
+}
+
+.page-link-card {
+  display: block;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  text-decoration: none;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.page-link-card:hover {
+  border-color: var(--accent);
+}
+
+.page-link-title {
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.page-link-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* Codeforces Analysis card */
+.cf-analysis-section {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.cf-analysis-section:first-of-type {
+  margin-top: 0.8rem;
+  padding-top: 0;
+  border-top: none;
+}
+
+.cf-analysis-section h3 {
+  font-size: 0.92rem;
+  margin: 0 0 0.4rem;
+}
+
+.cf-legend {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+
+.cf-legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+
+.bar-row-compare {
+  display: grid;
+  grid-template-columns: 110px 1fr 70px;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  margin-bottom: 0.5rem;
+}
+
+.bar-row-compare .bar-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-track-dual {
+  position: relative;
+  height: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill-baseline,
+.bar-fill-mine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.bar-fill-baseline {
+  background: var(--text-muted);
+  opacity: 0.35;
+}
+
+.bar-fill-mine {
+  background: var(--accent);
+  height: 6px;
+  top: 4px;
+}
+
+.bar-verdict {
+  text-align: right;
+  font-weight: 600;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.verdict-weak {
+  color: var(--error);
+}
+
+.verdict-strong {
+  color: var(--success);
+}
+
+.verdict-on-par {
+  color: var(--text-muted);
+}
+
+.rating-chart-wrap {
+  overflow-x: auto;
+}
+
+.rating-chart-wrap svg {
+  display: block;
+  min-width: 100%;
+}
+
 @media (max-width: 480px) {
   .solved-row {
     grid-template-columns: 1fr;
@@ -744,5 +931,11 @@ details p {
   }
   .bar-row {
     grid-template-columns: 55px 1fr 24px;
+  }
+  .bar-row-compare {
+    grid-template-columns: 1fr;
+  }
+  .bar-row-compare .bar-verdict {
+    text-align: left;
   }
 }
