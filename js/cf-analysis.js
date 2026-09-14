@@ -17,9 +17,31 @@ const CFAnalysis = {
     { id: "allTime", label: "All time" },
   ],
 
+  RANK_TITLES: [
+    [3000, "Legendary Grandmaster"],
+    [2600, "International Grandmaster"],
+    [2400, "Grandmaster"],
+    [2300, "International Master"],
+    [2100, "Master"],
+    [1900, "Candidate Master"],
+    [1600, "Expert"],
+    [1400, "Specialist"],
+    [1200, "Pupil"],
+    [0, "Newbie"],
+  ],
+
+  rankTitle(rating) {
+    if (rating == null) return null;
+    for (const [cutoff, title] of this.RANK_TITLES) {
+      if (rating >= cutoff) return title;
+    }
+    return null;
+  },
+
   render(container) {
     if (!container) return;
     container.innerHTML = `
+      <div id="cf-summary-root"></div>
       <div class="report-toggle" id="cf-tier-toggle">
         ${this.TIERS.map((t) => `<button type="button" data-tier="${t.id}" class="${t.id === this._tier ? "active" : ""}">${t.label}</button>`).join("")}
       </div>
@@ -74,6 +96,7 @@ const CFAnalysis = {
       });
     });
 
+    this.renderSummary($("cf-summary-root"));
     this.renderBaseline($("cf-baseline-root"), $("cf-baseline-subtitle"));
     this.renderAccuracy($("cf-accuracy-root"));
     this.renderRatingChart($("cf-rating-chart-root"));
@@ -174,6 +197,23 @@ const CFAnalysis = {
     `;
   },
 
+  renderSummary(root) {
+    const { solvedLog, cf } = Store.data;
+    const ratedSolves = solvedLog.filter((p) => p.rating);
+    const avgRating = ratedSolves.length ? Math.round(ratedSolves.reduce((s, p) => s + p.rating, 0) / ratedSolves.length) : null;
+    const currentRating = cf.ratingHistory.length ? cf.ratingHistory[cf.ratingHistory.length - 1].newRating : null;
+    const rank = this.rankTitle(currentRating);
+
+    root.innerHTML = `
+      <div class="report-windows">
+        <div class="stat-tile"><div class="stat-value">${solvedLog.length}</div><div class="stat-label">total solved</div></div>
+        <div class="stat-tile"><div class="stat-value">${avgRating ?? "—"}</div><div class="stat-label">avg. solved rating</div></div>
+        <div class="stat-tile"><div class="stat-value">${currentRating ?? "—"}</div><div class="stat-label">${rank || "current rating"}</div></div>
+        <div class="stat-tile"><div class="stat-value">${cf.ratingHistory.length}</div><div class="stat-label">contests synced</div></div>
+      </div>
+    `;
+  },
+
   renderBaseline(root, subtitleEl) {
     const result = CFBaseline.compareTags({ tier: this._tier, window: this._window });
     const cutoffLabel = this._tier === "average" ? `~${result.ratingCutoff} rated` : `${result.ratingCutoff}+ rated`;
@@ -201,7 +241,7 @@ const CFAnalysis = {
         .map(
           (r) => `
         <div class="bar-row-compare">
-          <span class="bar-label">${escapeHtml(r.tag)}</span>
+          <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount})</span></span>
           <div class="bar-track-dual">
             <div class="bar-fill-baseline" style="width:${(r.baselineRatio / maxRatio) * 100}%"></div>
             <div class="bar-fill-mine" style="width:${(r.yourRatio / maxRatio) * 100}%"></div>
@@ -239,7 +279,7 @@ const CFAnalysis = {
       .map(
         (r) => `
       <div class="bar-row">
-        <span class="bar-label">${escapeHtml(r.tag)}</span>
+        <span class="bar-label" title="${escapeHtml(r.tag)} — ${r.count} solved">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.count})</span></span>
         <div class="bar-track"><div class="bar-fill" style="width:${(r.avgWrong / maxAvg) * 100}%"></div></div>
         <span class="bar-count">${r.avgWrong.toFixed(1)}</span>
       </div>`
@@ -266,6 +306,11 @@ const CFAnalysis = {
     const last = history[n - 1];
     const percentile = CFBaseline.percentileForRating(last.newRating);
     const percentileLabel = percentile ? ` · top ~${percentile}% of active rated Codeforces users` : "";
+    const rank = this.rankTitle(last.newRating);
+    const rankLabel = rank ? ` (${rank})` : "";
+
+    const peak = history.reduce((m, h) => Math.max(m, h.newRating), -Infinity);
+    const peakLabel = peak > last.newRating ? ` · peak ${peak}` : "";
 
     root.innerHTML = `
       <div class="rating-chart-wrap">
@@ -279,7 +324,7 @@ const CFAnalysis = {
             .join("")}
         </svg>
       </div>
-      <p class="card-subtitle">${n} contest${n === 1 ? "" : "s"} · current rating ${last.newRating}${percentileLabel}</p>
+      <p class="card-subtitle">${n} contest${n === 1 ? "" : "s"} · current rating ${last.newRating}${rankLabel}${peakLabel}${percentileLabel}</p>
     `;
   },
 

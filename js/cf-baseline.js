@@ -17,7 +17,7 @@ const CFBaseline = {
     return window === "lastYear" ? new Date(Date.now() - CF_BASELINE_YEAR_MS).toISOString() : null;
   },
 
-  /** { total, ratios: {tag: ratio} } for the user's own solvedLog in the given window. */
+  /** { total, counts: {tag: count}, ratios: {tag: ratio} } for the user's own solvedLog in the given window. */
   yourTagRatios(window) {
     const cutoff = this.windowCutoffISO(window);
     const entries = Store.data.solvedLog.filter((p) => !cutoff || p.solvedDate >= cutoff);
@@ -30,7 +30,7 @@ const CFBaseline = {
     }
     const ratios = {};
     for (const [tag, count] of Object.entries(counts)) ratios[tag] = count / total;
-    return { total, ratios };
+    return { total, counts, ratios };
   },
 
   /** Per-tag comparison rows for the given tier ("top500"|"top10000"|"average") and window ("allTime"|"lastYear"). */
@@ -42,12 +42,13 @@ const CFBaseline = {
     const allTags = new Set([...Object.keys(baselineWindow.tagRatios), ...Object.keys(yours.ratios)]);
     const rows = [...allTags].map((tag) => {
       const yourRatio = yours.ratios[tag] || 0;
+      const yourCount = yours.counts[tag] || 0;
       const baselineRatio = baselineWindow.tagRatios[tag] || 0;
       const delta = yourRatio - baselineRatio;
       let verdict = "on-par";
       if (delta <= -CF_BASELINE_VERDICT_THRESHOLD) verdict = "weak";
       else if (delta >= CF_BASELINE_VERDICT_THRESHOLD) verdict = "strong";
-      return { tag, yourRatio, baselineRatio, delta, verdict };
+      return { tag, yourRatio, yourCount, baselineRatio, delta, verdict };
     });
     rows.sort((a, b) => b.baselineRatio - a.baselineRatio);
 
