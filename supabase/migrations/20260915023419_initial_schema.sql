@@ -1,16 +1,22 @@
--- ICPC Prep Hub — Supabase schema
+-- ICPC Prep Hub — initial schema
 --
--- Run this once in your Supabase project's SQL editor (Project -> SQL Editor -> New query).
+-- Managed via the Supabase CLI (see supabase/config.toml and README § Cloud sync
+-- setup). Apply it either by running `supabase db push` (recommended — this is how
+-- future migrations get applied too), or by pasting this file's contents into your
+-- project's SQL Editor -> New query and running it once, if you'd rather not install
+-- the CLI.
+--
 -- It creates one table (`profiles`) holding the same JSON shape the app already uses in
 -- localStorage, keyed by the authenticated user's id, plus row-level security so each
 -- user can only ever read/write their own row.
 --
 -- Design note: we deliberately store the app's state as one JSONB blob per user rather
--- than normalizing into many tables. This app has no cross-user features (no
--- leaderboards, no sharing) — every read is "give me my own data" — so a relational
--- schema would add migration/maintenance overhead without buying anything. If a future
--- feature needs to query across users (e.g. the planned team-roles feature), that's a
--- good time to split solved_log out into its own table.
+-- than normalizing into many tables. Every *private* read here is "give me my own
+-- data" — no per-field querying across users — so a relational schema would add
+-- migration/maintenance overhead without buying anything. A feature that needs public,
+-- cross-user data (e.g. a top-CF-users leaderboard) is a different shape entirely
+-- (public-read table, backend-only writes) and belongs in its own migration file
+-- alongside this one, not folded into `profiles`.
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,

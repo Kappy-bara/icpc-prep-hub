@@ -88,10 +88,22 @@ Skip this entirely if you're happy with local-only mode — the app works
 fully without it. To enable sign-in and cross-device sync:
 
 1. Create a free project at [supabase.com](https://supabase.com).
-2. Open the SQL editor (left sidebar) and run the contents of
-   [`supabase/schema.sql`](supabase/schema.sql). This creates one table
-   (`profiles`) with row-level security so each user can only ever read or
-   write their own row.
+2. Apply the schema in [`supabase/migrations/`](supabase/migrations). Two
+   ways to do this — pick one:
+   - **Supabase CLI (recommended, especially if you'll add more tables/functions
+     later):**
+     ```bash
+     npx supabase login
+     npx supabase link --project-ref <your-project-ref>   # found in your project's URL/Settings
+     npx supabase db push
+     ```
+     From then on, every future schema change is just a new file in
+     `supabase/migrations/` plus `npx supabase db push` again — no CLI
+     install needed, `npx` fetches it on demand.
+   - **Manual:** open the SQL editor (left sidebar) and paste/run the
+     contents of the one file currently in `supabase/migrations/`.
+   Either way, this creates one table (`profiles`) with row-level security
+   so each user can only ever read or write their own row.
 3. In **Project Settings → API**, copy the **Project URL** and **anon
    public** key into [`js/config.js`](js/config.js).
 4. In **Authentication → URL Configuration**, add every URL you'll run the
@@ -104,9 +116,36 @@ fully without it. To enable sign-in and cross-device sync:
 
 The `anon` key is Supabase's public client key, meant to be shipped in
 frontend code — it's not a secret, and it's safe to commit. Your data's
-protection comes entirely from the row-level security policies in
-`schema.sql` (each signed-in user can only touch their own row), not from
+protection comes entirely from the row-level security policies defined in
+the migrations (each signed-in user can only touch their own row), not from
 keeping this key hidden.
+
+### Growing the backend later
+
+`supabase/` is a real [Supabase CLI](https://supabase.com/docs/guides/local-development)
+project, not just a one-off SQL file:
+
+- **New tables / schema changes** → add a new file to
+  `supabase/migrations/` (e.g. `npx supabase migration new <name>` to
+  scaffold one with the right timestamped filename), then
+  `npx supabase db push`. Keep old migration files — they're the history of
+  how the schema got here, not something to edit after the fact.
+- **Server-side logic** (e.g. a scheduled job, or moving Codeforces-handle
+  verification server-side — see Known limitations below) → Edge Functions,
+  via `npx supabase functions new <name>`, which creates
+  `supabase/functions/<name>/index.ts`. Deploy with
+  `npx supabase functions deploy <name>`.
+- **Actual secrets** used *inside* a function (a service-role key, a
+  third-party API key) → `npx supabase secrets set KEY=value` for the
+  deployed function, and a local `supabase/functions/.env` for testing with
+  `supabase functions serve` — that `.env` file is gitignored
+  (`supabase/.gitignore`) and must never be committed. This is different
+  from the anon key in `js/config.js`, which is meant to be public.
+
+None of this is needed for the app as it stands today — it's here so that
+adding a table or a function later is "write a migration / function file
+and push," not "improvise in the SQL editor with no history of what
+changed."
 
 **Known limitations**, honestly stated rather than hidden:
 
