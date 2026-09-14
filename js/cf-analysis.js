@@ -8,6 +8,7 @@ const CFAnalysis = {
   _window: "lastYear",
 
   TIERS: [
+    { id: "tourist", label: "Tourist" },
     { id: "top500", label: "Top 500" },
     { id: "top10000", label: "Top 10,000" },
     { id: "average", label: "Average user" },
@@ -216,8 +217,12 @@ const CFAnalysis = {
 
   renderBaseline(root, subtitleEl) {
     const result = CFBaseline.compareTags({ tier: this._tier, window: this._window });
-    const cutoffLabel = this._tier === "average" ? `~${result.ratingCutoff} rated` : `${result.ratingCutoff}+ rated`;
-    subtitleEl.textContent = `${result.tierLabel} (${cutoffLabel}) · ${result.baselineProblemCount} baseline problems in this window`;
+    let cutoffLabel;
+    if (this._tier === "tourist") cutoffLabel = "real solve history";
+    else if (this._tier === "average") cutoffLabel = `~${result.ratingCutoff} rated`;
+    else cutoffLabel = `${result.ratingCutoff}+ rated`;
+    const baselineNoun = this._tier === "tourist" ? "of tourist's solves" : "baseline problems";
+    subtitleEl.textContent = `${result.tierLabel} (${cutoffLabel}) · ${result.baselineProblemCount} ${baselineNoun} in this window`;
 
     if (!result.baselineProblemCount) {
       root.innerHTML = `<p class="empty-note">No baseline data for this window yet.</p>`;
@@ -229,27 +234,35 @@ const CFAnalysis = {
     }
 
     const verdictLabel = { weak: "Weak", strong: "Strong", "on-par": "On par" };
-    const rows = result.rows.slice(0, 15);
+    const rows = result.rows;
     const maxRatio = Math.max(0.01, ...rows.map((r) => Math.max(r.yourRatio, r.baselineRatio)));
+    const pct = (r) => Math.round(r * 100);
 
     root.innerHTML = `
       <div class="cf-legend">
         <span><span class="cf-legend-swatch" style="background:var(--text-muted);opacity:.35"></span>Baseline</span>
-        <span><span class="cf-legend-swatch" style="background:var(--accent)"></span>You</span>
+        <span><span class="cf-legend-swatch verdict-fill-weak"></span>Weak</span>
+        <span><span class="cf-legend-swatch verdict-fill-on-par"></span>On par</span>
+        <span><span class="cf-legend-swatch verdict-fill-strong"></span>Strong</span>
       </div>
-      ${rows
-        .map(
-          (r) => `
-        <div class="bar-row-compare">
-          <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount})</span></span>
-          <div class="bar-track-dual">
-            <div class="bar-fill-baseline" style="width:${(r.baselineRatio / maxRatio) * 100}%"></div>
-            <div class="bar-fill-mine" style="width:${(r.yourRatio / maxRatio) * 100}%"></div>
-          </div>
-          <span class="bar-verdict verdict-${r.verdict}">${verdictLabel[r.verdict]}</span>
-        </div>`
-        )
-        .join("")}
+      <div class="bar-scroll">
+        ${rows
+          .map(
+            (r) => `
+          <div class="bar-row-compare">
+            <div class="bar-row-top">
+              <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount} solved)</span></span>
+              <span class="bar-verdict verdict-${r.verdict}">${verdictLabel[r.verdict]} &middot; ${pct(r.yourRatio)}% vs ${pct(r.baselineRatio)}%</span>
+            </div>
+            <div class="bar-track-dual">
+              <div class="bar-fill-baseline" style="width:${(r.baselineRatio / maxRatio) * 100}%"></div>
+              <div class="bar-fill-mine verdict-fill-${r.verdict}" style="width:${(r.yourRatio / maxRatio) * 100}%"></div>
+              <div class="bar-marker" style="left:${(r.baselineRatio / maxRatio) * 100}%"></div>
+            </div>
+          </div>`
+          )
+          .join("")}
+      </div>
     `;
   },
 
@@ -267,24 +280,25 @@ const CFAnalysis = {
     const rows = Object.entries(tagStats)
       .map(([tag, s]) => ({ tag, avgWrong: s.count ? s.totalWrong / s.count : 0, count: s.count }))
       .filter((r) => r.count >= 2)
-      .sort((a, b) => b.avgWrong - a.avgWrong)
-      .slice(0, 12);
+      .sort((a, b) => b.avgWrong - a.avgWrong);
 
     if (!rows.length) {
       root.innerHTML = `<p class="empty-note">Sync your Codeforces handle above to see this (needs at least 2 solves in a tag).</p>`;
       return;
     }
     const maxAvg = Math.max(0.01, ...rows.map((r) => r.avgWrong));
-    root.innerHTML = rows
+    root.innerHTML = `<div class="bar-scroll">${rows
       .map(
         (r) => `
       <div class="bar-row">
-        <span class="bar-label" title="${escapeHtml(r.tag)} — ${r.count} solved">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.count})</span></span>
+        <div class="bar-row-top">
+          <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.count} solved)</span></span>
+          <span class="bar-count">${r.avgWrong.toFixed(1)} wrong/solve</span>
+        </div>
         <div class="bar-track"><div class="bar-fill" style="width:${(r.avgWrong / maxAvg) * 100}%"></div></div>
-        <span class="bar-count">${r.avgWrong.toFixed(1)}</span>
       </div>`
       )
-      .join("");
+      .join("")}</div>`;
   },
 
   renderRatingChart(root) {

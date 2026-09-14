@@ -121,9 +121,11 @@ const Reports = {
       const row = document.createElement("div");
       row.className = "bar-row";
       row.innerHTML = `
-        <span class="bar-label">${label}</span>
+        <div class="bar-row-top">
+          <span class="bar-label">${label}</span>
+          <span class="bar-count">${count}</span>
+        </div>
         <div class="bar-track"><div class="bar-fill" style="width:${(count / maxBucket) * 100}%"></div></div>
-        <span class="bar-count">${count}</span>
       `;
       ratingList.appendChild(row);
     }
@@ -141,9 +143,11 @@ const Reports = {
       const row = document.createElement("div");
       row.className = "bar-row";
       row.innerHTML = `
-        <span class="bar-label">${label}</span>
+        <div class="bar-row-top">
+          <span class="bar-label">${label}</span>
+          <span class="bar-count">${count}</span>
+        </div>
         <div class="bar-track"><div class="bar-fill" style="width:${(count / maxTag) * 100}%"></div></div>
-        <span class="bar-count">${count}</span>
       `;
       tagsList.appendChild(row);
     }

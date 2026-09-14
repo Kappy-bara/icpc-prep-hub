@@ -97,6 +97,20 @@ async function main() {
   const rated = problems.filter((p) => typeof p.rating === "number");
   console.log(`  ${rated.length} problems have a rating (the rest are excluded from all tiers).`);
 
+  await sleep(2000);
+  console.log("Fetching tourist's submission history (real-player benchmark tier)...");
+  const touristSubs = await cfGet("user.status", "handle=tourist");
+  const touristSolvedMap = new Map();
+  for (const sub of touristSubs) {
+    if (sub.verdict !== "OK") continue;
+    const key = `${sub.problem.contestId}${sub.problem.index}`;
+    if (touristSolvedMap.has(key)) continue;
+    touristSolvedMap.set(key, { tags: sub.problem.tags || [], dateMs: sub.creationTimeSeconds * 1000 });
+  }
+  const touristSolved = [...touristSolvedMap.values()];
+  const touristLastYear = touristSolved.filter((p) => p.dateMs >= yearAgo);
+  console.log(`  tourist: ${touristSolved.length} distinct solves all-time, ${touristLastYear.length} in the last year.`);
+
   const withDate = rated.map((p) => ({
     ...p,
     startMs: p.contestId !== undefined ? contestStart.get(p.contestId) : undefined,
@@ -114,7 +128,19 @@ async function main() {
     },
   };
 
-  const tiers = {};
+  const tiers = {
+    tourist: {
+      label: "Tourist",
+      ratingCutoff: null,
+      windows: {
+        allTime: computeWindow(touristSolved),
+        lastYear: computeWindow(touristLastYear),
+      },
+    },
+  };
+  console.log(`  [Tourist] all-time: ${touristSolved.length} solves (${topTags(tiers.tourist.windows.allTime, 5)})`);
+  console.log(`  [Tourist] last-year: ${touristLastYear.length} solves (${topTags(tiers.tourist.windows.lastYear, 5)})`);
+
   for (const [id, def] of Object.entries(tierDefs)) {
     const bucket = withDate.filter(def.filter);
     const lastYear = bucket.filter((p) => p.startMs !== undefined && p.startMs >= yearAgo);

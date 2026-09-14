@@ -9,16 +9,105 @@
  * problem count / rated population shifts noticeably) — see README
  * "Codeforces baseline data" for how.
  *
- * Generated at: 2026-09-14T22:22:29.390Z
+ * Generated at: 2026-09-14T23:01:30.072Z
  */
 const CF_BASELINE_DATA = {
-  "generatedAt": "2026-09-14T22:22:29.390Z",
+  "generatedAt": "2026-09-14T23:01:30.072Z",
   "source": {
     "problemCount": 11102,
     "ratedUserCount": 42757,
     "contestCount": 2147
   },
   "tiers": {
+    "tourist": {
+      "label": "Tourist",
+      "ratingCutoff": null,
+      "windows": {
+        "allTime": {
+          "problemCount": 3033,
+          "tagRatios": {
+            "binary search": 0.1081,
+            "bitmasks": 0.0722,
+            "data structures": 0.1836,
+            "combinatorics": 0.0837,
+            "graphs": 0.1194,
+            "math": 0.3037,
+            "schedules": 0.0026,
+            "implementation": 0.2232,
+            "two pointers": 0.0584,
+            "dp": 0.2357,
+            "constructive algorithms": 0.1962,
+            "greedy": 0.3126,
+            "divide and conquer": 0.0346,
+            "interactive": 0.0287,
+            "brute force": 0.1583,
+            "dfs and similar": 0.1015,
+            "dsu": 0.0435,
+            "games": 0.0313,
+            "trees": 0.092,
+            "sortings": 0.1085,
+            "2-sat": 0.0043,
+            "communication": 0.0003,
+            "number theory": 0.0742,
+            "strings": 0.0584,
+            "probabilities": 0.0293,
+            "geometry": 0.031,
+            "flows": 0.0145,
+            "graph matchings": 0.0099,
+            "shortest paths": 0.0257,
+            "hashing": 0.0218,
+            "fft": 0.0102,
+            "string suffix structures": 0.0089,
+            "expression parsing": 0.0033,
+            "matrices": 0.0129,
+            "ternary search": 0.0053,
+            "meet-in-the-middle": 0.0049,
+            "chinese remainder theorem": 0.0026
+          }
+        },
+        "lastYear": {
+          "problemCount": 158,
+          "tagRatios": {
+            "binary search": 0.1519,
+            "bitmasks": 0.0886,
+            "data structures": 0.2215,
+            "combinatorics": 0.1646,
+            "graphs": 0.1203,
+            "math": 0.3481,
+            "schedules": 0.0127,
+            "implementation": 0.1835,
+            "two pointers": 0.0886,
+            "dp": 0.3101,
+            "constructive algorithms": 0.2722,
+            "greedy": 0.4747,
+            "divide and conquer": 0.0633,
+            "interactive": 0.0949,
+            "brute force": 0.1646,
+            "dfs and similar": 0.1139,
+            "dsu": 0.0696,
+            "games": 0.1013,
+            "trees": 0.1139,
+            "sortings": 0.0823,
+            "2-sat": 0.0063,
+            "communication": 0.0063,
+            "number theory": 0.057,
+            "strings": 0.0633,
+            "probabilities": 0.0316,
+            "geometry": 0.0127,
+            "flows": 0.0127,
+            "graph matchings": 0.019,
+            "shortest paths": 0.0063,
+            "hashing": 0.0127,
+            "fft": 0.0063,
+            "string suffix structures": 0.0127,
+            "expression parsing": 0.0063,
+            "matrices": 0.0127,
+            "ternary search": 0.019,
+            "meet-in-the-middle": 0.0063
+          }
+        }
+      }
+    },
     "top500": {
       "label": "Top 500",
       "ratingCutoff": 2082,
