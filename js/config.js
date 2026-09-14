@@ -18,6 +18,7 @@
  * Leave the placeholders as-is to run in local-only mode (no sign-in card shown).
  */
 const SUPABASE_CONFIG = {
-  url: "YOUR_SUPABASE_PROJECT_URL",
-  anonKey: "YOUR_SUPABASE_ANON_KEY",
+  url: "https://ieiamgyuhstmjajpcuxj.supabase.co",
+  anonKey:
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllaWFtZ3l1aHN0bWphanBjdXhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTUzNjcsImV4cCI6MjEwNDk5MTM2N30.Mz_1SpBj5MCJJalfQjonqps3Eh39WdNv-xfNslxaudw",
 };
