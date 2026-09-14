@@ -1050,30 +1050,6 @@ details p {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
-.bar-fill-mine.verdict-fill-weak {
-  background: var(--error);
-}
-
-.bar-fill-mine.verdict-fill-strong {
-  background: var(--success);
-}
-
-.bar-fill-mine.verdict-fill-on-par {
-  background: var(--accent);
-}
-
-.cf-legend-swatch.verdict-fill-weak {
-  background: var(--error);
-}
-
-.cf-legend-swatch.verdict-fill-strong {
-  background: var(--success);
-}
-
-.cf-legend-swatch.verdict-fill-on-par {
-  background: var(--accent);
-}
-
 .bar-marker {
   position: absolute;
   top: 0;
@@ -1091,16 +1067,24 @@ details p {
   flex-shrink: 0;
 }
 
-.verdict-weak {
-  color: var(--error);
+.cf-gradient-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1 1 160px;
+  max-width: 220px;
 }
 
-.verdict-strong {
-  color: var(--success);
+.cf-gradient-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, hsl(0, 68%, 50%), hsl(130, 68%, 50%), hsl(210, 68%, 50%));
 }
 
-.verdict-on-par {
-  color: var(--text-muted);
+.cf-gradient-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
 }
 
 .rating-chart-wrap {

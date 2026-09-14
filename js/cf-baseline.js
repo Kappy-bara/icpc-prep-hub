@@ -4,11 +4,59 @@
  * Pure computation, no DOM — rendered by js/cf-analysis.js.
  */
 const CF_BASELINE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-const CF_BASELINE_VERDICT_THRESHOLD = 0.05; // +/- 5 percentage points
 const CF_BASELINE_MIN_SOLVES = 5;
 
 function cfBaselineCleanTags(tags) {
   return (tags || []).filter((t) => !t.startsWith("*"));
+}
+
+/**
+ * Classifies yourCount against expectedCount (= baselineRatio * yourTotal — the count you'd
+ * have if you matched the baseline's tag mix exactly). R = yourCount / expectedCount is the
+ * single normalized signal driving both the verdict band and the color hue.
+ *
+ *   R <  0.3           Very Weak
+ *   0.3 <= R < 0.6      Weak
+ *   0.6 <= R < 1.25     On-Par
+ *   1.25 <= R < 2.0     Strong
+ *   R >= 2.0            Excellent
+ *
+ * Zero solves in a tag that's part of the baseline gets its own friendly verdict rather than
+ * being lumped in with "Very Weak" — you haven't failed at it, you just haven't started.
+ */
+function cfBaselineClassify(yourCount, expectedCount) {
+  if (yourCount === 0) return { verdict: "start", label: "Just Start Buddy", r: 0 };
+  const r = expectedCount > 0 ? yourCount / expectedCount : 2.5; // no baseline presence at all -> treat as a strong signal
+  if (r < 0.3) return { verdict: "very-weak", label: "Very Weak", r };
+  if (r < 0.6) return { verdict: "weak", label: "Weak", r };
+  if (r < 1.25) return { verdict: "on-par", label: "On-Par", r };
+  if (r < 2.0) return { verdict: "strong", label: "Strong", r };
+  return { verdict: "excellent", label: "Excellent", r };
+}
+
+/**
+ * Gradual red -> green -> light blue hue for a given R, continuous but anchored to the
+ * verdict band boundaries so each band actually reads as its intended color (a naive
+ * linear 0-2 -> 0-210 map washes "Weak" out to yellow-green instead of red).
+ */
+const CF_BASELINE_HUE_POINTS = [
+  [0, 0], // Very Weak: red
+  [0.3, 15], // Very Weak/Weak boundary: red-orange
+  [0.6, 40], // Weak/On-Par boundary: orange
+  [1.0, 130], // On-Par center: green
+  [1.25, 165], // On-Par/Strong boundary: teal
+  [2.0, 210], // Strong/Excellent boundary: light blue
+  [2.5, 225], // Excellent: blue
+];
+
+function cfBaselineHue(r) {
+  const clamped = Math.max(0, Math.min(2.5, r));
+  for (let i = 0; i < CF_BASELINE_HUE_POINTS.length - 1; i++) {
+    const [r0, h0] = CF_BASELINE_HUE_POINTS[i];
+    const [r1, h1] = CF_BASELINE_HUE_POINTS[i + 1];
+    if (clamped <= r1) return h0 + ((clamped - r0) / (r1 - r0)) * (h1 - h0);
+  }
+  return CF_BASELINE_HUE_POINTS[CF_BASELINE_HUE_POINTS.length - 1][1];
 }
 
 const CFBaseline = {
@@ -44,11 +92,10 @@ const CFBaseline = {
       const yourRatio = yours.ratios[tag] || 0;
       const yourCount = yours.counts[tag] || 0;
       const baselineRatio = baselineWindow.tagRatios[tag] || 0;
-      const delta = yourRatio - baselineRatio;
-      let verdict = "on-par";
-      if (delta <= -CF_BASELINE_VERDICT_THRESHOLD) verdict = "weak";
-      else if (delta >= CF_BASELINE_VERDICT_THRESHOLD) verdict = "strong";
-      return { tag, yourRatio, yourCount, baselineRatio, delta, verdict };
+      const expectedCount = baselineRatio * yours.total;
+      const { verdict, label, r } = cfBaselineClassify(yourCount, expectedCount);
+      const hue = cfBaselineHue(r);
+      return { tag, yourRatio, yourCount, baselineRatio, expectedCount, verdict, verdictLabel: label, r, hue };
     });
     rows.sort((a, b) => b.baselineRatio - a.baselineRatio);
 

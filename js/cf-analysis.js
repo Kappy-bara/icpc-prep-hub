@@ -233,34 +233,42 @@ const CFAnalysis = {
       return;
     }
 
-    const verdictLabel = { weak: "Weak", strong: "Strong", "on-par": "On par" };
     const rows = result.rows;
     const maxRatio = Math.max(0.01, ...rows.map((r) => Math.max(r.yourRatio, r.baselineRatio)));
     const pct = (r) => Math.round(r * 100);
+    const verdictColor = (r) => (r.verdict === "start" ? "var(--text-muted)" : `hsl(${r.hue.toFixed(0)}, 68%, 50%)`);
+
+    const totalsLabel = this._tier === "tourist" ? "Tourist solved (this window)" : `${result.tierLabel} baseline pool (problems available)`;
 
     root.innerHTML = `
+      <div class="report-windows cf-totals">
+        <div class="stat-tile"><div class="stat-value">${result.yourTotal}</div><div class="stat-label">you solved (this window)</div></div>
+        <div class="stat-tile"><div class="stat-value">${result.baselineProblemCount}</div><div class="stat-label">${totalsLabel}</div></div>
+      </div>
       <div class="cf-legend">
         <span><span class="cf-legend-swatch" style="background:var(--text-muted);opacity:.35"></span>Baseline</span>
-        <span><span class="cf-legend-swatch verdict-fill-weak"></span>Weak</span>
-        <span><span class="cf-legend-swatch verdict-fill-on-par"></span>On par</span>
-        <span><span class="cf-legend-swatch verdict-fill-strong"></span>Strong</span>
+        <span class="cf-gradient-legend">
+          <span class="cf-gradient-bar"></span>
+          <span class="cf-gradient-labels"><span>Weak</span><span>On-par</span><span>Strong</span></span>
+        </span>
       </div>
       <div class="bar-scroll">
         ${rows
-          .map(
-            (r) => `
+          .map((r) => {
+            const color = verdictColor(r);
+            return `
           <div class="bar-row-compare">
             <div class="bar-row-top">
-              <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount} solved)</span></span>
-              <span class="bar-verdict verdict-${r.verdict}">${verdictLabel[r.verdict]} &middot; ${pct(r.yourRatio)}% vs ${pct(r.baselineRatio)}%</span>
+              <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount} you / ${r.expectedCount.toFixed(1)} avg)</span></span>
+              <span class="bar-verdict" style="color:${color}">${r.verdictLabel} &middot; ${pct(r.yourRatio)}% vs ${pct(r.baselineRatio)}%</span>
             </div>
             <div class="bar-track-dual">
               <div class="bar-fill-baseline" style="width:${(r.baselineRatio / maxRatio) * 100}%"></div>
-              <div class="bar-fill-mine verdict-fill-${r.verdict}" style="width:${(r.yourRatio / maxRatio) * 100}%"></div>
+              <div class="bar-fill-mine" style="width:${(r.yourRatio / maxRatio) * 100}%;background:${color}"></div>
               <div class="bar-marker" style="left:${(r.baselineRatio / maxRatio) * 100}%"></div>
             </div>
-          </div>`
-          )
+          </div>`;
+          })
           .join("")}
       </div>
     `;
