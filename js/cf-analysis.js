@@ -218,13 +218,13 @@ const CFAnalysis = {
   renderBaseline(root, subtitleEl) {
     const result = CFBaseline.compareTags({ tier: this._tier, window: this._window });
     let cutoffLabel;
-    if (this._tier === "tourist") cutoffLabel = "real solve history";
+    if (this._tier === "tourist") cutoffLabel = "a specific named player";
     else if (this._tier === "average") cutoffLabel = `~${result.ratingCutoff} rated`;
     else cutoffLabel = `${result.ratingCutoff}+ rated`;
-    const baselineNoun = this._tier === "tourist" ? "of tourist's solves" : "baseline problems";
-    subtitleEl.textContent = `${result.tierLabel} (${cutoffLabel}) · ${result.baselineProblemCount} ${baselineNoun} in this window`;
+    const sampleNote = this._tier === "tourist" ? "" : `, averaged across ${result.sampleSize} real sampled players`;
+    subtitleEl.textContent = `${result.tierLabel} (${cutoffLabel}${sampleNote})`;
 
-    if (!result.baselineProblemCount) {
+    if (!result.sampleSize) {
       root.innerHTML = `<p class="empty-note">No baseline data for this window yet.</p>`;
       return;
     }
@@ -238,12 +238,13 @@ const CFAnalysis = {
     const pct = (r) => Math.round(r * 100);
     const verdictColor = (r) => (r.verdict === "start" ? "var(--text-muted)" : `hsl(${r.hue.toFixed(0)}, 68%, 50%)`);
 
-    const totalsLabel = this._tier === "tourist" ? "Tourist solved (this window)" : `${result.tierLabel} baseline pool (problems available)`;
+    const windowLabel = this._window === "lastYear" ? "last year" : "all time";
+    const totalsLabel = this._tier === "tourist" ? `Tourist solved (${windowLabel})` : `${result.tierLabel} avg. solved (${windowLabel})`;
 
     root.innerHTML = `
       <div class="report-windows cf-totals">
-        <div class="stat-tile"><div class="stat-value">${result.yourTotal}</div><div class="stat-label">you solved (this window)</div></div>
-        <div class="stat-tile"><div class="stat-value">${result.baselineProblemCount}</div><div class="stat-label">${totalsLabel}</div></div>
+        <div class="stat-tile"><div class="stat-value">${result.yourTotal}</div><div class="stat-label">you solved (${windowLabel})</div></div>
+        <div class="stat-tile"><div class="stat-value">${result.avgSolvedCount}</div><div class="stat-label">${totalsLabel}</div></div>
       </div>
       <div class="cf-legend">
         <span><span class="cf-legend-swatch" style="background:var(--text-muted);opacity:.35"></span>Baseline</span>

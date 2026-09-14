@@ -105,7 +105,8 @@ const CFBaseline = {
       insufficientData: yours.total < CF_BASELINE_MIN_SOLVES,
       tierLabel: tierData.label,
       ratingCutoff: tierData.ratingCutoff,
-      baselineProblemCount: baselineWindow.problemCount,
+      avgSolvedCount: baselineWindow.problemCount,
+      sampleSize: baselineWindow.sampleSize,
     };
   },
 
