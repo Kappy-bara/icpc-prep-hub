@@ -48,11 +48,21 @@ skip that section and the app is 100% local-only and backend-free.
   solved 100 math and 30 trees" isn't "trees is weak" if math is just far
   more common at your rating level). Compares you against three tiers (Top
   500 / Top 10,000 / Average user, using real, current rating cutoffs), each
-  toggleable between the last year and all-time. Also shows accuracy per tag
-  (wrong attempts before AC), a rating trajectory chart, and an
-  unsolved/attempted problem list as ready-made practice targets. See
+  toggleable between the last year and all-time. See
   [Codeforces baseline data](#codeforces-baseline-data) for how the baseline
-  numbers are generated.
+  numbers are generated. Also on this page:
+  - **Accuracy per tag** — average wrong attempts before AC, by tag.
+  - **Rating trajectory** — a chart of your rating across contests, plus
+    your live percentile among active rated Codeforces users.
+  - **Solve activity** — a GitHub-style heatmap of your solving consistency
+    over the last year.
+  - **Unsolved/attempted** — problems you've tried but not solved, as
+    ready-made practice targets.
+  - **Next problem recommendations** — unsolved problems in your weak tags,
+    just above a target rating blended from your current CF rating *and*
+    the typical rating of what you've actually been solving lately (these
+    can diverge — a rusty high-rated account, or someone actively
+    upskilling past their old rating).
 - **Reports** — stats split cleanly into "since your gamification start
   date" (active, scoring) vs. "before it" (historical, imported, non-scoring)
   — never blended. Today/last-7-days summaries, plus a rating-bucket and
@@ -210,11 +220,18 @@ node scripts/generate-cf-baseline.js
 
 Requires Node ≥ 18 (for built-in `fetch`) and network access to
 codeforces.com; no npm dependencies. It fetches the full rated-user list
-(for real, current rank-500/rank-10,000/median rating cutoffs), the contest
-list (for the last-year window), and the full problem set, then overwrites
-`js/cf-baseline-data.js` with the recomputed tag ratios. Review the console
-output (bucket sizes, top tags per tier) before committing — it's a good
-sanity check that nothing about Codeforces' data shape has changed.
+(for real, current rank-500/rank-10,000/median rating cutoffs, and a
+percentile-lookup table used by the rating-trajectory percentile), the
+contest list (for the last-year window), and the full problem set, then
+overwrites `js/cf-baseline-data.js` with the recomputed tag ratios. Review
+the console output (bucket sizes, top tags per tier) before committing —
+it's a good sanity check that nothing about Codeforces' data shape has
+changed.
+
+Note: "next problem" recommendations are *not* baked into this file — they
+need the live, current problem set (so newly-added problems show up
+immediately), fetched on demand when you click "Get recommendations" on the
+Codeforces page (`js/cf-recommend.js`), not a static snapshot.
 
 **Regenerate periodically** — quarterly is a reasonable cadence, or whenever
 Codeforces' problem count or rated population shifts noticeably. This is a
@@ -241,7 +258,8 @@ resource, not a one-person project.
   - Feature modules, loaded only where needed: `roadmap.js` (+
     `roadmap-data.js`), `timeline.js`, `gamification.js`, `cf-sync.js`,
     `cf-verify.js`, `cf-baseline.js` (+ `cf-baseline-data.js`),
-    `cf-analysis.js`, `reports.js`, `solved-log-ui.js`, `rewards-ui.js`.
+    `cf-recommend.js`, `cf-analysis.js`, `reports.js`, `solved-log-ui.js`,
+    `rewards-ui.js`.
   - `js/pages/*.js` — one thin file per page (`home.js`, `dashboard.js`,
     `codeforces.js`, `roadmap.js`, `self-rule.js`) wiring that page's forms
     and handlers.

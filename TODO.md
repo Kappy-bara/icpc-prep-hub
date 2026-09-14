@@ -61,17 +61,9 @@ if that's ever picked up, since both need the same kind of scheduled job.
 
 ## Other ideas
 
-- Rating percentile placement ("you're in the top X% of all rated CF
-  users") — cheap, reuses the same `ratedList` data the generator already
-  fetches.
-- "Next problem" recommendations — pull unsolved problems from
-  `problemset.problems` filtered to a user's weakest tags at their
-  comfortable rating, a natural extension of the baseline comparison and
-  unsolved-list features that already exist.
 - Contest-type breakdown (Div1/Div2/Div3/Educational/Global performance
   shown separately) — some people do well in practice but underperform live,
   or vice versa.
-- Solve activity heatmap — a GitHub-style calendar of solving consistency.
 - 1:1 rival comparison — pick a friend's handle and see tag/rating profiles
   side by side; a lighter, immediate version of the team-roles idea above.
 - Rating milestone projection — a rough trend-line extrapolation, clearly

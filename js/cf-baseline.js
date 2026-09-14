@@ -60,4 +60,14 @@ const CFBaseline = {
       baselineProblemCount: baselineWindow.problemCount,
     };
   },
+
+  /** Smallest p (1-99) such that a rating this high clears the "top p%" cutoff, or null without a rating. */
+  percentileForRating(rating) {
+    if (rating == null) return null;
+    const percentiles = CF_BASELINE_DATA.percentiles;
+    for (let p = 1; p <= 99; p++) {
+      if (percentiles[p] <= rating) return p;
+    }
+    return 99;
+  },
 };

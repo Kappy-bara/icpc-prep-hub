@@ -42,11 +42,24 @@ const CFAnalysis = {
         <div id="cf-rating-chart-root"></div>
       </div>
       <div class="cf-analysis-section">
+        <h3>Solve activity</h3>
+        <div id="cf-heatmap-root"></div>
+      </div>
+      <div class="cf-analysis-section">
         <h3>Unsolved / attempted</h3>
         <p class="card-subtitle">Problems you've tried but haven't solved yet &mdash; ready-made practice targets.</p>
         <div id="cf-unsolved-root" class="solved-log"></div>
       </div>
+      <div class="cf-analysis-section">
+        <h3>Next problem recommendations</h3>
+        <p class="card-subtitle">Unsolved problems in your weak tags (from the comparison above), just above a target rating blended from your current CF rating and what you've actually been solving lately.</p>
+        <button id="cf-recommend-btn" type="button" class="btn-secondary">Get recommendations</button>
+        <span id="cf-recommend-status" class="sync-status"></span>
+        <div id="cf-recommend-root" class="solved-log"></div>
+      </div>
     `;
+
+    $("cf-recommend-btn").addEventListener("click", () => this.handleRecommend());
 
     container.querySelectorAll("#cf-tier-toggle button").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -64,7 +77,101 @@ const CFAnalysis = {
     this.renderBaseline($("cf-baseline-root"), $("cf-baseline-subtitle"));
     this.renderAccuracy($("cf-accuracy-root"));
     this.renderRatingChart($("cf-rating-chart-root"));
+    this.renderHeatmap($("cf-heatmap-root"));
     this.renderUnsolved($("cf-unsolved-root"));
+    $("cf-recommend-root").innerHTML = "";
+  },
+
+  /** Weak tags from the currently-selected tier/window, for the recommendation filter. */
+  currentWeakTags() {
+    const result = CFBaseline.compareTags({ tier: this._tier, window: this._window });
+    return result.rows.filter((r) => r.verdict === "weak").map((r) => r.tag);
+  },
+
+  async handleRecommend() {
+    const statusEl = $("cf-recommend-status");
+    const root = $("cf-recommend-root");
+    const weakTags = this.currentWeakTags();
+    if (!weakTags.length) {
+      statusEl.textContent = "No weak tags found for this tier/window — nothing specific to recommend against.";
+      statusEl.className = "sync-status error";
+      return;
+    }
+    const targetRating = CFRecommend.computeTargetRating();
+    statusEl.textContent = "Fetching the problem set…";
+    statusEl.className = "sync-status";
+    const result = await CFRecommend.fetchRecommendations({ weakTags, targetRating });
+    if (!result.ok) {
+      statusEl.textContent = `Failed: ${result.error}`;
+      statusEl.className = "sync-status error";
+      return;
+    }
+    if (!result.problems.length) {
+      statusEl.textContent = `No unsolved problems found rated ${result.low}–${result.high} in: ${weakTags.join(", ")}.`;
+      statusEl.className = "sync-status";
+      root.innerHTML = "";
+      return;
+    }
+    statusEl.textContent = `${result.problems.length} problems rated ${result.low}–${result.high}, tagged: ${weakTags.join(", ")}.`;
+    statusEl.className = "sync-status success";
+    root.innerHTML = result.problems
+      .map((p) => {
+        const tagsLabel = (p.tags || []).slice(0, 4).join(", ");
+        return `
+          <div class="solved-row">
+            <span class="solved-key"><a href="https://codeforces.com/problemset/problem/${p.contestId}/${p.index}" target="_blank" rel="noopener noreferrer">${p.contestId}${p.index}</a></span>
+            <span class="solved-name">${escapeHtml(p.name)}</span>
+            <span class="solved-rating">${p.rating}</span>
+            <span class="solved-tags">${escapeHtml(tagsLabel)}</span>
+          </div>`;
+      })
+      .join("");
+  },
+
+  renderHeatmap(root) {
+    const counts = {};
+    for (const p of Store.data.solvedLog) {
+      const day = p.solvedDate.slice(0, 10);
+      counts[day] = (counts[day] || 0) + 1;
+    }
+    if (!Object.keys(counts).length) {
+      root.innerHTML = `<p class="empty-note">No solves logged yet.</p>`;
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(today);
+    start.setDate(start.getDate() - 370); // ~53 weeks back
+    start.setDate(start.getDate() - start.getDay()); // align to a Sunday
+
+    const cells = [];
+    const cursor = new Date(start);
+    while (cursor <= today) {
+      const key = cursor.toISOString().slice(0, 10);
+      cells.push({ date: key, count: counts[key] || 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const level = (c) => (c === 0 ? 0 : c === 1 ? 1 : c <= 3 ? 2 : c <= 6 ? 3 : 4);
+    const totalSolves = cells.reduce((s, c) => s + c.count, 0);
+    const activeDays = cells.filter((c) => c.count > 0).length;
+
+    root.innerHTML = `
+      <div class="heatmap-grid">
+        ${cells.map((c) => `<div class="heatmap-cell level-${level(c.count)}" title="${c.date}: ${c.count} solve${c.count === 1 ? "" : "s"}"></div>`).join("")}
+      </div>
+      <div class="heatmap-legend">
+        <span>Less</span>
+        <span class="heatmap-cell level-0"></span>
+        <span class="heatmap-cell level-1"></span>
+        <span class="heatmap-cell level-2"></span>
+        <span class="heatmap-cell level-3"></span>
+        <span class="heatmap-cell level-4"></span>
+        <span>More</span>
+      </div>
+      <p class="card-subtitle">${totalSolves} solve${totalSolves === 1 ? "" : "s"} logged across ${activeDays} active day${activeDays === 1 ? "" : "s"} in the last year.</p>
+    `;
   },
 
   renderBaseline(root, subtitleEl) {
@@ -157,6 +264,8 @@ const CFAnalysis = {
     const y = (r) => height - padding - ((r - minR) / (maxR - minR)) * (height - 2 * padding);
     const points = history.map((h, i) => `${x(i)},${y(h.newRating)}`).join(" ");
     const last = history[n - 1];
+    const percentile = CFBaseline.percentileForRating(last.newRating);
+    const percentileLabel = percentile ? ` · top ~${percentile}% of active rated Codeforces users` : "";
 
     root.innerHTML = `
       <div class="rating-chart-wrap">
@@ -170,7 +279,7 @@ const CFAnalysis = {
             .join("")}
         </svg>
       </div>
-      <p class="card-subtitle">${n} contest${n === 1 ? "" : "s"} · current rating ${last.newRating}</p>
+      <p class="card-subtitle">${n} contest${n === 1 ? "" : "s"} · current rating ${last.newRating}${percentileLabel}</p>
     `;
   },
 

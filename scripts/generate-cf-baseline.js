@@ -70,6 +70,14 @@ async function main() {
   const medianRating = ratedUsers[Math.floor(ratedUsers.length / 2)].rating;
   console.log(`  ${ratedUsers.length} active rated users. cutoff500=${cutoff500} cutoff10000=${cutoff10000} median=${medianRating}`);
 
+  // Rating cutoff for "top p%" at each integer percentile, so the app can estimate a user's
+  // percentile without shipping the full 40k+ row rating list.
+  const percentiles = {};
+  for (let p = 1; p <= 99; p++) {
+    const idx = Math.min(ratedUsers.length - 1, Math.floor((ratedUsers.length * p) / 100));
+    percentiles[p] = ratedUsers[idx].rating;
+  }
+
   await sleep(2000);
   console.log("Fetching contest list (for last-year windowing)...");
   const contests = await cfGet("contest.list", "gym=false");
@@ -126,6 +134,7 @@ async function main() {
     generatedAt: new Date(now).toISOString(),
     source: { problemCount: rated.length, ratedUserCount: ratedUsers.length, contestCount: contests.length },
     tiers,
+    percentiles,
   };
 
   const fileContent = `/**
