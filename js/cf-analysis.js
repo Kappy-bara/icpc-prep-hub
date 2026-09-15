@@ -6,7 +6,7 @@
 const CFAnalysis = {
   _tier: "tourist",
   _window: "lastYear",
-  _compareHandle: "", // last handle successfully compared against
+  _compareHandle: "tourist", // pre-filled default; overwritten with the last handle successfully compared against
   _compareProblems: null, // that handle's fetched (unfiltered) solved problems, cached to avoid re-fetching on window toggle
   _compareError: null,
   _histogramTag: "all",
