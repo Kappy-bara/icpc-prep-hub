@@ -102,7 +102,7 @@
 
     const { problem } = verifyState;
     root.innerHTML = `
-      <p>1. Open <a href="${CFVerify.problemUrl(problem)}" target="_blank" rel="noopener noreferrer">${escapeHtml(problem.name)} (${problem.contestId}${problem.index})</a>.</p>
+      <p>1. Open the <a href="${CFVerify.problemUrl(problem)}" target="_blank" rel="noopener noreferrer">submit page for ${escapeHtml(problem.name)} (${problem.contestId}${problem.index})</a> — it pre-selects the problem, no searching needed.</p>
       <p>2. Submit ANY code that fails to compile (e.g. delete a semicolon) as <strong>${escapeHtml(cfHandle)}</strong>, within the next ${CFVerify.WINDOW_MINUTES} minutes.</p>
       <div class="form-actions">
         <button id="check-verify-btn" type="button" class="btn-primary">I submitted it — check now</button>

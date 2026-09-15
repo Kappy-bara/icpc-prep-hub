@@ -20,8 +20,16 @@ const CFVerify = {
     return this.PROBLEM_POOL[Math.floor(Math.random() * this.PROBLEM_POOL.length)];
   },
 
+  /**
+   * Links straight to the contest-scoped submit form (`/contest/{id}/submit/{index}`), not the
+   * problem statement page (`/problemset/problem/{id}/{index}`). The statement page's own
+   * "Submit Code" link dumps you on `/problemset/submit`, a contest-agnostic form where the
+   * problem field is a free-text search box you have to type/search into — annoying when all you
+   * need is to submit one throwaway broken line. The contest-scoped submit URL instead pre-selects
+   * this exact problem in a simple dropdown (just that contest's problems, e.g. A/B/C/D).
+   */
   problemUrl(problem) {
-    return `https://codeforces.com/problemset/problem/${problem.contestId}/${problem.index}`;
+    return `https://codeforces.com/contest/${problem.contestId}/submit/${problem.index}`;
   },
 
   /**
