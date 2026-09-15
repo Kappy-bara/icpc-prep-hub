@@ -109,7 +109,9 @@ const TeamAnalysis = {
 
   MIN_CONTEST_SOLVES_FOR_SPEED: 5,
   MIN_TAG_SAMPLE: 2,
-  MIN_TOPIC_RATING_SAMPLE: 3, // fewer rated solves in a tag than this = not enough signal to trust its average rating
+  MIN_TOPIC_RATING_SAMPLE: 3, // fewer rated solves in a tag than this = not shown at all, no signal whatsoever
+  TAG_RATING_RECENT_WINDOW: 30, // per-tag rating averages only the member's most recent this-many solves IN that tag
+  TAG_RATING_LOW_CONFIDENCE_SAMPLE: 10, // fewer solves than this actually going into the average = shown, but flagged as noisy
   READER_RECENT_WINDOW: 150, // Reader breadth looks at only this many of a member's MOST RECENT solves — see file header
   KNOWLEDGE_GAP_RATIO_CUTOFF: 0.03,
   EXECUTION_GAP_MIN_COUNT: 6,
@@ -268,24 +270,44 @@ const TeamAnalysis = {
    * tag would still average out to ~1200-1300 — nowhere near their actual current level, just
    * because the old volume outnumbers the new. Weighting each solve's contribution by the SQUARE
    * of its own rating (so a 1700 counts roughly 4.5x more than an 800, not just ~2x) pulls the
-   * number meaningfully toward what they can *currently* solve, without being as brittle/
-   * outlier-sensitive as an even higher exponent would be — see weightedAvgRating().
+   * number meaningfully toward what they can *currently* solve — but for a tag with a LOT of
+   * lifetime volume, weighting alone isn't always enough: a huge pile of old easy solves can still
+   * outweigh a smaller pile of recent hard ones even after squaring. So on top of the weighting,
+   * only each tag's most recent TAG_RATING_RECENT_WINDOW solves (sorted by solve date, not
+   * lifetime order) go into the average at all — the same "recency beats lifetime volume" fix
+   * already applied to Reader breadth (see file header/recentTagCounts), just scoped per tag
+   * instead of globally. This also fixes the opposite failure mode: a tag you've barely touched
+   * (all of it recent, since you never built up an old backlog in it) no longer gets an unfairly
+   * inflated-looking average purely because it's missing the old-volume anchor other tags have —
+   * every tag's average now comes from a comparably-sized recent sample. `count` below is the
+   * actual sample size the average is built from (capped at the window); `totalCount` is the
+   * tag's full lifetime solve count, for transparency; `lowSample` flags when `count` itself is
+   * still small (see TAG_RATING_LOW_CONFIDENCE_SAMPLE) — solve more, worn thin, whether that
+   * thinness is because the tag is barely practiced at all or just barely practiced *recently*.
    */
   topicRatings(problems) {
     const byTag = {};
     for (const p of problems) {
       if (p.rating == null) continue;
       for (const tag of p.tags || []) {
-        if (!byTag[tag]) byTag[tag] = { ratings: [], min: Infinity, max: -Infinity };
-        byTag[tag].ratings.push(p.rating);
-        byTag[tag].min = Math.min(byTag[tag].min, p.rating);
-        byTag[tag].max = Math.max(byTag[tag].max, p.rating);
+        if (!byTag[tag]) byTag[tag] = [];
+        byTag[tag].push(p);
       }
     }
     const out = {};
-    for (const [tag, s] of Object.entries(byTag)) {
-      if (s.ratings.length < this.MIN_TOPIC_RATING_SAMPLE) continue;
-      out[tag] = { avgRating: this.weightedAvgRating(s.ratings), count: s.ratings.length, min: s.min, max: s.max };
+    for (const [tag, probs] of Object.entries(byTag)) {
+      if (probs.length < this.MIN_TOPIC_RATING_SAMPLE) continue;
+      const recent = [...probs].sort((a, b) => (a.solvedDate < b.solvedDate ? 1 : -1)).slice(0, this.TAG_RATING_RECENT_WINDOW);
+      const ratings = recent.map((p) => p.rating);
+      out[tag] = {
+        avgRating: this.weightedAvgRating(ratings),
+        count: recent.length,
+        totalCount: probs.length,
+        min: Math.min(...ratings),
+        max: Math.max(...ratings),
+        lowSample: recent.length < this.TAG_RATING_LOW_CONFIDENCE_SAMPLE,
+        recentProblems: recent,
+      };
     }
     return out;
   },
@@ -658,12 +680,18 @@ const TeamAnalysis = {
         <h2>Tag breakdown</h2>
         <p class="card-subtitle">
           One compact row per tag &mdash; each bar spans that person's lowest-to-highest solved
-          rating (marker = weighted average), and the number alongside is their rating, how many
-          they've solved in that tag, and their share of solves overall. Ratings are weighted
-          toward harder solves, not a plain average &mdash; otherwise 100 easy solves from early
-          on would keep dragging the number down long after someone's moved on to solving much
-          harder problems in that tag. <strong>Hover any point on a bar</strong> to see exactly
-          how many problems at that rating, in that tag, they solved.
+          rating in their last ${this.TAG_RATING_RECENT_WINDOW} solves in that tag (marker =
+          weighted average), and the number alongside is that rating, how many of their solves in
+          that tag went into it, and their share of solves overall. Ratings are weighted toward
+          harder solves AND limited to those recent ${this.TAG_RATING_RECENT_WINDOW} &mdash;
+          weighting alone isn't always enough to stop a big pile of old easy solves from dragging a
+          tag's number down long after someone's moved on to harder problems in it, and limiting to
+          recent solves also stops a barely-touched tag from looking unfairly strong just because
+          it's missing that old volume other tags have. <strong>&#9888;</strong> next to a number
+          means that tag's sample is thin (under ${this.TAG_RATING_LOW_CONFIDENCE_SAMPLE} solves
+          going into the average) &mdash; solve more of it for a steadier number.
+          <strong>Hover any point on a bar</strong> to see exactly how many problems at that
+          rating, in that tag, they solved.
         </p>
         <div id="team-tag-breakdown-root"></div>
       </section>
@@ -678,15 +706,17 @@ const TeamAnalysis = {
   },
 
   /**
-   * How many of `member`'s solves in `tag` fall in each 100-wide rating bucket — same bucketing
-   * convention as the Codeforces page's "Problem ratings" histogram (js/cf-analysis.js), just
-   * scoped to one tag. Powers both the segment shading and the hover tooltip below.
+   * How many of `problems` fall in each 100-wide rating bucket — same bucketing convention as the
+   * Codeforces page's "Problem ratings" histogram (js/cf-analysis.js). Takes the already tag-
+   * filtered, recency-windowed list from topicRatings()'s `recentProblems` (not a member's full
+   * history) so the bar's shape always matches what the average/marker was actually computed
+   * from — showing the full lifetime distribution here while the marker reflects only the recent
+   * window would make the two visually disagree.
    */
-  tagRatingBuckets(member, tag) {
+  tagRatingBuckets(problems) {
     const counts = {};
-    for (const p of member.problems) {
+    for (const p of problems) {
       if (p.rating == null) continue;
-      if (!(p.tags || []).includes(tag)) continue;
       const bucket = Math.floor(p.rating / 100) * 100;
       counts[bucket] = (counts[bucket] || 0) + 1;
     }
@@ -776,7 +806,7 @@ const TeamAnalysis = {
           <span class="tag-member-stats">${countLabel}${sharePct}%</span>
         </div>`;
     }
-    const buckets = this.tagRatingBuckets(member, tag);
+    const buckets = this.tagRatingBuckets(ratingStats.recentProblems);
     const bucketKeys = Object.keys(buckets).map(Number);
     const maxBucketCount = Math.max(1, ...bucketKeys.map((b) => buckets[b]));
     const segments = bucketKeys
@@ -789,6 +819,9 @@ const TeamAnalysis = {
       })
       .join("");
     const avgPct = this.ratingBarPct(ratingStats.avgRating);
+    const sampleFlag = ratingStats.lowSample
+      ? ` <span class="low-sample-flag" title="Only ${ratingStats.count} solve${ratingStats.count === 1 ? "" : "s"} in this tag so far &mdash; solve more for a steadier number.">&#9888;</span>`
+      : "";
     return `
       <div class="tag-member-cell">
         <span class="tag-member-dot" style="background:${color}"></span>
@@ -796,7 +829,7 @@ const TeamAnalysis = {
           <div class="rating-range-segments">${segments}</div>
           <div class="rating-range-marker" style="left:${avgPct}%;background:${color}"></div>
         </div>
-        <span class="tag-member-stats">~${Math.round(ratingStats.avgRating)} (${ratingStats.count}) &middot; ${sharePct}%</span>
+        <span class="tag-member-stats">~${Math.round(ratingStats.avgRating)} (${ratingStats.count}) &middot; ${sharePct}%${sampleFlag}</span>
       </div>`;
   },
 

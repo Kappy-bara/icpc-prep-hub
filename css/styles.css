@@ -1430,6 +1430,10 @@ details p {
   white-space: nowrap;
 }
 
+.low-sample-flag {
+  cursor: help;
+}
+
 /* Range bar built from individually-shaded 100-wide rating segments (not one smooth fill), so
    opacity shows where solves concentrate within the tag. Segments live in their own clipped/
    rounded wrapper so the average marker (a sibling, not inside it) can still stick out past the

@@ -11,10 +11,11 @@ const CFAnalysis = {
   _compareError: null,
   _histogramTag: "all",
 
-  // Below this many rated solves, an average-rating figure is too noisy to trust — same
-  // reasoning and same value as TeamAnalysis.MIN_TOPIC_RATING_SAMPLE (js/cf-team-analysis.js),
-  // duplicated rather than shared since the two pages/modules don't otherwise depend on each other.
-  MIN_TOPIC_RATING_SAMPLE: 3,
+  // Same duplicated constants as TeamAnalysis (js/cf-team-analysis.js topicRatings) — the two
+  // pages/modules don't otherwise depend on each other, so these are small justified duplicates,
+  // not shared imports.
+  TAG_RATING_RECENT_WINDOW: 30, // per-tag histogram/avg only looks at your most recent this-many solves in that tag
+  TAG_RATING_LOW_CONFIDENCE_SAMPLE: 10, // fewer solves than this actually going into the average = shown, but flagged as noisy
 
   /**
    * Rating-weighted average: each solve's contribution is weighted by the SQUARE of its own
@@ -23,7 +24,7 @@ const CFAnalysis = {
    * ~800-ish even after someone's moved on to solving 1700-1800s), and weighting by rating pulls
    * the number toward what someone can *currently* solve instead. Same formula as
    * TeamAnalysis.weightedAvgRating (js/cf-team-analysis.js), duplicated for the same reason as
-   * MIN_TOPIC_RATING_SAMPLE above.
+   * the constants above.
    */
   weightedAvgRating(ratings) {
     let weightedSum = 0;
@@ -119,7 +120,7 @@ const CFAnalysis = {
       </div>
       <div class="cf-analysis-section">
         <h3>Problem ratings</h3>
-        <p class="card-subtitle">How many solved problems fall in each difficulty band, colored like Codeforces' own rating tiers &mdash; optionally filtered to a single tag. The avg. rating figure is weighted toward harder solves, not a plain average, so a big pile of old easy solves doesn't keep dragging it down after you've moved on to harder ones.</p>
+        <p class="card-subtitle">How many solved problems fall in each difficulty band, colored like Codeforces' own rating tiers &mdash; optionally filtered to a single tag. When filtered to one tag, the avg. rating figure is weighted toward harder solves AND limited to your most recent ${this.TAG_RATING_RECENT_WINDOW} solves in that tag &mdash; weighting alone isn't always enough to stop a big pile of old easy solves from dragging the number down long after you've moved on to harder ones, and limiting to recent solves also stops a tag you've barely touched from looking unfairly strong just because it's missing that old volume other tags have. A &#9888; means that tag's sample is thin (under ${this.TAG_RATING_LOW_CONFIDENCE_SAMPLE} solves) &mdash; solve more of it for a steadier number.</p>
         <div id="cf-rating-histogram-root"></div>
       </div>
       <div class="cf-analysis-section">
@@ -562,11 +563,18 @@ const CFAnalysis = {
    * difficulty band reads at a glance the way a CF handle color does. Bucket range is trimmed to
    * [min, max] of whatever's actually in the filtered data, not a fixed 800-3500 span, so someone
    * who's only solved up to 1800 doesn't see a long empty tail.
+   *
+   * When filtered to one specific tag, both the bars and the avg. rating figure are built from
+   * only your most recent TAG_RATING_RECENT_WINDOW solves in that tag, not your whole history in
+   * it — see js/cf-team-analysis.js topicRatings() for the full reasoning (same fix, same window
+   * size, applied here too so the two pages never quietly disagree). "All tags" stays unwindowed
+   * on purpose — that view is your overall growth curve, not a per-tag comparison, so there's no
+   * old-volume-vs-one-tag distortion to correct for there.
    */
   renderRatingHistogram(root) {
     if (!root) return;
     const tagFilter = this._histogramTag;
-    const solved = Store.data.solvedLog.filter((p) => p.rating != null && (tagFilter === "all" || (p.tags || []).includes(tagFilter)));
+    const allMatching = Store.data.solvedLog.filter((p) => p.rating != null && (tagFilter === "all" || (p.tags || []).includes(tagFilter)));
     const tagOptions = this.histogramTagOptions();
 
     const selectHtml = `
@@ -579,13 +587,19 @@ const CFAnalysis = {
       </div>
     `;
 
-    if (!solved.length) {
+    if (!allMatching.length) {
       const emptyMsg =
         tagFilter === "all" ? "Sync your Codeforces handle above to see this." : `No rated solves tagged "${escapeHtml(tagFilter)}" yet.`;
       root.innerHTML = `${selectHtml}<p class="empty-note">${emptyMsg}</p>`;
       this.wireHistogramSelect(root);
       return;
     }
+
+    const totalCount = allMatching.length;
+    const solved =
+      tagFilter !== "all" && totalCount > this.TAG_RATING_RECENT_WINDOW
+        ? [...allMatching].sort((a, b) => (a.solvedDate < b.solvedDate ? 1 : -1)).slice(0, this.TAG_RATING_RECENT_WINDOW)
+        : allMatching;
 
     const counts = {};
     for (const p of solved) {
@@ -605,11 +619,12 @@ const CFAnalysis = {
     // a plain mean. Flagged as low-confidence under a small sample rather than hidden outright,
     // so switching to a rarely-touched tag doesn't look broken.
     const avgRating = Math.round(this.weightedAvgRating(solved.map((p) => p.rating)));
-    const lowSample = solved.length < this.MIN_TOPIC_RATING_SAMPLE;
+    const lowSample = solved.length < this.TAG_RATING_LOW_CONFIDENCE_SAMPLE;
+    const windowed = solved.length < totalCount;
     const ratingStatsHtml = `
       <div class="report-windows cf-totals">
-        <div class="stat-tile"><div class="stat-value">${avgRating}</div><div class="stat-label">${tagFilter === "all" ? "avg. rating" : `avg. rating in "${escapeHtml(tagFilter)}"`}${lowSample ? " (low sample)" : ""}</div></div>
-        <div class="stat-tile"><div class="stat-value">${solved.length}</div><div class="stat-label">rated solve${solved.length === 1 ? "" : "s"}</div></div>
+        <div class="stat-tile"><div class="stat-value">${avgRating}</div><div class="stat-label">${tagFilter === "all" ? "avg. rating" : `avg. rating in "${escapeHtml(tagFilter)}"`}${lowSample ? " &#9888;" : ""}</div></div>
+        <div class="stat-tile"><div class="stat-value">${solved.length}</div><div class="stat-label">${windowed ? `recent solves (of ${totalCount})` : `rated solve${solved.length === 1 ? "" : "s"}`}</div></div>
       </div>
     `;
 
@@ -635,7 +650,10 @@ const CFAnalysis = {
           <div class="rating-histogram-labels">${allBuckets.map((b) => `<span>${b}</span>`).join("")}</div>
         </div>
       </div>
-      <p class="card-subtitle">${solved.length} rated solve${solved.length === 1 ? "" : "s"}${tagFilter === "all" ? "" : ` tagged "${escapeHtml(tagFilter)}"`}.</p>
+      <p class="card-subtitle">
+        ${windowed ? `Based on your most recent ${solved.length} of ${totalCount} rated solves` : `Based on all ${solved.length} rated solve${solved.length === 1 ? "" : "s"}`}${tagFilter === "all" ? "" : ` tagged "${escapeHtml(tagFilter)}"`}.
+        ${lowSample ? `&#9888; Solve more${tagFilter === "all" ? "" : " in this tag"} for a steadier number.` : ""}
+      </p>
     `;
     this.wireHistogramSelect(root);
   },
