@@ -247,6 +247,16 @@ a:hover {
   letter-spacing: -0.005em;
 }
 
+.card-section-label {
+  margin: 1.1rem 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.card-section-label:first-of-type {
+  margin-top: 0;
+}
+
 .card-subtitle {
   color: var(--text-muted);
   font-size: 0.88rem;
@@ -1481,6 +1491,12 @@ details p {
   border-radius: 999px;
   white-space: nowrap;
   vertical-align: middle;
+}
+
+.domain-badge {
+  background: transparent;
+  color: var(--secondary);
+  border: 1px solid var(--secondary);
 }
 
 .cf-gradient-legend {

@@ -102,25 +102,67 @@ skip that section and the app is 100% local-only and backend-free.
     can diverge — a rusty high-rated account, or someone actively
     upskilling past their old rating).
 - **ICPC Team Analyzer** — paste your handle plus two teammates' (a real
-  ICPC team is exactly 3 people) and get a comparative analysis: a suggested
-  role split (Algorithmist, Math & Theory Specialist, Implementation & Speed
-  Lead — picked by exhaustively scoring all 6 possible assignments against
-  each person's tag profile, not a first-come-first-served greedy pick),
-  team-wide tag gaps (topics nobody on the team solves much of), and
-  non-topic signals beyond raw tag counts — each person's overall
-  accuracy/bug-rate, a callout when accuracy is notably worse specifically
-  on implementation-heavy problems, and live-contest solve speed ranked
-  relative to the other two (not an absolute "fast/slow" score, since
-  there's no fair universal cutoff). Like Compare with someone, all three
-  handles' data is fetched fresh and never stored, so it needs no account.
-  An earlier prototype of this app had a hardcoded, non-generalizing 3-person
-  team-roles card; this is the real version, built from actual solve
-  history instead. The per-person summary paragraphs are a deterministic
-  template built from the real computed numbers, not a live AI call — an
-  LLM API key can't be safely embedded in this site's client-side JS the
-  way the Supabase anon key can (Row Level Security protects that one; no
-  LLM provider has an equivalent guard over token spend), and a template
-  can't hallucinate a plausible-sounding but wrong insight.
+  ICPC team is exactly 3 people) and get a comparative analysis, live and
+  never stored (same trust model as Compare with someone, so it needs no
+  account):
+  - **Role split — Reader / Coder / Thinker.** This is the standard 3-person
+    ICPC role division described in real team-strategy writeups (see
+    Sources below), not an invented label set: the Reader reads fastest and
+    classifies problems by topic, the Coder is the fastest/cleanest
+    implementer of standard-technique problems, the Thinker cracks the
+    hardest, most insight-heavy ones. Each role is scored from the signal
+    that actually matches its real job — Reader from topic *breadth*
+    (Pielou's evenness index over each person's tag distribution, blended
+    with distinct-tag count — a generalist beats a narrow specialist here
+    regardless of rating), Coder from standard-technique tag strength blended
+    with accuracy and live-contest solve speed, Thinker from insight-tag
+    strength blended with current rating and "reach" (the average rating of
+    a person's *hardest* solves minus their own rating — a ceiling/ambition
+    signal grounded in how Codeforces itself defines problem difficulty
+    relative to a solver's rating, using their peak reach rather than a
+    lifetime average so a decade of easy warm-up solves doesn't swamp the
+    signal for experienced players). The 3-way assignment is picked by
+    exhaustively scoring all 6 possible permutations, not a first-come-
+    first-served greedy pick, which is provably non-optimal even at this
+    size (the classic assignment problem, generally solved by the Hungarian
+    algorithm — trivial to brute-force at exactly 3 members).
+  - **Domain split — Math & Number Theory / Graphs & Data Structures /
+    Geometry & Strings.** A second, independent axis from Role — real teams
+    also assign topic ownership ("whoever's problem this clearly is, they
+    take it") separately from workflow role, and the two don't have to line
+    up. Same optimal-assignment approach, scored purely from each person's
+    tag-cluster concentration in that domain.
+  - **Team gaps, split into two real failure modes.** *Knowledge gaps* —
+    topics nobody on the team solves much of at all. *Execution gaps* —
+    topics the team attempts plenty but still gets wrong a lot (aggregated
+    accuracy across all 3 members, not an average of percentages, which
+    would misweight small samples) — a different, more specific problem
+    ("we know the theory, we keep messing up the write-and-debug") than a
+    knowledge gap, matching the classic post-contest-review distinction
+    described in ICPC coaching writeups.
+  - **Non-topic signals**, directly answering "where do you lack besides
+    topics" — each person's overall accuracy/bug-rate, a callout when
+    accuracy is notably worse specifically on implementation-heavy problems,
+    and live-contest solve speed ranked relative to the other two (not an
+    absolute "fast/slow" score, since there's no fair universal cutoff).
+  - An earlier prototype of this app had a hardcoded, non-generalizing
+    3-person team-roles card; this is the real version, built from actual
+    solve history and real ICPC coaching methodology instead. The per-person
+    summary paragraphs are a deterministic template built from the real
+    computed numbers, not a live AI call — an LLM API key can't be safely
+    embedded in this site's client-side JS the way the Supabase anon key can
+    (Row Level Security protects that one; no LLM provider has an equivalent
+    guard over token spend), and a template can't hallucinate a plausible-
+    sounding but wrong insight.
+  - **Sources**: [Neel Mishra, "ICPC Team Strategy"](https://neelmishra.github.io/blog/cp/contest-strategy/icpc-strategy.html)
+    (the Reader/Coder/Thinker split and the Math-NT / Graphs-DS /
+    Geometry-Strings domain split); [KTH contest-wiki, "Team strategy"](https://lukipuki.github.io/contest-wiki/team-strategy.html)
+    (insight vs. implementation as genuinely separate skills, not one
+    scale); [Codeforces, "Rating the Difficulty of Codeforces Problems"](https://codeforces.com/blog/entry/46304)
+    (problem rating is calibrated directly against solver rating, the basis
+    for the "reach" metric). Pielou's evenness index is a standard
+    diversity-index technique from information theory/ecology, applied here
+    to a solver's tag distribution rather than invented for this project.
 - **Reports** — stats split cleanly into "since your gamification start
   date" (active, scoring) vs. "before it" (historical, imported, non-scoring)
   — never blended. Today/last-7-days summaries, plus a rating-bucket and
