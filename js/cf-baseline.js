@@ -52,18 +52,18 @@ function cfBaselineClassify(yourCount, expectedCount) {
 }
 
 /**
- * Gradual red -> green -> light blue hue for a given R, continuous but anchored to the
- * verdict band boundaries so each band actually reads as its intended color (a naive
- * linear 0-2 -> 0-210 map washes "Weak" out to yellow-green instead of red).
+ * Gradual red -> yellow -> green hue for a given R (weak -> average -> strong), continuous
+ * but anchored to the verdict band boundaries so each band actually reads as its intended
+ * color (a naive linear 0-2 -> 0-120 map washes "Weak" out to yellow-green instead of red).
  */
 const CF_BASELINE_HUE_POINTS = [
   [0, 0], // Very Weak: red
   [0.3, 15], // Very Weak/Weak boundary: red-orange
-  [0.6, 40], // Weak/On-Par boundary: orange
-  [1.0, 130], // On-Par center: green
-  [1.25, 165], // On-Par/Strong boundary: teal
-  [2.0, 210], // Strong/Excellent boundary: light blue
-  [2.5, 225], // Excellent: blue
+  [0.6, 35], // Weak/On-Par boundary: orange
+  [1.0, 55], // On-Par center ("average"): yellow
+  [1.25, 85], // On-Par/Strong boundary: yellow-green
+  [2.0, 120], // Strong/Excellent boundary: green
+  [2.5, 135], // Excellent: deeper green
 ];
 
 function cfBaselineHue(r) {

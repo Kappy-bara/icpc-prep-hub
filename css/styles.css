@@ -1419,7 +1419,7 @@ details p {
 .cf-gradient-bar {
   height: 6px;
   border-radius: 999px;
-  background: linear-gradient(to right, hsl(0, 68%, 50%), hsl(130, 68%, 50%), hsl(210, 68%, 50%));
+  background: linear-gradient(to right, hsl(0, 68%, 50%), hsl(55, 68%, 50%), hsl(120, 68%, 50%));
 }
 
 .cf-gradient-labels {

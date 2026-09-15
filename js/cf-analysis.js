@@ -63,7 +63,7 @@ const CFAnalysis = {
       </div>
       <div class="cf-analysis-section">
         <h3>Accuracy per tag</h3>
-        <p class="card-subtitle">Average wrong attempts before AC, by tag (lower is better; needs at least 2 solves in a tag to show).</p>
+        <p class="card-subtitle">Your accuracy by tag &mdash; the share of submissions on problems you solved that were correct, plus the average wrong attempts before AC (lower is better; needs at least 2 solves in a tag to show).</p>
         <div id="cf-accuracy-root" class="bar-list"></div>
       </div>
       <div class="cf-analysis-section">
@@ -315,7 +315,14 @@ const CFAnalysis = {
       }
     }
     const rows = Object.entries(tagStats)
-      .map(([tag, s]) => ({ tag, avgWrong: s.count ? s.totalWrong / s.count : 0, count: s.count }))
+      .map(([tag, s]) => {
+        const avgWrong = s.count ? s.totalWrong / s.count : 0;
+        // Of every submission on a problem you eventually solved in this tag (the AC plus
+        // whatever wrong attempts came before it), what fraction were first-try-or-eventually
+        // correct submissions — i.e. your real accuracy, not just an average mistake count.
+        const accuracyPct = (s.count / (s.count + s.totalWrong)) * 100;
+        return { tag, avgWrong, accuracyPct, count: s.count };
+      })
       .filter((r) => r.count >= 2)
       .sort((a, b) => b.avgWrong - a.avgWrong);
 
@@ -330,7 +337,7 @@ const CFAnalysis = {
       <div class="bar-row">
         <div class="bar-row-top">
           <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.count} solved)</span></span>
-          <span class="bar-count">${r.avgWrong.toFixed(1)} wrong/solve</span>
+          <span class="bar-count">${r.accuracyPct.toFixed(0)}% accuracy &middot; ${r.avgWrong.toFixed(1)} wrong/solve</span>
         </div>
         <div class="bar-track"><div class="bar-fill" style="width:${(r.avgWrong / maxAvg) * 100}%"></div></div>
       </div>`
