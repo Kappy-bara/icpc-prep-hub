@@ -17,6 +17,7 @@
   function refreshDynamic() {
     Nav.updatePointsBadge();
     Timeline.render($("timeline-root"));
+    Gamification.renderStreak($("streak-root"));
     Roadmap.renderSummary($("roadmap-summary-root"));
     SolvedLogUI.render($("solved-log-root"), { limit: 5 });
   }
@@ -266,5 +267,10 @@
     }
     renderAccountCard();
     refreshDynamic();
+  });
+
+  document.addEventListener("icpc:points-changed", () => {
+    Nav.updatePointsBadge();
+    Gamification.renderStreak($("streak-root"));
   });
 })();

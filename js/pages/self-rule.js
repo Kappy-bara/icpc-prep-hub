@@ -143,6 +143,7 @@
   }
 
   function refresh() {
+    Gamification.renderStreak($("streak-root"));
     renderOverview();
     renderActivity();
     renderFormula();
@@ -150,6 +151,7 @@
   }
 
   function refreshPointsChange() {
+    Gamification.renderStreak($("streak-root"));
     renderOverview();
     renderActivity();
   }

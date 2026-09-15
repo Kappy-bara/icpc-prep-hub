@@ -284,6 +284,12 @@ const ROADMAP = [
             resource: { label: "cp-algorithms: 0-1 BFS", url: "https://cp-algorithms.com/graph/01_bfs.html" },
           },
           {
+            id: "graphs.flow-basics",
+            name: "Flow networks & Ford-Fulkerson / Edmonds-Karp",
+            why: "Introduces residual graphs and augmenting paths — the mental model every faster max-flow algorithm (including Dinic's, below) builds on, and often fast enough on its own for regional-sized inputs.",
+            resource: { label: "cp-algorithms: Ford-Fulkerson and Edmonds-Karp", url: "https://cp-algorithms.com/graph/edmonds_karp.html" },
+          },
+          {
             id: "graphs.mst",
             name: "Minimum spanning tree (Kruskal / Prim)",
             why: "A classic greedy-plus-DSU pattern that also underlies many \"connect everything at minimum total cost\" problems.",
@@ -306,6 +312,12 @@ const ROADMAP = [
             name: "LCA with binary lifting",
             why: "O(log n) ancestor and distance queries on a tree power a huge share of tree-DP and tree-path problems.",
             resource: { label: "cp-algorithms: LCA - Binary Lifting", url: "https://cp-algorithms.com/graph/lca_binary_lifting.html" },
+          },
+          {
+            id: "graphs.functional-graphs",
+            name: "Functional graphs (successor graphs & cycle detection)",
+            why: "Every node has exactly one outgoing edge (\"i points to f(i)\"), so the graph is just chains leading into cycles — the same binary-lifting idea from LCA answers \"where do I end up after k steps?\" in O(log k).",
+            resource: { label: "USACO Guide: Introduction to Functional Graphs", url: "https://usaco.guide/silver/func-graphs" },
           },
           {
             id: "graphs.euler-path",
@@ -373,6 +385,12 @@ const ROADMAP = [
         name: "Foundations",
         topics: [
           {
+            id: "dp.recursion-backtracking",
+            name: "Recursion & complete search (brute force, backtracking)",
+            why: "Generating every permutation/subset/combination and pruning as you go is the baseline every DP is a faster version of — you can't recognize \"this state repeats\" until you've written the brute-force recursion first.",
+            resource: { label: "USACO Guide: Complete Search with Recursion", url: "https://usaco.guide/bronze/complete-rec" },
+          },
+          {
             id: "dp.dp-basics",
             name: "1D/2D DP basics (knapsack, LIS, LCS)",
             why: "The vocabulary every other DP topic on this list is built from.",
@@ -394,6 +412,12 @@ const ROADMAP = [
             name: "Bitmask DP",
             why: "Encodes a subset as state for small-n \"visit/assign everything\" problems like TSP.",
             resource: { label: "USACO Guide: Bitmask DP", url: "https://usaco.guide/gold/dp-bitmasks" },
+          },
+          {
+            id: "dp.meet-in-the-middle",
+            name: "Meet in the middle",
+            why: "Splits an n-up-to-~40 brute force into two n/2 halves you can each enumerate in 2^(n/2) and combine — turns an infeasible 2^n search into a feasible one without any DP at all.",
+            resource: { label: "USACO Guide: Meet In The Middle", url: "https://usaco.guide/gold/meet-in-the-middle" },
           },
           {
             id: "dp.digit-dp",
@@ -418,6 +442,12 @@ const ROADMAP = [
       {
         name: "Advanced",
         topics: [
+          {
+            id: "dp.sos-dp",
+            name: "Sum over subsets (SOS) DP",
+            why: "Computes, for every bitmask, an aggregate over all of its submasks in O(2^n · n) instead of the naive O(3^n) — the standard trick once bitmask DP transitions start summing over submasks.",
+            resource: { label: "USACO Guide: Sum over Subsets DP", url: "https://usaco.guide/plat/dp-sos" },
+          },
           {
             id: "dp.dc-optimization",
             name: "Divide & conquer DP optimization",
@@ -537,10 +567,22 @@ const ROADMAP = [
             resource: { label: "Codeforces EDU: courses", url: "https://codeforces.com/edu/courses" },
           },
           {
+            id: "greedy.binary-search",
+            name: "Binary search (on arrays & on the answer)",
+            why: "Halves the search space every step — the classic form finds a value in a sorted array in O(log n), and \"binary search on the answer\" reuses the same idea to turn \"find the optimal x\" into repeatedly asking \"is x feasible?\".",
+            resource: { label: "USACO Guide: Binary Search", url: "https://usaco.guide/silver/binary-search" },
+          },
+          {
             id: "greedy.two-pointers",
             name: "Two pointers",
             why: "Turns an O(n²) nested scan into O(n) whenever the search window only ever grows in one direction.",
             resource: { label: "USACO Guide: Two Pointers", url: "https://usaco.guide/silver/two-pointers" },
+          },
+          {
+            id: "greedy.coordinate-compression",
+            name: "Coordinate compression",
+            why: "Replaces huge or sparse coordinate values with their sorted rank, so array-indexed structures (BITs, difference arrays) can be used on ranges like 1e9 as if they were size n.",
+            resource: { label: "USACO Guide: Custom Comparators and Coordinate Compression", url: "https://usaco.guide/silver/sorting-custom" },
           },
         ],
       },
@@ -664,6 +706,12 @@ const ROADMAP = [
       {
         name: "Foundations",
         topics: [
+          {
+            id: "meta.time-complexity",
+            name: "Time complexity & Big-O budgeting",
+            why: "Reading a constraint like n ≤ 10⁵ and knowing it rules out O(n²) is the single most useful reflex in this whole roadmap — every other topic below is really \"a faster way to do X.\"",
+            resource: { label: "USACO Guide: Time Complexity", url: "https://usaco.guide/bronze/time-comp" },
+          },
           {
             id: "meta.fast-io-templates",
             name: "Fast I/O & a personal template",

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Self-rule · ICPC Prep Hub</title>
-  <meta name="description" content="Points, rewards, and redemption history &mdash; turn your own prep discipline into a game." />
+  <meta name="description" content="Points, streaks, a rewards catalog, and a breakdown of what you've earned and spent &mdash; turn your own prep discipline into a game." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\u{1F3C6}</text></svg>" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -14,6 +14,7 @@
   <main class="container">
     <section class="card" id="points-overview-card">
       <h2>Your points</h2>
+      <div id="streak-root"></div>
       <div id="points-overview-root"></div>
     </section>
 
@@ -29,13 +30,16 @@
         <div class="stat-tile"><div class="stat-value">5</div><div class="stat-label">flat points for unrated problems</div></div>
         <div class="stat-tile"><div class="stat-value">&times;1.5</div><div class="stat-label">bonus for your focus tag</div></div>
         <div class="stat-tile"><div class="stat-value">1</div><div class="stat-label">minimum points per solve</div></div>
+        <div class="stat-tile"><div class="stat-value">+10</div><div class="stat-label">max streak bonus, first solve of the day</div></div>
       </div>
       <p class="card-subtitle">
         Focus tag: <strong id="formula-focus-tags">&mdash;</strong>. Gamification start date:
         <strong id="formula-start-date">not set</strong> &mdash; solves from that date onward earn points;
         anything solved before it is logged for stats on the <a href="codeforces.html">Codeforces page</a>
         but scores 0, so importing your whole history doesn't hand you a windfall. Change either on the
-        <a href="dashboard.html">Dashboard</a>.
+        <a href="dashboard.html">Dashboard</a>. The first points-earning solve each day also adds a streak
+        bonus equal to your current streak length (capped at 10) &mdash; the longer your streak going in,
+        the bigger the bonus for keeping it alive.
       </p>
     </section>
 

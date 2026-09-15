@@ -17,24 +17,47 @@ skip that section and the app is 100% local-only and backend-free.
 
 ## Features
 
-- **Multi-subject roadmap** — Math & Number Theory, Data Structures, Graphs,
-  Dynamic Programming, Strings, Greedy & Sorting, Geometry, and Contest
-  Meta-Skills, each split into Foundations → Core → Advanced. Every topic has
+- **Multi-subject roadmap** — 99 topics across 8 subjects (Math & Number
+  Theory, Data Structures, Graphs, Dynamic Programming, Strings, Greedy &
+  Sorting, Geometry, and Contest Meta-Skills), each split into
+  Foundations → Core → Advanced and curated against established
+  difficulty-ordered CP curricula (USACO Guide's own Bronze→Platinum
+  progression, cp-algorithms) so the jump between phases stays gradual
+  instead of leaping straight to World-Finals-tier material. Every topic has
   a one-line "why it matters" note and a link to a real reference
   ([cp-algorithms.com](https://cp-algorithms.com), [usaco.guide](https://usaco.guide),
   [cses.fi](https://cses.fi), Codeforces EDU, the ICPC World Finals archive).
-  Checkbox state persists locally.
+  The page itself is a two-pane picker — subjects with a progress bar down
+  the left, the selected subject's full checklist on the right — instead of
+  one long accordion. Checkbox state persists locally.
 - **Smart timeline** — set an optional target contest date and get a
   countdown plus a pacing plan that proportionally allocates remaining time
   across the roadmap's phases, with an ahead/behind indicator based on your
   actual checklist progress. No target date set? You get a sensible
   relative estimate instead of a hardcoded week-by-week table.
 - **Gamification** — points for problems you solve (`round(rating / 100)`,
-  flat 5 for unrated, ×1.5 for problems tagged with one of your focus areas,
-  minimum 1 point). Problems solved *before* your gamification start date are
-  logged for stats but score 0 points, so importing your whole CF history
-  doesn't hand you a windfall. A user-editable reward catalog lets you spend
-  points on things you define.
+  flat 5 for unrated, ×1.5 for one focus tag you pick from Codeforces' own
+  tag list, minimum 1 point). Problems solved *before* your gamification
+  start date are logged for stats but score 0 points, so importing your
+  whole CF history doesn't hand you a windfall; that start date defaults to
+  the day you verify your Codeforces handle, and a target contest date
+  defaults to a sensible placeholder — both editable on the Dashboard.
+  - **Streaks** — a day counts if it has at least one points-earning solve
+    (so it naturally starts counting from your gamification start date with
+    no separate cutoff). Shown on both the Dashboard and Self-rule; if
+    today's still open it prompts *"Solve 1 Codeforces problem today to
+    maintain the streak."*
+  - **Streak bonus** — the first points-earning solve of each day adds a
+    bonus equal to your incoming streak length, capped at +10, so staying
+    consistent is worth more than cramming.
+  - **Rewards** — a user-editable catalog you spend points on; the 3 starter
+    rewards ship locked (can't be deleted, only redeemed) so there's always
+    something to spend on, while anything you add yourself is fully
+    removable.
+  - **Points overview & activity** — current balance, lifetime earned,
+    rewards redeemed, and progress toward the cheapest reward you can't
+    afford yet, plus a daily/weekly/monthly earned-vs-spent breakdown and a
+    cumulative "spent by reward" tally.
 - **Codeforces sync** — enter your handle once and sync your solved
   problems directly from the CF API. If the live fetch fails (CORS, network,
   rate limiting), there's always a manual fallback: a link to open the same
@@ -76,17 +99,19 @@ skip that section and the app is 100% local-only and backend-free.
   Codeforces has no OAuth) before it's linked to your account. Entirely
   optional; local-only mode needs none of this.
 - **Polish** — responsive down to ~400px, respects `prefers-color-scheme`
-  with a manual light/dark/auto toggle, card-based layout.
+  with a manual light/dark/auto toggle, and a wide multi-column dashboard
+  layout (side-by-side cards, a subject grid, a two-pane picker) rather than
+  one long single-column scroll of stacked cards.
 
 ## Pages
 
 | Page | What's there |
 |---|---|
 | `index.html` (Home) | A small progress teaser and links into the rest of the app |
-| `dashboard.html` | Account & Cloud Sync, Profile, Timeline, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
+| `dashboard.html` | Account & Cloud Sync, Profile, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
 | `codeforces.html` | Sync, your full solved log, Reports, and the Codeforces Analysis card |
-| `roadmap.html` | The full 8-subject, phased topic checklist |
-| `self-rule.html` | The points-formula explainer, the reward catalog, and redemption history |
+| `roadmap.html` | The full 99-topic, 8-subject checklist, as a subject picker + detail pane |
+| `self-rule.html` | Points overview & streak, a daily/weekly/monthly activity breakdown, the points-formula explainer, the reward catalog, and redemption history |
 
 A shared header/nav (`js/nav.js`) and a shared bootstrap (`js/shell.js`, which
 owns theme init and the auth-session → data hydration flow) run on every page,
