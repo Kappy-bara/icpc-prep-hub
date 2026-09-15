@@ -9,6 +9,7 @@ const Nav = {
     { href: "index.html", label: "Home" },
     { href: "dashboard.html", label: "Dashboard" },
     { href: "codeforces.html", label: "Codeforces" },
+    { href: "team.html", label: "Team" },
     { href: "roadmap.html", label: "Roadmap" },
     { href: "self-rule.html", label: "Self-rule" },
   ],

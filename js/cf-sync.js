@@ -114,6 +114,23 @@ const CFSync = {
     }
   },
 
+  /**
+   * Like fetchLive, but returns the raw submissions array untouched instead of pre-processing
+   * it — needed by js/cf-team-analysis.js for fields fetchLive's processing discards, namely
+   * `author.participantType` and `relativeTimeSeconds` (used to derive live-contest solve speed).
+   */
+  async fetchRawSubmissions(handle) {
+    try {
+      const res = await fetch(this.apiUrl(handle));
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+      const json = await res.json();
+      if (json.status !== "OK") return { ok: false, error: json.comment || "Codeforces API returned an error" };
+      return { ok: true, submissions: json.result };
+    } catch (e) {
+      return { ok: false, error: e.message || "Network/CORS error" };
+    }
+  },
+
   /** Parse manually-pasted JSON (either the raw `result` array, or the full `{status, result}` envelope). */
   parseManual(jsonText) {
     const parsed = JSON.parse(jsonText);

@@ -5,8 +5,8 @@ No build step, works fully offline in local-only mode, and deploys to GitHub
 Pages for free. Clone it, open `index.html`, and it just works.
 
 The site is a handful of plain static pages behind a shared nav — Home,
-Dashboard, Codeforces, Roadmap, and Self-rule — not a single long scroll. See
-[Pages](#pages) below.
+Dashboard, Codeforces, Team, Roadmap, and Self-rule — not a single long
+scroll. See [Pages](#pages) below.
 
 By default everything is stored in your browser's `localStorage` and nothing
 is sent anywhere except the Codeforces sync request you trigger yourself. An
@@ -101,6 +101,26 @@ skip that section and the app is 100% local-only and backend-free.
     the typical rating of what you've actually been solving lately (these
     can diverge — a rusty high-rated account, or someone actively
     upskilling past their old rating).
+- **ICPC Team Analyzer** — paste your handle plus two teammates' (a real
+  ICPC team is exactly 3 people) and get a comparative analysis: a suggested
+  role split (Algorithmist, Math & Theory Specialist, Implementation & Speed
+  Lead — picked by exhaustively scoring all 6 possible assignments against
+  each person's tag profile, not a first-come-first-served greedy pick),
+  team-wide tag gaps (topics nobody on the team solves much of), and
+  non-topic signals beyond raw tag counts — each person's overall
+  accuracy/bug-rate, a callout when accuracy is notably worse specifically
+  on implementation-heavy problems, and live-contest solve speed ranked
+  relative to the other two (not an absolute "fast/slow" score, since
+  there's no fair universal cutoff). Like Compare with someone, all three
+  handles' data is fetched fresh and never stored, so it needs no account.
+  An earlier prototype of this app had a hardcoded, non-generalizing 3-person
+  team-roles card; this is the real version, built from actual solve
+  history instead. The per-person summary paragraphs are a deterministic
+  template built from the real computed numbers, not a live AI call — an
+  LLM API key can't be safely embedded in this site's client-side JS the
+  way the Supabase anon key can (Row Level Security protects that one; no
+  LLM provider has an equivalent guard over token spend), and a template
+  can't hallucinate a plausible-sounding but wrong insight.
 - **Reports** — stats split cleanly into "since your gamification start
   date" (active, scoring) vs. "before it" (historical, imported, non-scoring)
   — never blended. Today/last-7-days summaries, plus a rating-bucket and
@@ -125,6 +145,7 @@ skip that section and the app is 100% local-only and backend-free.
 | `index.html` (Home) | A small progress teaser and links into the rest of the app |
 | `dashboard.html` | Account & Cloud Sync, Profile, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
 | `codeforces.html` | Sync, your full solved log, Reports, and the Codeforces Analysis card |
+| `team.html` | ICPC Team Analyzer — paste 3 handles, get a role split, tag gaps, and accuracy/speed callouts |
 | `roadmap.html` | The full 99-topic, 8-subject checklist, as a subject picker + detail pane |
 | `self-rule.html` | Points overview & streak, a daily/weekly/monthly activity breakdown, the points-formula explainer, the reward catalog, and redemption history |
 
@@ -385,11 +406,11 @@ resource, not a one-person project.
     `roadmap-data.js`), `timeline.js`, `gamification.js`, `cf-sync.js`,
     `cf-verify.js`, `cf-baseline.js` (fetches synced data from Supabase —
     see [Codeforces baseline data](#codeforces-baseline-data)),
-    `cf-recommend.js`, `cf-analysis.js`, `reports.js`, `solved-log-ui.js`,
-    `rewards-ui.js`.
+    `cf-recommend.js`, `cf-analysis.js`, `cf-team-analysis.js`, `reports.js`,
+    `solved-log-ui.js`, `rewards-ui.js`.
   - `js/pages/*.js` — one thin file per page (`home.js`, `dashboard.js`,
-    `codeforces.js`, `roadmap.js`, `self-rule.js`) wiring that page's forms
-    and handlers.
+    `codeforces.js`, `team.js`, `roadmap.js`, `self-rule.js`) wiring that
+    page's forms and handlers.
   - `supabase/functions/sync-cf-baseline` — the one piece of actual
     server-side code in this project (a Deno Edge Function, cron-triggered;
     see [Codeforces baseline data](#codeforces-baseline-data)). Everything
@@ -397,21 +418,8 @@ resource, not a one-person project.
   Keep it that way; it's what makes this project approachable to clone and
   hack on.
 - See [`TODO.md`](TODO.md) for planned features that are deliberately out of
-  scope for now, including a Codeforces-driven team role-split suggestion
-  feature (see below) — good first issues if you want to pick one up.
+  scope for now — good first issues if you want to pick one up.
 - Open a PR or an issue. No formal process beyond that.
-
-### Note on the team-roles feature
-
-An earlier single-file prototype of this app had a hardcoded 3-person "team
-roles" card. That's intentionally *not* in this version — hardcoding people's
-names and roles doesn't generalize to anyone else who clones this repo. The
-planned real version (tracked in [`TODO.md`](TODO.md)) lets you add multiple
-teammates' Codeforces handles, fetches each one's solved-problem tag
-distribution, and suggests a role split (math/reasoning lead,
-data-structures/greedy lead, implementation lead) based on where each
-person's solves actually cluster. It's left as a future contribution rather
-than rushed in.
 
 ## License
 

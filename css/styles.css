@@ -1432,6 +1432,57 @@ details p {
   flex-shrink: 0;
 }
 
+/* Team Analyzer: 3-way tag comparison — one .bar-track/.bar-fill reuse per member, stacked
+   under the tag label, instead of extending .bar-track-dual (a genuinely 2-layer concept that
+   doesn't generalize cleanly to 3 overlapping fills). */
+.bar-row-team {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.bar-row-team:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.bar-team-line {
+  display: grid;
+  grid-template-columns: 10px 90px 1fr 42px;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bar-team-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.bar-team-handle {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  background: var(--badge-bg);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.7rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 .cf-gradient-legend {
   display: flex;
   flex-direction: column;

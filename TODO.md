@@ -3,28 +3,6 @@
 Ideas that are deliberately out of scope for the current version, tracked here
 (and/or as GitHub issues) rather than built half-finished.
 
-## Team role-split suggestions
-
-The original prototype had a hardcoded 3-person "team roles" card. That's
-gone — it was never going to generalize. The real version of this feature:
-
-- Let a user add multiple Codeforces handles (their teammates).
-- Fetch each handle's solved-problem history and compute a tag distribution
-  per person (e.g. via `user.status`, same endpoint this app already uses).
-- Cluster/compare the distributions and suggest a role split, e.g.:
-  - **Math/reasoning lead** — heavy on `math`, `number theory`, `combinatorics`,
-    `probabilities`, `games`.
-  - **Data structures/greedy lead** — heavy on `data structures`, `greedy`,
-    `binary search`, `two pointers`, `sortings`.
-  - **Implementation lead** — heavy on `implementation`, `brute force`,
-    `strings`, `geometry`.
-- Surface it as a "Team" card that's entirely optional and only appears once
-  more than one handle is configured — no hardcoded names, roles, or people.
-
-This needs some real thought about clustering (simple tag-frequency scoring
-vs. something smarter) and about rate-limiting multiple CF API calls
-client-side, which is why it's being tracked instead of rushed in.
-
 ## Cloud sync hardening
 
 Account sign-in + Supabase sync (see [README § Cloud sync
@@ -34,9 +12,11 @@ deliberately left for later rather than over-built now:
 - Codeforces-handle verification is currently enforced client-side only —
   fine while every user only ever sees their own data (no leaderboards, no
   public profiles), but it would need to move into a server-side Supabase
-  Edge Function before any feature shows one user's claimed handle to
-  another (e.g. the team-roles feature below, if it ever gains a
-  shared/visible view).
+  Edge Function before any feature shows one user's claimed/*verified*
+  handle to another. (The Team Analyzer's 3-handle comparison doesn't
+  trigger this — it only ever shows public Codeforces data fetched live,
+  the same as Compare with someone, never this app's own verification/
+  points state for anyone but the signed-in user.)
 - Multi-device sync is last-write-wins on the whole data blob — no
   merge/conflict resolution if you edit on two devices at once.
 - No in-app account deletion flow (delete the user from the Supabase
@@ -64,17 +44,22 @@ over-built now:
 - The sampling pool is rebuilt from a fresh `user.ratedList` call at every
   phase transition (4 times per cycle) rather than cached once — simple and
   self-correcting, but slightly wasteful.
-- This is also the natural place to build the real top-CF-users leaderboard
-  idea (see Team role-split suggestions above) if that's ever picked up,
-  since it needs the same kind of scheduled server-side job.
+- This is also the natural place to build a real top-CF-users leaderboard
+  someday, since it needs the same kind of scheduled server-side job.
 
 ## Other ideas
 
+- Map raw Codeforces tags (`dp`, `binary search`, `number theory`, etc.) to
+  the 99 roadmap topics, so weak-tag call-outs (Codeforces Analysis, the
+  Team Analyzer's team-gap list) can link straight to "practice this roadmap
+  topic" instead of just naming the raw tag. Checked this while building the
+  Team Analyzer — no such mapping exists today, and topic `id`/`name`
+  strings only cleanly match real CF tags in a handful of cases (most are
+  compound/differently-phrased, e.g. topic "Bitmask DP" vs. tag `bitmasks`),
+  so it needs real curation across all 99 topics, not a naive string match.
 - Contest-type breakdown (Div1/Div2/Div3/Educational/Global performance
   shown separately) — some people do well in practice but underperform live,
   or vice versa.
-- 1:1 rival comparison — pick a friend's handle and see tag/rating profiles
-  side by side; a lighter, immediate version of the team-roles idea above.
 - Rating milestone projection — a rough trend-line extrapolation, clearly
   caveated as a rough estimate, not a guarantee.
 - PWA/offline support (service worker + manifest) so the app installs and
