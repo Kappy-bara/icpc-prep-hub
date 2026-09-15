@@ -28,6 +28,12 @@
       Store.update((d) => {
         if (d.profile.cfHandle !== newHandle) {
           d.profile.cfVerified = false; // handle changed — needs (re-)verification in cloud mode
+          // Also reset the start date, not just the verified flag — otherwise switching to a
+          // different (already-owned or newly-forged) handle keeps the OLD start date, and that
+          // handle's entire back-catalog of solves between the old date and now would suddenly
+          // count for points on the next sync. A new handle gets a fresh start date the next
+          // time it's verified, same as a first-time verification.
+          d.profile.gamificationStart = null;
           verifyState = null;
         }
         d.profile.cfHandle = newHandle;
@@ -161,7 +167,7 @@
       const text = $("verify-manual-json").value.trim();
       const statusEl = $("verify-status");
       try {
-        const ok = CFVerify.checkManual(text, problem, verifyState.startedAtMs);
+        const ok = CFVerify.checkManual(text, cfHandle, problem, verifyState.startedAtMs);
         if (ok) {
           markVerified(cfHandle);
         } else {

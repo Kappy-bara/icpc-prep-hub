@@ -167,12 +167,21 @@ const CFSync = {
     });
   },
 
-  /** Manual single-solve entry. No submission history to derive analysis from. */
+  /**
+   * Manual single-solve entry. No submission history to derive analysis from.
+   *
+   * The dedup key for a contestId+index pair is that pair (as everywhere else); without one,
+   * it's derived from the normalized name instead of a timestamp — a timestamp-based key made
+   * every click of "Log solve" (even with identical, blank-contest input) generate a brand-new
+   * key, which addSolves' key-based dedup can never catch, letting a single button spammed
+   * repeatedly earn unlimited points.
+   */
   logSingle({ contestId, index, name, rating, tags, solvedDate }) {
-    const key = Gamification.problemKey(contestId || "", index || name);
+    const normalizedName = (name || "").trim().toLowerCase();
+    const key = contestId && index ? Gamification.problemKey(contestId, index) : `manual-${normalizedName || "untitled"}`;
     return Gamification.addSolves([
       {
-        key: contestId && index ? Gamification.problemKey(contestId, index) : `manual-${Date.now()}`,
+        key,
         contestId: contestId || null,
         index: index || null,
         name: name || key,

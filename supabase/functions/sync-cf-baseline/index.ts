@@ -14,6 +14,21 @@
 //
 // Deno.env.get('SUPABASE_URL') / ('SUPABASE_SERVICE_ROLE_KEY') are auto-injected by
 // Supabase into every Edge Function — no manual secret setup needed for these two.
+//
+// This function has `verify_jwt = false` (see supabase/config.toml) so the cron job can call it
+// without a user session — which also means its URL is invocable by anyone who reads the client
+// bundle, not just the cron job. Two mitigations against that:
+//  1. Optional shared-secret gate: if a `CRON_SYNC_SECRET` env var is set (`supabase secrets set
+//     CRON_SYNC_SECRET=<random value>`), a request must send it back as the `x-cron-secret`
+//     header (configure this on the pg_cron job's net.http_post call) or gets a 401. Unset by
+//     default so existing deployments keep working without extra setup — set it to actually
+//     close this off.
+//  2. Optimistic concurrency on cf_baseline_sync_state: every write is conditioned on the
+//     `updated_at` this invocation last read. Two invocations racing (e.g. someone hammering this
+//     URL while the real cron-triggered run is mid-phase) can no longer silently clobber each
+//     other's progress with a lost update — the loser's write matches 0 rows and it stops
+//     immediately instead of continuing to burn Codeforces API calls and overwrite the winner's
+//     checkpoint.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -103,6 +118,11 @@ const TIER_META: Record<string, { label: string }> = {
 
 Deno.serve(async (req) => {
   try {
+    const cronSecret = Deno.env.get("CRON_SYNC_SECRET");
+    if (cronSecret && req.headers.get("x-cron-secret") !== cronSecret) {
+      return new Response(JSON.stringify({ status: "error", message: "unauthorized" }), { status: 401 });
+    }
+
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: state } = await supabase.from("cf_baseline_sync_state").select("*").eq("id", true).maybeSingle();
@@ -164,6 +184,7 @@ Deno.serve(async (req) => {
     const invocationStart = Date.now();
     let pool: string[] = [...(state.pool || [])];
     let accumulated: any[] = [...(state.accumulated || [])];
+    let expectedUpdatedAt: string = state.updated_at;
     const handledThisRun: { handle: string; status: "fetched" | "skipped" }[] = [];
 
     while (pool.length > 0 && Date.now() - invocationStart < TIME_BUDGET_MS) {
@@ -183,10 +204,30 @@ Deno.serve(async (req) => {
         handledThisRun.push({ handle, status: "skipped" });
       }
       pool = pool.slice(1);
-      await supabase
+      const newUpdatedAt = new Date().toISOString();
+      // Conditioned on the updated_at we last saw: if another invocation wrote to this row
+      // concurrently, this matches 0 rows and `updated` comes back empty — see the top-of-file
+      // comment. That means OUR in-memory pool/accumulated are now stale relative to what's
+      // persisted, so stop rather than keep looping on outdated state.
+      const { data: updated, error: updateErr } = await supabase
         .from("cf_baseline_sync_state")
-        .update({ pool, accumulated, updated_at: new Date().toISOString() })
-        .eq("id", true);
+        .update({ pool, accumulated, updated_at: newUpdatedAt })
+        .eq("id", true)
+        .eq("updated_at", expectedUpdatedAt)
+        .select("updated_at");
+      if (updateErr) throw updateErr;
+      if (!updated || updated.length === 0) {
+        return new Response(
+          JSON.stringify({
+            status: "conflict",
+            note: "sync state was updated by another concurrent invocation; stopped to avoid clobbering its progress",
+            phase: state.phase,
+            fetchedThisRun: handledThisRun.length,
+          }),
+          { status: 200 }
+        );
+      }
+      expectedUpdatedAt = newUpdatedAt;
     }
 
     if (pool.length > 0) {

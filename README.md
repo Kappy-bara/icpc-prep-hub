@@ -312,9 +312,23 @@ state.
    ```bash
    npx supabase functions deploy sync-cf-baseline
    ```
-   (`supabase/config.toml` already sets `verify_jwt = false` for it — it's
-   invoked only by your own cron job below, never by a browser, so there's
-   no user session to verify.)
+   `supabase/config.toml` sets `verify_jwt = false` for it, since it's meant
+   to be invoked by the cron job below rather than a signed-in browser — but
+   that also means its URL works for *anyone* who finds it (e.g. by reading
+   this repo), not just your cron job. That's low-stakes on its own (it only
+   touches public baseline stats and internal job bookkeeping, both protected
+   by RLS — see [Codeforces baseline data](#codeforces-baseline-data) above),
+   but a stranger repeatedly invoking it still burns your Edge Function quota
+   and hammers Codeforces' API through your project's IP. Optionally close
+   that off with a shared secret:
+   ```bash
+   npx supabase secrets set CRON_SYNC_SECRET=$(openssl rand -hex 24)
+   ```
+   and add the same value as an `x-cron-secret` header on the cron job's
+   `net.http_post` call below (`headers := '{"Content-Type": "application/json",
+   "x-cron-secret": "<same value>"}'::jsonb`). Unset (the default), the
+   function accepts any request, same as before — set it any time, it takes
+   effect on the next invocation.
 3. Schedule it to run every 3 minutes, in the SQL editor (or via
    `npx supabase db push` if you add this as a migration yourself):
    ```sql
@@ -334,7 +348,8 @@ state.
    );
    ```
    Replace `<your-project-ref>` with your actual project ref (from your
-   project URL / Settings → General).
+   project URL / Settings → General). If you set `CRON_SYNC_SECRET` above,
+   add it to `headers` here too, or every cron tick will get a 401.
 4. Trigger it once manually to confirm it works before waiting on cron —
    either `npx supabase functions invoke sync-cf-baseline`, or open
    `https://<your-project-ref>.supabase.co/functions/v1/sync-cf-baseline` in

@@ -24,15 +24,28 @@ const CFVerify = {
     return `https://codeforces.com/problemset/problem/${problem.contestId}/${problem.index}`;
   },
 
+  /**
+   * `handle` is actually checked here (against each submission's `author.members`), not just
+   * accepted for show — this matters most for checkManual below, where the "submissions" are
+   * arbitrary pasted text with no other guarantee they came from Codeforces at all or belong to
+   * the handle being verified. Also enforces the advertised WINDOW_MINUTES as a real upper bound
+   * (previously only shown as UI copy, never checked), so a verification session doesn't stay
+   * matchable indefinitely.
+   */
   matchInSubmissions(submissions, handle, problem, startedAtMs) {
-    return submissions.some(
-      (sub) =>
-        sub.problem &&
-        sub.problem.contestId === problem.contestId &&
-        sub.problem.index === problem.index &&
-        sub.verdict === "COMPILATION_ERROR" &&
-        sub.creationTimeSeconds * 1000 >= startedAtMs - this.GRACE_MS
-    );
+    const targetHandle = (handle || "").trim().toLowerCase();
+    const deadlineMs = startedAtMs + this.WINDOW_MINUTES * 60 * 1000 + this.GRACE_MS;
+    return submissions.some((sub) => {
+      if (!sub.problem || sub.problem.contestId !== problem.contestId || sub.problem.index !== problem.index) return false;
+      if (sub.verdict !== "COMPILATION_ERROR") return false;
+      const subMs = sub.creationTimeSeconds * 1000;
+      if (subMs < startedAtMs - this.GRACE_MS || subMs > deadlineMs) return false;
+      if (targetHandle) {
+        const members = (sub.author && sub.author.members) || [];
+        if (!members.some((m) => (m.handle || "").toLowerCase() === targetHandle)) return false;
+      }
+      return true;
+    });
   },
 
   /** Live check. Resolves { ok: true, verified: boolean } or { ok: false, error }. */
@@ -48,11 +61,18 @@ const CFVerify = {
     }
   },
 
-  /** Manual fallback: parse pasted JSON the same shape as user.status. */
-  checkManual(jsonText, problem, startedAtMs) {
+  /**
+   * Manual fallback: parse pasted JSON the same shape as user.status. `handle` is required and
+   * checked against each submission's author — pasted text has no other authenticity guarantee,
+   * so this is the one thing standing between "proves you own this handle" and "proves you can
+   * type JSON." It's still ultimately client-supplied text a determined user could hand-fabricate
+   * (there's no server here to fetch it independently), but this closes the trivial version of
+   * that gap where the pasted blob doesn't even need to mention the claimed handle.
+   */
+  checkManual(jsonText, handle, problem, startedAtMs) {
     const parsed = JSON.parse(jsonText);
     const submissions = Array.isArray(parsed) ? parsed : parsed.result;
     if (!Array.isArray(submissions)) throw new Error("Couldn't find a submissions array in that JSON.");
-    return this.matchInSubmissions(submissions, "", problem, startedAtMs);
+    return this.matchInSubmissions(submissions, handle, problem, startedAtMs);
   },
 };

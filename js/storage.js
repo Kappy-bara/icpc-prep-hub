@@ -61,11 +61,18 @@ function defaultData() {
   };
 }
 
+// Type-checked at every level, not just "does incoming exist": a hand-edited or partially
+// corrupted backup file can have the right keys with the wrong-typed values (e.g. `solvedLog`
+// as a string instead of an array). Blindly trusting incoming's type there used to let a single
+// bad import corrupt the store into a shape every array-iterating page throws on — and since
+// save() persists before anything downstream can catch that, the corruption survived past the
+// "Import failed" message. Now a type mismatch at any level just keeps base's value instead.
 function deepMerge(base, incoming) {
-  if (Array.isArray(base) || Array.isArray(incoming)) {
-    return incoming !== undefined ? incoming : base;
+  if (Array.isArray(base)) {
+    return Array.isArray(incoming) ? incoming : base;
   }
-  if (typeof base === "object" && base !== null && typeof incoming === "object" && incoming !== null) {
+  if (base !== null && typeof base === "object") {
+    if (incoming === null || typeof incoming !== "object" || Array.isArray(incoming)) return base;
     const out = { ...base };
     for (const k of Object.keys(incoming)) {
       out[k] = k in base ? deepMerge(base[k], incoming[k]) : incoming[k];
@@ -204,6 +211,9 @@ const Store = {
 
   importJSON(jsonString) {
     const parsed = JSON.parse(jsonString);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("That file doesn't look like an icpc-prep-hub backup (expected a JSON object).");
+    }
     this._data = deepMerge(defaultData(), parsed);
     this.save();
     return this._data;

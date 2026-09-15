@@ -3,9 +3,10 @@
  *
  * base = round(rating / 100) - 5 for rated problems (3 for the lowest CF rating, 800; 4 for
  * 900; and so on), flat 5 for unrated. x1.5 (rounded) if any of the problem's tags is in the
- * user's focus-tags list. No artificial minimum — Codeforces' lowest rated-problem rating is
- * 800, so base never goes below 3 for a real problem. Problems solved before the gamification
- * start date always score 0 (logged for stats only).
+ * user's focus-tags list. Floored at 1 — real Codeforces ratings never go below 800 (base 3),
+ * but the manual "log a solve" form only enforces min=0 on its rating field, so a low typed-in
+ * value must not be able to swing base negative and drain the balance. Problems solved before
+ * the gamification start date always score 0 (logged for stats only).
  *
  * Solves ALWAYS score 0 unless the configured handle has passed CF verification (see
  * cf-verify.js) — syncing an unverified handle still populates solvedLog/accuracy/rating-chart
@@ -17,7 +18,7 @@ function computePoints({ rating, tags, solvedDate }, { focusTags, gamificationSt
   if (gamificationStart && solvedDate < gamificationStart) {
     return 0;
   }
-  const base = rating ? Math.round(rating / 100) - 5 : 5;
+  const base = rating ? Math.max(1, Math.round(rating / 100) - 5) : 5;
   const isFocus = Array.isArray(tags) && tags.some((t) => focusTags.includes(t));
   return isFocus ? Math.round(base * 1.5) : base;
 }
@@ -144,6 +145,7 @@ const Gamification = {
     const d = Store.data;
     const reward = d.rewards.find((r) => r.id === rewardId);
     if (!reward) return { ok: false, reason: "not-found" };
+    if (!(reward.cost > 0)) return { ok: false, reason: "invalid-reward" };
     if (d.points.balance < reward.cost) return { ok: false, reason: "insufficient-points" };
 
     Store.update((data) => {
@@ -161,11 +163,15 @@ const Gamification = {
   },
 
   addReward(name, cost) {
+    // Re-validated here (not just at the form layer) since this is a reachable internal API —
+    // a non-positive cost would let redeemReward's `balance -= reward.cost` add points instead
+    // of spending them.
+    const safeCost = Math.max(1, Math.round(Number(cost) || 0));
     Store.update((data) => {
       data.rewards.push({
         id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         name,
-        cost,
+        cost: safeCost,
       });
     });
     document.dispatchEvent(new CustomEvent("icpc:points-changed"));

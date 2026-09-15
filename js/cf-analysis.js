@@ -56,6 +56,11 @@ const CFAnalysis = {
       <div class="report-toggle" id="cf-tier-toggle">
         ${visibleTiers.map((t) => `<button type="button" data-tier="${t.id}" class="${t.id === this._tier ? "active" : ""}">${t.label}</button>`).join("")}
       </div>
+      ${
+        canUseCloudTiers
+          ? ""
+          : `<p class="card-subtitle">Sign in (Dashboard → Account) to also compare against Tourist, Top 500, Top 10,000, and Average-user baselines — those need the cloud-synced sample data. "Compare with someone" works either way.</p>`
+      }
       <div class="report-toggle" id="cf-window-toggle">
         ${this.WINDOWS.map((w) => `<button type="button" data-window="${w.id}" class="${w.id === this._window ? "active" : ""}">${w.label}</button>`).join("")}
       </div>
