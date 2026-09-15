@@ -1343,6 +1343,23 @@ details p {
   border-top: none;
 }
 
+/* Groups several .cf-analysis-section blocks under one umbrella (Profile analysis / Comparison)
+   — visually heavier than the individual section h3s it sits above, so the two-level hierarchy
+   (group > feature) actually reads as two levels. */
+.cf-group-heading {
+  margin: 2rem 0 0.3rem;
+  padding-top: 1.8rem;
+  border-top: 2px solid var(--border);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.005em;
+}
+.cf-group-heading:first-of-type {
+  margin-top: 0.9rem;
+  padding-top: 0;
+  border-top: none;
+}
+
 .cf-analysis-section h3 {
   font-size: 0.95rem;
   font-weight: 700;
@@ -1442,55 +1459,70 @@ details p {
   flex-shrink: 0;
 }
 
-/* Team Analyzer: 3-way tag comparison — one .bar-track/.bar-fill reuse per member, stacked
-   under the tag label, instead of extending .bar-track-dual (a genuinely 2-layer concept that
-   doesn't generalize cleanly to 3 overlapping fills). */
-.bar-row-team {
+/* Team Analyzer merged tag-breakdown chart: ONE compact row per tag (not one row per tag per
+   person, which is what made the old separate tag-ratings/tag-mix sections too long) — a label
+   line, then all 3 members' cells wrapped side by side via flex-wrap, collapsing to fewer per
+   line automatically on narrow screens instead of a hard breakpoint. */
+.tag-breakdown-list {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.78rem;
-  padding-bottom: 0.6rem;
-  margin-bottom: 0.6rem;
+}
+
+.tag-row {
+  padding: 0.5rem 0;
   border-bottom: 1px solid var(--border);
 }
-.bar-row-team:last-child {
+.tag-row:last-child {
   border-bottom: none;
   padding-bottom: 0;
-  margin-bottom: 0;
 }
 
-.bar-team-line {
+.tag-row-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  margin-bottom: 0.35rem;
+}
+
+.tag-row-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+}
+
+.tag-member-cell {
   display: grid;
-  grid-template-columns: 10px 90px 1fr 42px;
+  grid-template-columns: 7px 1fr auto;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
+  flex: 1 1 170px;
+  min-width: 150px;
+  font-size: 0.7rem;
 }
 
-.bar-team-dot {
-  width: 9px;
-  height: 9px;
+.tag-member-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
 }
 
-.bar-team-handle {
+.tag-member-stats {
   color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Team Analyzer tag-rating chart: built from individually-hoverable 100-wide rating segments
-   (not one smooth fill), so hovering a specific spot on the bar reveals exactly how many
-   problems at that rating, in that tag, this person solved — a mini histogram-per-row rather
-   than a single flattened average. Segments live in their own clipped/rounded wrapper so the
-   average marker (a sibling, not inside it) can still stick out past the track's edges. */
+/* Range bar built from individually-shaded 100-wide rating segments (not one smooth fill), so
+   opacity shows where solves concentrate within the tag. Segments live in their own clipped/
+   rounded wrapper so the average marker (a sibling, not inside it) can still stick out past the
+   track's edges. Hover feedback is a shared floating tooltip (.team-rating-tooltip, driven by
+   continuous cursor position via wireRatingTooltips in JS) rather than a per-segment `title` —
+   segments are too thin to reliably hit, and the clipped wrapper would clip a title anyway. */
 .rating-range-track {
   position: relative;
   height: 8px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 999px;
+  cursor: crosshair;
 }
 
 .rating-range-segments {
@@ -1512,6 +1544,24 @@ details p {
   width: 2px;
   height: 12px;
   border-radius: 1px;
+  pointer-events: none;
+}
+
+.team-rating-tooltip {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.32rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow);
+}
+.team-rating-tooltip[hidden] {
+  display: none;
 }
 
 .role-badge {

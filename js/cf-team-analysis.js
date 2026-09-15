@@ -119,7 +119,6 @@ const TeamAnalysis = {
   IMPLEMENTATION_GAP_PTS: 15,
   REACH_TOP_N: 10, // how many of a member's hardest solves define their "ceiling"
   REACH_MIN_SAMPLE: 3, // below this many rated solves, reach isn't a meaningful signal
-  TAG_COMPARISON_MAX_ROWS: 20,
   TAG_RATING_MIN: 800, // fixed scale for the tag-rating bar chart (real CF rating floor/ceiling),
   TAG_RATING_MAX: 3500, // so bar width is comparable across tags/members, not re-normalized per row
 
@@ -631,40 +630,17 @@ const TeamAnalysis = {
           .join("")}
       </div>
       <section class="card">
-        <h2>Tag ratings</h2>
+        <h2>Tag breakdown</h2>
         <p class="card-subtitle">
-          Each bar spans that person's lowest-to-highest solved rating in the tag, with a marker
-          at their average and the solve count in parens &mdash; the spread matters as much as
-          the average, since solving 1000 to 2600 in a tag reads very differently from a tight
-          1700-1900 cluster even at the same average. Hover any point on a bar to see exactly how
-          many problems at that rating, in that tag, they solved.
+          One compact row per tag &mdash; each bar spans that person's lowest-to-highest solved
+          rating (marker = average), and the number alongside is their rating and their share of
+          solves in that tag. <strong>Hover any point on a bar</strong> to see exactly how many
+          problems at that rating, in that tag, they solved.
         </p>
-        <div id="team-tag-ratings-root"></div>
-      </section>
-      <section class="card">
-        <h2>Tag mix comparison</h2>
-        <p class="card-subtitle">
-          Each percentage is the share of that person's <strong>solved problems that have this
-          tag</strong> (e.g. "31%" means 31% of everything they've solved is tagged this way),
-          with the raw solve count alongside it &mdash; not a head-to-head score. This is about
-          *practice volume* per tag; see "Tag ratings" above for actual per-topic strength.
-        </p>
-        <div id="team-tag-comparison-root"></div>
+        <div id="team-tag-breakdown-root"></div>
       </section>
     `;
-    this.renderTagRatings($("team-tag-ratings-root"), members);
-    this.renderTagComparison($("team-tag-comparison-root"), members);
-  },
-
-  /** Small colored dot + handle + bar + value row, shared by the tag-ratings and tag-comparison charts. */
-  fitLineHtml(member, color, pct, valueLabel) {
-    return `
-      <div class="bar-team-line">
-        <span class="bar-team-dot" style="background:${color}"></span>
-        <span class="bar-team-handle">${escapeHtml(member.handle)}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
-        <span class="bar-count">${escapeHtml(valueLabel)}</span>
-      </div>`;
+    this.renderTagBreakdown($("team-tag-breakdown-root"), members);
   },
 
   /** Bar-width position of `rating` on the fixed TAG_RATING_MIN..TAG_RATING_MAX scale, clamped 0..100. */
@@ -676,7 +652,7 @@ const TeamAnalysis = {
   /**
    * How many of `member`'s solves in `tag` fall in each 100-wide rating bucket — same bucketing
    * convention as the Codeforces page's "Problem ratings" histogram (js/cf-analysis.js), just
-   * scoped to one tag. Powers the hoverable segments in the tag-ratings chart below.
+   * scoped to one tag. Powers both the segment shading and the hover tooltip below.
    */
   tagRatingBuckets(member, tag) {
     const counts = {};
@@ -690,21 +666,85 @@ const TeamAnalysis = {
   },
 
   /**
-   * One member's range-bar row for the tag-ratings chart, built from individually-hoverable
-   * 100-wide segments (see tagRatingBuckets) rather than one smooth fill — hovering any point on
-   * the bar shows exactly how many problems at that rating, in this tag, this person solved.
-   * Segment opacity also scales with that bucket's count relative to this person's own busiest
-   * bucket in the tag, so where their solves concentrate is visible at a glance too, not just on
-   * hover. A marker still marks the average, and the solve count is shown alongside.
+   * Single shared floating tooltip element (created once, reused for every hover across the
+   * whole chart) rather than a native `title` per segment. Native title tooltips turned out
+   * unusable here: segments can be just a few pixels wide, an ancestor needs `overflow:hidden`
+   * to keep the fills clipped to the track's rounded shape (which also clips any tooltip
+   * attached to a descendant), and OS tooltip delay/placement is inconsistent across browsers.
+   * A real mousemove-driven tooltip fixes all three: it reads the cursor's continuous position
+   * across the *entire* track (no tiny hit-targets to land on), lives outside any clipping
+   * ancestor, and appears instantly next to the cursor.
    */
-  ratingRangeLineHtml(member, tag, color, stats) {
-    if (!stats) {
+  ensureTooltipEl() {
+    let el = document.getElementById("team-rating-tooltip");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "team-rating-tooltip";
+      el.className = "team-rating-tooltip";
+      el.hidden = true;
+      document.body.appendChild(el);
+    }
+    return el;
+  },
+
+  showTooltip(clientX, clientY, text) {
+    const el = this.ensureTooltipEl();
+    el.textContent = text;
+    el.hidden = false;
+    // Clamp so the tooltip never runs off the right/bottom edge of the viewport.
+    const left = Math.min(clientX + 14, window.innerWidth - el.offsetWidth - 8);
+    const top = Math.min(clientY + 14, window.innerHeight - el.offsetHeight - 8);
+    el.style.left = `${Math.max(4, left)}px`;
+    el.style.top = `${Math.max(4, top)}px`;
+  },
+
+  hideTooltip() {
+    const el = document.getElementById("team-rating-tooltip");
+    if (el) el.hidden = true;
+  },
+
+  /**
+   * Delegated mousemove/mouseleave on the whole chart root (called once per render) — computes
+   * the hovered rating from the cursor's X position relative to whichever `.rating-range-track`
+   * it's over, looks up that bucket's count from the track's `data-buckets`, and shows it. Works
+   * anywhere along the bar, not just on a specific segment.
+   */
+  wireRatingTooltips(root) {
+    if (root._ratingTooltipWired) return;
+    root._ratingTooltipWired = true;
+    root.addEventListener("mousemove", (evt) => {
+      const track = evt.target.closest(".rating-range-track");
+      if (!track || !track.dataset.buckets) {
+        this.hideTooltip();
+        return;
+      }
+      const rect = track.getBoundingClientRect();
+      const relX = rect.width ? Math.max(0, Math.min(1, (evt.clientX - rect.left) / rect.width)) : 0;
+      const rating = this.TAG_RATING_MIN + relX * (this.TAG_RATING_MAX - this.TAG_RATING_MIN);
+      const bucket = Math.floor(rating / 100) * 100;
+      const buckets = JSON.parse(track.dataset.buckets);
+      const count = buckets[bucket] || 0;
+      const text = `${track.dataset.handle} — ${track.dataset.tag} rated ${bucket}–${bucket + 99}: ${count} solved`;
+      this.showTooltip(evt.clientX, evt.clientY, text);
+    });
+    root.addEventListener("mouseleave", () => this.hideTooltip());
+  },
+
+  /**
+   * One member's compact cell in the merged tag-breakdown row: a small range bar (lowest-to-
+   * highest solved rating in this tag, built from 100-wide segments shaded by how many solves
+   * fall in each — see tagRatingBuckets) plus their rating and solve-share in one line. The bar
+   * itself carries no per-segment titles (see wireRatingTooltips for why); `data-*` attributes
+   * hold what the shared tooltip needs to answer "how many problems at this rating did they
+   * solve," continuously along the whole bar, not just on whichever thin segment you land on.
+   */
+  tagMemberCellHtml(member, tag, color, ratingStats, sharePct) {
+    if (!ratingStats) {
       return `
-        <div class="bar-team-line">
-          <span class="bar-team-dot" style="background:${color}"></span>
-          <span class="bar-team-handle">${escapeHtml(member.handle)}</span>
+        <div class="tag-member-cell">
+          <span class="tag-member-dot" style="background:${color}"></span>
           <div class="rating-range-track"><div class="rating-range-segments"></div></div>
-          <span class="bar-count">n/a</span>
+          <span class="tag-member-stats">${sharePct}%</span>
         </div>`;
     }
     const buckets = this.tagRatingBuckets(member, tag);
@@ -713,54 +753,64 @@ const TeamAnalysis = {
     const segments = bucketKeys
       .sort((a, b) => a - b)
       .map((b) => {
-        const count = buckets[b];
         const left = this.ratingBarPct(b);
-        const right = this.ratingBarPct(b + 100);
-        const width = Math.max(0.5, right - left);
-        const opacity = (0.3 + 0.7 * (count / maxBucketCount)).toFixed(2);
-        return `<div class="rating-range-segment" style="left:${left}%;width:${width}%;background:${color};opacity:${opacity}" title="${escapeHtml(member.handle)} — ${escapeHtml(tag)} rated ${b}–${b + 99}: ${count} solved"></div>`;
+        const width = Math.max(0.5, this.ratingBarPct(b + 100) - left);
+        const opacity = (0.3 + 0.7 * (buckets[b] / maxBucketCount)).toFixed(2);
+        return `<div class="rating-range-segment" style="left:${left}%;width:${width}%;background:${color};opacity:${opacity}"></div>`;
       })
       .join("");
-    const avgPct = this.ratingBarPct(stats.avgRating);
+    const avgPct = this.ratingBarPct(ratingStats.avgRating);
     return `
-      <div class="bar-team-line">
-        <span class="bar-team-dot" style="background:${color}"></span>
-        <span class="bar-team-handle">${escapeHtml(member.handle)}</span>
-        <div class="rating-range-track">
+      <div class="tag-member-cell">
+        <span class="tag-member-dot" style="background:${color}"></span>
+        <div class="rating-range-track" data-handle="${escapeHtml(member.handle)}" data-tag="${escapeHtml(tag)}" data-buckets='${JSON.stringify(buckets)}'>
           <div class="rating-range-segments">${segments}</div>
-          <div class="rating-range-marker" style="left:${avgPct}%;background:${color}" title="${escapeHtml(member.handle)} — ${escapeHtml(tag)} average: ~${Math.round(stats.avgRating)}"></div>
+          <div class="rating-range-marker" style="left:${avgPct}%;background:${color}"></div>
         </div>
-        <span class="bar-count">~${Math.round(stats.avgRating)} (${stats.count})</span>
+        <span class="tag-member-stats">~${Math.round(ratingStats.avgRating)} &middot; ${sharePct}%</span>
       </div>`;
   },
 
   /**
-   * Per-tag rating chart, one row per CORE_TAG each member has enough solves to rate — each
-   * person's real range of solved difficulty in that tag (light fill = lowest to highest solved,
-   * marker = average, count in parens), not just a single flattened number, on a fixed absolute
-   * scale so tags stay comparable against each other. Sorted by the team's best average rating in
-   * that tag, descending. No commentary, just the numbers.
+   * Merged tag-rating + tag-mix chart, one compact row per CORE_TAG instead of the old design's
+   * separate multi-line-per-person sections for each — both showed the same 20-25 tags, just
+   * twice, taking up a lot of vertical space for what's really one comparison. Each row now
+   * shows all 3 members side by side (rating range + solve share together), sorted by the team's
+   * best average rating in that tag. No commentary, just the numbers.
    */
-  renderTagRatings(root, members) {
+  renderTagBreakdown(root, members) {
     if (!root) return;
     const colors = ["var(--accent)", "var(--secondary)", "var(--warn)"];
-    const rows = this.CORE_TAGS.map((tag) => ({
-      tag,
-      stats: members.map((m) => m.topicRatings[tag] || null),
-    })).filter((r) => r.stats.some((s) => s != null));
+    const tags = this.CORE_TAGS.filter((tag) => members.some((m) => m.topicRatings[tag] || (m.tagStats.counts[tag] || 0) > 0));
 
-    if (!rows.length) {
-      root.innerHTML = `<p class="empty-note">Not enough rated solves yet to show per-tag ratings.</p>`;
+    if (!tags.length) {
+      root.innerHTML = `<p class="empty-note">Not enough solves yet to show a tag breakdown.</p>`;
       return;
     }
-    rows.sort((a, b) => Math.max(...b.stats.map((s) => (s ? s.avgRating : 0))) - Math.max(...a.stats.map((s) => (s ? s.avgRating : 0))));
+    tags.sort((a, b) => {
+      const bestOf = (tag) => Math.max(...members.map((m) => (m.topicRatings[tag] ? m.topicRatings[tag].avgRating : 0)));
+      return bestOf(b) - bestOf(a);
+    });
 
-    root.innerHTML = rows
-      .map((r) => {
-        const lines = members.map((m, i) => this.ratingRangeLineHtml(m, r.tag, colors[i], r.stats[i])).join("");
-        return `<div class="bar-row-team"><span class="bar-label">${escapeHtml(r.tag)}</span>${lines}</div>`;
-      })
-      .join("");
+    root.innerHTML = `
+      <div class="cf-legend">
+        ${members.map((m, i) => `<span><span class="cf-legend-swatch" style="background:${colors[i]}"></span>${escapeHtml(m.handle)}</span>`).join("")}
+      </div>
+      <div class="tag-breakdown-list">
+        ${tags
+          .map((tag) => {
+            const cells = members
+              .map((m, i) => {
+                const pct = Math.round((m.tagStats.ratios[tag] || 0) * 100);
+                return this.tagMemberCellHtml(m, tag, colors[i], m.topicRatings[tag] || null, pct);
+              })
+              .join("");
+            return `<div class="tag-row"><div class="tag-row-label">${escapeHtml(tag)}</div><div class="tag-row-members">${cells}</div></div>`;
+          })
+          .join("")}
+      </div>
+    `;
+    this.wireRatingTooltips(root);
   },
 
   memberCardHtml(member, roleLabel, domainLabel, domainRating, speedRankLabel) {
@@ -793,43 +843,4 @@ const TeamAnalysis = {
     `;
   },
 
-  renderTagComparison(root, members) {
-    if (!root) return;
-    const colors = ["var(--accent)", "var(--secondary)", "var(--warn)"];
-    const allTags = new Set();
-    for (const m of members) for (const tag of Object.keys(m.tagStats.ratios)) allTags.add(tag);
-
-    const rows = [...allTags]
-      .map((tag) => ({ tag, maxRatio: Math.max(...members.map((m) => m.tagStats.ratios[tag] || 0)) }))
-      .sort((a, b) => b.maxRatio - a.maxRatio)
-      .slice(0, this.TAG_COMPARISON_MAX_ROWS);
-
-    if (!rows.length) {
-      root.innerHTML = `<p class="empty-note">No solved-problem tags found across the team yet.</p>`;
-      return;
-    }
-
-    root.innerHTML = `
-      <div class="cf-legend">
-        ${members.map((m, i) => `<span><span class="cf-legend-swatch" style="background:${colors[i]}"></span>${escapeHtml(m.handle)}</span>`).join("")}
-      </div>
-      ${rows
-        .map((r) => {
-          const lines = members
-            .map((m, i) => {
-              const ratio = m.tagStats.ratios[r.tag] || 0;
-              const count = m.tagStats.counts[r.tag] || 0;
-              const pct = Math.round(ratio * 100);
-              return this.fitLineHtml(m, colors[i], pct, `${pct}% (${count})`);
-            })
-            .join("");
-          return `
-          <div class="bar-row-team">
-            <span class="bar-label">${escapeHtml(r.tag)}</span>
-            ${lines}
-          </div>`;
-        })
-        .join("")}
-    `;
-  },
 };

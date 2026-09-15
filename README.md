@@ -76,13 +76,22 @@ skip that section and the app is 100% local-only and backend-free.
   (at zero extra API cost) how many wrong attempts preceded each of your ACs
   and which problems you've attempted but never solved, plus a rating
   trajectory from one extra cheap call.
-- **Codeforces Analysis** — normalizes your solved-tag ratios against what's
-  *naturally* common on Codeforces, so raw counts aren't misread ("you
-  solved 100 math and 30 trees" isn't "trees is weak" if math is just far
-  more common at your rating level). Compares you against three cohort tiers
-  (Top 500 / Top 10,000 / Average user, using real, current rating cutoffs)
-  plus Tourist by name, each toggleable between the last year and all-time.
-  See [Codeforces baseline data](#codeforces-baseline-data) for how the
+- **Codeforces Analysis** — split into two clearly-labeled groups below the
+  summary stats, since it used to be one flat run of sections with no
+  distinction between "facts about you" and "you vs. a baseline":
+  - **Profile analysis** — your own solve history, standalone, no baseline
+    or sign-in needed: Accuracy per tag, Rating trajectory, Problem
+    ratings, Solve activity, Unsolved/attempted (see below).
+  - **Comparison** — how your tag mix stacks up against a baseline, and
+    what to practice next based on the gap (see below).
+
+  Comparison normalizes your solved-tag ratios against what's *naturally*
+  common on Codeforces, so raw counts aren't misread ("you solved 100 math
+  and 30 trees" isn't "trees is weak" if math is just far more common at
+  your rating level). Compares you against three cohort tiers (Top 500 /
+  Top 10,000 / Average user, using real, current rating cutoffs) plus
+  Tourist by name, each toggleable between the last year and all-time. See
+  [Codeforces baseline data](#codeforces-baseline-data) for how the
   baseline numbers are generated. A fifth tier, **Compare with someone**,
   lets you paste any public Codeforces handle and get the same tag-mix
   comparison against that one specific player instead of a sampled cohort —
@@ -171,22 +180,29 @@ skip that section and the app is 100% local-only and backend-free.
     different, more specific problem ("we know the theory, we keep messing
     up the write-and-debug") than a knowledge gap, matching the classic
     post-contest-review distinction described in ICPC coaching writeups.
-  - **Team stats + a per-tag rating range chart.** A headline row (average
-    team rating, rating spread, one combined accuracy figure, how many of
-    the app's core ICPC tags the team has touched at all) up front, and a
-    "Tag ratings" chart showing all 3 members' real per-topic rating for
-    every core ICPC tag they have enough solves to rate (not just the
-    Role/Domain winners) — sorted by the team's best rating per tag, no
-    added commentary. Each bar is a floating min-to-max range of that
-    person's solved difficulty in the tag, not just a single averaged
-    number, with a marker at the average and the solve count alongside it
-    — solving a tag from 1000 to 2600 reads very differently from a tight
-    1700-1900 cluster even at the same average, and flattening that to one
-    number hides it. Each bar is actually built from individually-hoverable
-    100-wide rating segments (same bucketing as the Codeforces page's
-    histogram below), with opacity scaled to that bucket's share of the
-    person's solves in the tag — hover any point to see exactly how many
-    problems at that rating, in that tag, they solved.
+  - **Team stats + a compact "Tag breakdown" chart.** A headline row
+    (average team rating, rating spread, one combined accuracy figure, how
+    many of the app's core ICPC tags the team has touched at all) up front,
+    then one row per core ICPC tag with all 3 members side by side — a
+    range bar (their lowest-to-highest solved rating, marker at the
+    average) plus their rating and solve-share together in one line, sorted
+    by the team's best rating per tag, no added commentary. This used to be
+    two separate sections (a "Tag ratings" list and a "Tag mix comparison"
+    list, each iterating the same ~25 tags on its own multi-line-per-person
+    rows) — merged into one compact table-style layout since showing the
+    same tag list twice, at 3-4 lines per person each time, made the page
+    far longer than the information actually needed. A range bar beats a
+    single averaged number here too: solving a tag from 1000 to 2600 reads
+    very differently from a tight 1700-1900 cluster even at the same
+    average, and flattening that to one number hides it. Each bar is built
+    from 100-wide rating segments (same bucketing as the Codeforces page's
+    histogram below) shaded by how many solves fall in each — **hover any
+    point on a bar** for an exact count at that rating, in that tag. This
+    is a real cursor-tracking tooltip, not a native `title` per segment —
+    segments can be just a few pixels wide (unhittable on their own) and
+    live inside a clipped container (which would clip a title too), so
+    hover is computed continuously from cursor position across the whole
+    bar instead.
   - **Non-topic signals**, directly answering "where do you lack besides
     topics" — each person's overall accuracy/bug-rate, a callout when
     accuracy is notably worse specifically on implementation-heavy problems,

@@ -81,28 +81,9 @@ const CFAnalysis = {
     if (!canUseCloudTiers) this._tier = "compare";
     container.innerHTML = `
       <div id="cf-summary-root"></div>
-      <div class="report-toggle" id="cf-tier-toggle">
-        ${visibleTiers.map((t) => `<button type="button" data-tier="${t.id}" class="${t.id === this._tier ? "active" : ""}">${t.label}</button>`).join("")}
-      </div>
-      ${
-        canUseCloudTiers
-          ? ""
-          : `<p class="card-subtitle">Sign in (Dashboard → Account) to also compare against Tourist, Top 500, Top 10,000, and Average-user baselines — those need the cloud-synced sample data. "Compare with someone" works either way.</p>`
-      }
-      <div class="report-toggle" id="cf-window-toggle">
-        ${this.WINDOWS.map((w) => `<button type="button" data-window="${w.id}" class="${w.id === this._window ? "active" : ""}">${w.label}</button>`).join("")}
-      </div>
 
-      <div class="cf-analysis-section">
-        <h3>Your tag mix vs. the baseline</h3>
-        <p class="card-subtitle">
-          Each percentage is the share of <strong>solved problems that have this tag</strong>
-          &mdash; e.g. "40% vs 45%" means 40% of everything <em>you've</em> solved is tagged this
-          way, vs 45% of theirs. It's a mix comparison, not an accuracy or match score.
-        </p>
-        <p class="card-subtitle" id="cf-baseline-subtitle"></p>
-        <div id="cf-baseline-root"></div>
-      </div>
+      <h3 class="cf-group-heading">Profile analysis</h3>
+      <p class="card-subtitle">Your own solve history, on its own &mdash; no baseline or sign-in needed for any of this.</p>
       <div class="cf-analysis-section">
         <h3>Accuracy per tag</h3>
         <p class="card-subtitle">Your accuracy by tag &mdash; the share of submissions on problems you solved that were correct, plus the average wrong attempts before AC (lower is better; needs at least 2 solves in a tag to show).</p>
@@ -125,6 +106,30 @@ const CFAnalysis = {
         <h3>Unsolved / attempted</h3>
         <p class="card-subtitle">Problems you've tried but haven't solved yet &mdash; ready-made practice targets.</p>
         <div id="cf-unsolved-root" class="solved-log"></div>
+      </div>
+
+      <h3 class="cf-group-heading">Comparison</h3>
+      <p class="card-subtitle">How your tag mix stacks up against a baseline, and what to solve next based on the gap.</p>
+      <div class="report-toggle" id="cf-tier-toggle">
+        ${visibleTiers.map((t) => `<button type="button" data-tier="${t.id}" class="${t.id === this._tier ? "active" : ""}">${t.label}</button>`).join("")}
+      </div>
+      ${
+        canUseCloudTiers
+          ? ""
+          : `<p class="card-subtitle">Sign in (Dashboard → Account) to also compare against Tourist, Top 500, Top 10,000, and Average-user baselines — those need the cloud-synced sample data. "Compare with someone" works either way.</p>`
+      }
+      <div class="report-toggle" id="cf-window-toggle">
+        ${this.WINDOWS.map((w) => `<button type="button" data-window="${w.id}" class="${w.id === this._window ? "active" : ""}">${w.label}</button>`).join("")}
+      </div>
+      <div class="cf-analysis-section">
+        <h3>Your tag mix vs. the baseline</h3>
+        <p class="card-subtitle">
+          Each percentage is the share of <strong>solved problems that have this tag</strong>
+          &mdash; e.g. "40% vs 45%" means 40% of everything <em>you've</em> solved is tagged this
+          way, vs 45% of theirs. It's a mix comparison, not an accuracy or match score.
+        </p>
+        <p class="card-subtitle" id="cf-baseline-subtitle"></p>
+        <div id="cf-baseline-root"></div>
       </div>
       <div class="cf-analysis-section">
         <h3>Next problem recommendations</h3>
