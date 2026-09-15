@@ -690,6 +690,48 @@ button:disabled:hover {
   font-weight: 500;
 }
 
+.hit-score {
+  display: inline-block;
+  margin-left: 0.55rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.hit-score-5 {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.hit-score-4 {
+  background: var(--secondary-soft);
+  color: var(--secondary);
+}
+
+.hit-score-3 {
+  background: var(--bg-inset);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.hit-score-2 {
+  background: var(--bg-inset);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.hit-score-1 {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  opacity: 0.75;
+}
+
 .topic-what {
   font-size: 0.82rem;
   color: var(--text);

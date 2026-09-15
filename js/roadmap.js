@@ -2,6 +2,14 @@
  * Roadmap rendering + progress calculations. Checkbox state persists in
  * Store.data.roadmapProgress, keyed by topic id.
  */
+const HIT_SCORE_META = {
+  5: { label: "Essential", className: "hit-score-5" },
+  4: { label: "High Priority", className: "hit-score-4" },
+  3: { label: "Useful", className: "hit-score-3" },
+  2: { label: "Situational", className: "hit-score-2" },
+  1: { label: "Rare", className: "hit-score-1" },
+};
+
 const Roadmap = {
   allTopics() {
     const out = [];
@@ -171,6 +179,14 @@ const Roadmap = {
         const nameEl = document.createElement("span");
         nameEl.className = "topic-name";
         nameEl.textContent = topic.name;
+        const scoreMeta = HIT_SCORE_META[topic.hitScore];
+        if (scoreMeta) {
+          const scoreEl = document.createElement("span");
+          scoreEl.className = `hit-score ${scoreMeta.className}`;
+          scoreEl.textContent = scoreMeta.label;
+          scoreEl.title = "How important this topic is for ICPC, based on how often it's a prerequisite for other topics and how often it appears in regionals/World Finals directly.";
+          nameEl.appendChild(scoreEl);
+        }
         textWrap.appendChild(nameEl);
 
         if (topic.what) {

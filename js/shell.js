@@ -52,6 +52,10 @@ const Shell = {
       await Store.exitCloudMode();
       document.dispatchEvent(new CustomEvent("icpc:auth-changed", { detail: { signedIn: false } }));
     }
+    // Theme.init() already applied a theme at page load, using whatever Store.data was
+    // *before* this async cloud hydration swapped in the real (local or cloud) data — re-apply
+    // now so the page doesn't sit on a stale/default theme until the next manual toggle.
+    Theme.apply();
     Nav.updatePointsBadge();
   },
 

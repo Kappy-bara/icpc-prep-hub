@@ -48,9 +48,12 @@ function defaultData() {
       lastRatingSyncAt: null, // ISO timestamp, informational only
     },
     rewards: [
-      { id: "r-youtube", name: "15-minute YouTube break", cost: 20, locked: true },
-      { id: "r-treat", name: "A small treat / snack", cost: 30, locked: true },
-      { id: "r-afternoon", name: "A guilt-free lazy afternoon", cost: 150, locked: true },
+      // Costs are roughly half the old 20/30/150 — the points formula dropped by a flat 5
+      // per solve (see gamification.js), so the same "how many solves to afford this" feel
+      // needs about half the old price tag at typical solving ratings.
+      { id: "r-youtube", name: "15-minute YouTube break", cost: 10, locked: true },
+      { id: "r-treat", name: "A small treat / snack", cost: 15, locked: true },
+      { id: "r-afternoon", name: "A guilt-free lazy afternoon", cost: 75, locked: true },
     ],
     redemptions: [
       // { id, rewardId, rewardName, cost, date }

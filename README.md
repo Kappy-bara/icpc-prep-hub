@@ -35,9 +35,10 @@ skip that section and the app is 100% local-only and backend-free.
   across the roadmap's phases, with an ahead/behind indicator based on your
   actual checklist progress. No target date set? You get a sensible
   relative estimate instead of a hardcoded week-by-week table.
-- **Gamification** — points for problems you solve (`round(rating / 100)`,
-  flat 5 for unrated, ×1.5 for one focus tag you pick from Codeforces' own
-  tag list, minimum 1 point). Problems solved *before* your gamification
+- **Gamification** — points for problems you solve (`round(rating / 100) - 5`
+  for rated problems — 3 points at Codeforces' lowest rating, 800, 4 at 900,
+  and so on — flat 5 for unrated, ×1.5 for one focus tag you pick from
+  Codeforces' own tag list). Problems solved *before* your gamification
   start date are logged for stats but score 0 points, so importing your
   whole CF history doesn't hand you a windfall; that start date defaults to
   the day you verify your Codeforces handle, and a target contest date
