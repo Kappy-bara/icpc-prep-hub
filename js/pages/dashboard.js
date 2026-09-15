@@ -95,7 +95,11 @@
     }
     if (!verifyState) {
       root.innerHTML = `
-        <p class="card-subtitle">Prove you own <strong>${escapeHtml(cfHandle)}</strong> to enable cloud sync for it.</p>
+        <p class="card-subtitle">
+          <strong>${escapeHtml(cfHandle)}</strong> isn't verified yet &mdash; anyone can type in any
+          handle and sync its public solve history, so unverified data isn't necessarily yours.
+          Prove you own it here (works with or without cloud sign-in).
+        </p>
         <button id="start-verify-btn" type="button" class="btn-secondary">Start verification</button>
       `;
       $("start-verify-btn").addEventListener("click", () => {
@@ -164,7 +168,7 @@
   }
 
   function renderAccountCard() {
-    if (!CLOUD_ENABLED) return;
+    // CF handle verification works with or without cloud sync — always render it.
     renderCFVerifySection();
   }
 
@@ -255,6 +259,10 @@
     wireProfileForm();
     wireAccountCard();
     wireDataCard();
+    // In local-only mode (or before cloud auth resolves) "icpc:auth-changed" never fires, so
+    // this needs its own initial render — otherwise handle verification stays invisible forever
+    // for anyone not signed in.
+    renderAccountCard();
     refreshDynamic();
   });
 

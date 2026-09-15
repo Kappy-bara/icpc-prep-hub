@@ -17,13 +17,27 @@
     el.className = `sync-status ${kind || ""}`;
   }
 
-  /** In cloud mode, syncing/logging requires a verified CF handle (verify it on the Dashboard). */
-  function requireVerifiedIfCloud() {
-    if (Shell.isCloudMode() && !Store.data.profile.cfVerified) {
-      setSyncStatus("Verify your Codeforces handle on the Dashboard first.", "error");
-      return false;
+  /**
+   * Syncing works for any handle — Codeforces solve history is public data, so there's no
+   * reason to block it. But nothing stops you typing in someone else's handle either, so this
+   * badge makes it obvious whether the configured handle has actually been proven to be yours
+   * (see the Profile card on the Dashboard), instead of silently treating unverified data the
+   * same as verified data.
+   */
+  function renderVerifyBadge() {
+    const el = $("cf-verify-status-badge");
+    if (!el) return;
+    const { cfHandle, cfVerified } = Store.data.profile;
+    if (!cfHandle) {
+      el.textContent = "No Codeforces handle set yet — add one on the Dashboard, then come back here to sync.";
+      el.className = "card-subtitle";
+    } else if (cfVerified) {
+      el.innerHTML = `<span class="verified-note">&check; Syncing as verified handle <strong>${escapeHtml(cfHandle)}</strong>.</span>`;
+      el.className = "card-subtitle";
+    } else {
+      el.innerHTML = `&#9888; Syncing as <strong>${escapeHtml(cfHandle)}</strong>, which isn't verified yet &mdash; this could be anyone's public solve history, not necessarily yours. <a href="dashboard.html">Verify it on the Dashboard</a>.`;
+      el.className = "card-subtitle";
     }
-    return true;
   }
 
   function refreshDynamic() {
@@ -39,7 +53,6 @@
       setSyncStatus("Set your Codeforces handle on the Dashboard first.", "error");
       return;
     }
-    if (!requireVerifiedIfCloud()) return;
     setSyncStatus("Fetching…", "");
     const result = await CFSync.fetchLive(handle);
     if (!result.ok) {
@@ -68,7 +81,6 @@
       setSyncStatus("Paste the JSON response first.", "error");
       return;
     }
-    if (!requireVerifiedIfCloud()) return;
     try {
       const result = CFSync.parseManual(text);
       const { added, pointsGained } = CFSync.applyProblems(result.problems);
@@ -94,7 +106,6 @@
       setSyncStatus("Give the solve a name or a contest ID + index.", "error");
       return;
     }
-    if (!requireVerifiedIfCloud()) return;
 
     const { added, pointsGained } = CFSync.logSingle({ contestId, index, name, rating, tags, solvedDate });
     setSyncStatus(added ? `Logged (+${pointsGained} pts).` : "That problem is already logged.", added ? "success" : "");
@@ -113,11 +124,13 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     wireSyncCard();
+    renderVerifyBadge();
     refreshDynamic();
   });
 
   document.addEventListener("icpc:auth-changed", () => {
     $("manual-api-link").href = Store.data.profile.cfHandle ? CFSync.apiUrl(Store.data.profile.cfHandle) : "#";
+    renderVerifyBadge();
     refreshDynamic();
   });
 })();

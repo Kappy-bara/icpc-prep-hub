@@ -226,6 +226,14 @@ editor with no history of what changed."
   a future feature ever shows one user's data to another, that verification
   needs to move server-side (a Supabase Edge Function) before it can be
   trusted for that purpose.
+- Syncing itself never requires a verified handle — Codeforces solve history
+  is public data, so there's nothing to gate. You can point the app at any
+  handle (including someone else's) and it'll happily sync and score it.
+  Verification only exists so *you* can tell, at a glance, whether the
+  handle currently configured has actually been proven to be yours — a
+  clear badge on both the Dashboard's Profile card and the Codeforces page
+  shows unverified handles rather than silently treating them the same as
+  a verified one.
 - Cross-device sync is last-write-wins on the whole data blob, not merged —
   don't actively edit on two devices at the same moment.
 - There's no in-app account deletion flow yet; delete a user from the
