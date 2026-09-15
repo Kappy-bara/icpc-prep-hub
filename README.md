@@ -8,12 +8,14 @@ The site is a handful of plain static pages behind a shared nav — Home,
 Dashboard, Codeforces, Team, Roadmap, and Self-rule — not a single long
 scroll. See [Pages](#pages) below.
 
-By default everything is stored in your browser's `localStorage` and nothing
-is sent anywhere except the Codeforces sync request you trigger yourself. An
-optional account layer (backed by [Supabase](https://supabase.com)) lets you
-sign in with a magic link to sync your data across devices instead — see
-[Cloud sync setup](#cloud-sync-setup-optional) below. It's entirely opt-in;
-skip that section and the app is 100% local-only and backend-free.
+Everything you enter — roadmap progress, points, solved log, rewards — is
+stored only in your browser's `localStorage`, on that one device; there's no
+account system and nothing is ever synced across devices. The only network
+calls the app makes are the Codeforces sync/verification requests you
+trigger yourself, plus (optionally) reading a public, pre-computed baseline
+dataset for the Codeforces Analysis page's cohort comparisons — see
+[Codeforces baseline data](#codeforces-baseline-data) below. Skip that
+section entirely and the app is 100% local-only and backend-free.
 
 ## Features
 
@@ -92,12 +94,17 @@ skip that section and the app is 100% local-only and backend-free.
   Top 10,000 / Average user, using real, current rating cutoffs) plus
   Tourist by name, each toggleable between the last year and all-time. See
   [Codeforces baseline data](#codeforces-baseline-data) for how the
-  baseline numbers are generated. A fifth tier, **Compare with someone**,
-  lets you paste any public Codeforces handle and get the same tag-mix
-  comparison against that one specific player instead of a sampled cohort —
-  their data is fetched fresh on demand and never stored, and unlike the
-  cohort tiers it needs no account, so it's the one part of this comparison
-  that works in local-only mode too. Also on this page:
+  baseline numbers are generated. **None of the 4 cohort tiers require
+  signing in** — `cf_baseline_data`/`cf_percentiles` are public-read tables
+  (`using (true)` in the RLS policy), so the Supabase anon client can read
+  them whether or not anyone's authenticated; the only real requirement is
+  that this deployment has Supabase configured at all. A fifth tier,
+  **Compare with someone**, lets you paste any public Codeforces handle and
+  get the same tag-mix comparison against that one specific player instead
+  of a sampled cohort — their data is fetched fresh on demand and never
+  stored, and it's the one tier that works even in a fully local-only
+  deployment with no Supabase project at all (it's just a live public
+  Codeforces API call). Also on this page:
   - **Accuracy per tag** — average wrong attempts before AC, by tag.
   - **Rating trajectory** — a chart of your rating across contests, plus
     your live percentile among active rated Codeforces users.
@@ -254,13 +261,13 @@ skip that section and the app is 100% local-only and backend-free.
   — never blended. Today/last-7-days summaries, plus a rating-bucket and
   top-tags breakdown for whichever period you're looking at.
 - **Backup & restore** — export your entire local dataset as JSON, and
-  import it back — on this browser or a different one.
-- **Optional cloud sync** — sign in with a passwordless magic link to sync
-  your roadmap, points, and logs across devices. Prove you own a Codeforces
-  handle with a one-time verification (submit a compile-error solution to a
-  specific problem within a time window — the standard trick, since
-  Codeforces has no OAuth) before it's linked to your account. Entirely
-  optional; local-only mode needs none of this.
+  import it back — on this browser or a different one; that's also how you
+  move data to a new device, since nothing syncs automatically.
+- **Codeforces handle verification** — prove you own a handle with a
+  one-time check (submit a compile-error solution to a specific problem
+  within a time window — the standard trick, since Codeforces has no OAuth)
+  before its solves start earning points. This is the only "prove who you
+  are" step in the app; it isn't a login and doesn't create any account.
 - **Polish** — responsive down to ~400px, respects `prefers-color-scheme`
   with a manual light/dark/auto toggle, and a wide multi-column dashboard
   layout (side-by-side cards, a subject grid, a two-pane picker) rather than
@@ -271,16 +278,15 @@ skip that section and the app is 100% local-only and backend-free.
 | Page | What's there |
 |---|---|
 | `index.html` (Home) | A small progress teaser and links into the rest of the app |
-| `dashboard.html` | Account & Cloud Sync, Profile, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
+| `dashboard.html` | Profile, Codeforces verification, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
 | `codeforces.html` | Sync, your full solved log, Reports, and the Codeforces Analysis card |
 | `team.html` | ICPC Team Analyzer — paste 3 handles, get a role split, tag gaps, and accuracy/speed callouts |
 | `roadmap.html` | The full 99-topic, 8-subject checklist, as a subject picker + detail pane |
 | `self-rule.html` | Points overview & streak, a daily/weekly/monthly activity breakdown, the points-formula explainer, the reward catalog, and redemption history |
 
 A shared header/nav (`js/nav.js`) and a shared bootstrap (`js/shell.js`, which
-owns theme init and the auth-session → data hydration flow) run on every page,
-so sign-in state, theme, and your data are consistent no matter which page you
-land on first.
+owns theme init and the points badge) run on every page, so theme and your
+points balance are consistent no matter which page you land on first.
 
 ## Running locally
 
@@ -313,14 +319,22 @@ Prefer plain branch-based Pages instead? Delete the workflow file, set
 **Settings → Pages → Source** to **Deploy from a branch**, and pick `main` /
 `(root)`. There's no build step either way — it's static files.
 
-## Cloud sync setup (optional)
+## Codeforces baseline setup (optional)
 
-Skip this entirely if you're happy with local-only mode — the app works
-fully without it. To enable sign-in and cross-device sync:
+The app is fully usable with zero setup here — local-only mode covers the
+roadmap, points, verification, and every per-person Codeforces stat. The one
+thing this unlocks is the **Comparison** tiers on the Codeforces page
+(Tourist / Top 500 / Top 10,000 / Average user) — see [Codeforces baseline
+data](#codeforces-baseline-data) below for what those are and why they need
+this. To enable them:
 
 1. Create a free project at [supabase.com](https://supabase.com).
-2. Apply the schema in [`supabase/migrations/`](supabase/migrations). Two
-   ways to do this — pick one:
+2. Apply the schema in [`supabase/migrations/`](supabase/migrations) — this
+   creates `cf_baseline_data`, `cf_percentiles`, and
+   `cf_baseline_sync_state` (all public-read, write-only via the service
+   role), plus a `profiles` table left over from an earlier account-sync
+   feature that the app no longer uses (see Known limitations below). Two
+   ways to apply it — pick one:
    - **Supabase CLI (recommended, especially if you'll add more tables/functions
      later):**
      ```bash
@@ -332,24 +346,18 @@ fully without it. To enable sign-in and cross-device sync:
      `supabase/migrations/` plus `npx supabase db push` again — no CLI
      install needed, `npx` fetches it on demand.
    - **Manual:** open the SQL editor (left sidebar) and paste/run the
-     contents of the one file currently in `supabase/migrations/`.
-   Either way, this creates one table (`profiles`) with row-level security
-   so each user can only ever read or write their own row.
+     contents of the migration file(s) in `supabase/migrations/`.
 3. In **Project Settings → API**, copy the **Project URL** and **anon
    public** key into [`js/config.js`](js/config.js).
-4. In **Authentication → URL Configuration**, add every URL you'll run the
-   app from to **Redirect URLs** — e.g. `http://localhost:8080` for local
-   dev and `https://<your-username>.github.io/icpc-prep-hub/` for
-   production. Magic-link emails won't redirect back correctly without this.
-5. Commit `js/config.js` (or fill it in on your deployment) and reload the
-   app — the Account card will show a sign-in form instead of the "not
-   configured" message.
+4. Deploy and schedule the baseline-sync job — see [Deploying
+   it](#deploying-it) below. Until that job has run at least once, the
+   Comparison tiers show "not configured"/empty rather than fabricating
+   numbers.
 
 The `anon` key is Supabase's public client key, meant to be shipped in
-frontend code — it's not a secret, and it's safe to commit. Your data's
-protection comes entirely from the row-level security policies defined in
-the migrations (each signed-in user can only touch their own row), not from
-keeping this key hidden.
+frontend code — it's not a secret, and it's safe to commit. The baseline
+tables' protection comes from their row-level security policies (public
+read, service-role-only write), not from keeping this key hidden.
 
 ### Growing the backend later
 
@@ -400,11 +408,16 @@ editor with no history of what changed."
   A clear badge on both the Dashboard's Profile card and the Codeforces page
   shows this status, including a note on the sync result itself when points
   are stuck at 0 for this reason.
-- Cross-device sync is last-write-wins on the whole data blob, not merged —
-  don't actively edit on two devices at the same moment.
-- There's no in-app account deletion flow yet; delete a user from the
-  Supabase dashboard's Authentication tab if needed (their `profiles` row is
-  removed automatically via `on delete cascade`).
+- The `profiles` table/RLS policy/trigger defined in
+  [`supabase/migrations/`](supabase/migrations) are leftovers from an earlier
+  version of this app that had email sign-in and cross-device sync. That
+  feature was removed in favor of local-only-only storage (simpler, no
+  account-takeover surface from someone typing in a public Codeforces
+  handle), but the migration wasn't rewritten to drop the table, since doing
+  that against a project that already applied it would delete real rows
+  without asking. If you've already deployed this schema and don't need
+  `profiles`, it's safe to drop manually; a fresh deploy can skip applying
+  that part of the migration entirely.
 
 ## Codeforces baseline data
 
@@ -421,12 +434,15 @@ history fetched and averaged — both the overall solved count and the tag
 mix. Tourist is the same technique with a sample size of exactly one, by
 name.
 
-**The four cohort tiers require cloud sync to be configured** (see [Cloud
-sync setup](#cloud-sync-setup-optional) above) — there's no local-only
-fallback for those specifically, since that data genuinely can't be
-computed client-side. The fifth tier, Compare with someone, is the
-exception: it's just a live client-side fetch of one handle's public data,
-so it works with or without an account. Every other feature on the
+**The four cohort tiers require this deployment to have Supabase configured**
+(see [Codeforces baseline setup](#codeforces-baseline-setup-optional) above)
+— there's no local-only fallback for those specifically, since that data
+genuinely can't be computed client-side. Once configured, they're available
+to every visitor with no sign-in of any kind — `cf_baseline_data`/
+`cf_percentiles` are public-read tables. The fifth tier, Compare with
+someone, is the exception: it's just a live client-side fetch of one
+handle's public data, so it works even in a fully local-only deployment with
+no Supabase project at all. Every other feature on the
 Codeforces page (accuracy per tag, rating trajectory, solve activity,
 unsolved list, next-problem recommendations) also still works fully in
 local-only mode.
@@ -526,10 +542,13 @@ resource, not a one-person project.
   Finals archive, or similarly well-established references).
 - App logic is split by concern into small, dependency-free modules under
   `js/` — no build step, no bundler, no homegrown framework (Supabase's
-  client SDK, loaded from its CDN build, is the one exception):
+  client SDK, loaded from its CDN build, is the one exception, and only on
+  `codeforces.html`):
   - Cross-cutting, loaded on every page: `storage.js`, `dom-utils.js`,
-    `theme.js`, `auth.js`, `supabase-client.js`, `config.js`, `nav.js`,
-    `shell.js` (the shared bootstrap).
+    `theme.js`, `nav.js`, `shell.js` (the shared bootstrap).
+  - Codeforces-page-only, backing the baseline comparison feature:
+    `config.js`, `supabase-client.js` (see [Codeforces baseline
+    data](#codeforces-baseline-data)).
   - Feature modules, loaded only where needed: `roadmap.js` (+
     `roadmap-data.js`), `timeline.js`, `gamification.js`, `cf-sync.js`,
     `cf-verify.js`, `cf-baseline.js` (fetches synced data from Supabase —

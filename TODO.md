@@ -3,27 +3,6 @@
 Ideas that are deliberately out of scope for the current version, tracked here
 (and/or as GitHub issues) rather than built half-finished.
 
-## Cloud sync hardening
-
-Account sign-in + Supabase sync (see [README § Cloud sync
-setup](README.md#cloud-sync-setup-optional)) is in, but a few things are
-deliberately left for later rather than over-built now:
-
-- Codeforces-handle verification is currently enforced client-side only —
-  fine while every user only ever sees their own data (no leaderboards, no
-  public profiles), but it would need to move into a server-side Supabase
-  Edge Function before any feature shows one user's claimed/*verified*
-  handle to another. (The Team Analyzer's 3-handle comparison doesn't
-  trigger this — it only ever shows public Codeforces data fetched live,
-  the same as Compare with someone, never this app's own verification/
-  points state for anyone but the signed-in user.)
-- Multi-device sync is last-write-wins on the whole data blob — no
-  merge/conflict resolution if you edit on two devices at once.
-- No in-app account deletion flow (delete the user from the Supabase
-  dashboard directly; their data is removed via `on delete cascade`).
-- No password-based login option — magic link only, by design (simpler,
-  fewer footguns), but worth an issue if there's demand for it.
-
 ## Codeforces baseline sync hardening
 
 The baseline data (see [README § Codeforces baseline
@@ -49,6 +28,17 @@ over-built now:
 
 ## Other ideas
 
+- There's no account system in this app (removed the earlier email/magic-link
+  version in favor of pure local-only storage — simpler, and closed off a
+  real account-takeover shape where typing in a public Codeforces handle
+  would otherwise have acted like a login). Codeforces-handle verification is
+  enforced client-side only, which is fine as long as every feature only ever
+  shows a user their own data — if a future feature ever shows one user's
+  claimed/*verified* handle to another (e.g. a leaderboard), that check would
+  need to move server-side (a Supabase Edge Function) first. (The Team
+  Analyzer's 3-handle comparison doesn't trigger this — it only shows public
+  Codeforces data fetched live, the same as Compare with someone, never this
+  app's own verification/points state.)
 - Map raw Codeforces tags (`dp`, `binary search`, `number theory`, etc.) to
   the 99 roadmap topics, so weak-tag call-outs (Codeforces Analysis, the
   Team Analyzer's team-gap list) can link straight to "practice this roadmap

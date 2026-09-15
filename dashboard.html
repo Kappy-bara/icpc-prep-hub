@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard · ICPC Prep Hub</title>
-  <meta name="description" content="Your account & cloud sync, profile, timeline pacing, daily streak, and a roadmap progress overview." />
+  <meta name="description" content="Your profile, Codeforces verification, timeline pacing, daily streak, and a roadmap progress overview." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\u{1F3C6}</text></svg>" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -12,110 +12,67 @@
   <header id="site-nav" class="topbar"></header>
 
   <main class="container">
-    <div class="card-grid">
-      <section class="card" id="account-card">
-        <h2>Account &amp; Cloud Sync</h2>
-
-        <p id="account-card-unavailable" class="card-subtitle" hidden>
-          Cloud sync isn't configured for this deployment (see <code>js/config.js</code> and the README) &mdash;
-          the app works fully in local-only mode without it.
-        </p>
-
-        <div id="account-card-body">
-          <div id="account-signed-out">
-            <p class="card-subtitle">
-              Sign in with a magic link (no password) to sync your roadmap, points, and logs across devices.
-              Local-only mode works fine without this.
-            </p>
-            <form id="signin-form" class="form-grid">
-              <label>
-                Email
-                <input type="email" id="signin-email-input" placeholder="you@example.com" required autocomplete="email" />
-              </label>
-              <div class="form-actions">
-                <button type="submit" class="btn-primary">Send magic link</button>
-                <span id="signin-status" class="sync-status"></span>
-              </div>
-            </form>
-          </div>
-
-          <div id="account-signed-in" hidden>
-            <div class="account-header">
-              <div class="account-identity">
-                <span class="avatar" id="account-avatar"></span>
-                <div>
-                  <div class="account-email" id="account-email"></div>
-                  <span id="cloud-sync-status" class="sync-status"></span>
-                </div>
-              </div>
-              <button id="sign-out-btn" type="button" class="btn-icon">Sign out</button>
-            </div>
-          </div>
+    <section class="card" id="profile-card">
+      <h2>Profile</h2>
+      <form id="profile-form" class="form-grid">
+        <label>
+          Codeforces handle
+          <input type="text" id="cf-handle-input" placeholder="e.g. tourist" autocomplete="off" />
+        </label>
+        <label>
+          Focus tag (earn &times;1.5 points)
+          <select id="focus-tags-input">
+            <option value="">None</option>
+            <option value="2-sat">2-sat</option>
+            <option value="binary search">binary search</option>
+            <option value="bitmasks">bitmasks</option>
+            <option value="brute force">brute force</option>
+            <option value="chinese remainder theorem">chinese remainder theorem</option>
+            <option value="combinatorics">combinatorics</option>
+            <option value="constructive algorithms">constructive algorithms</option>
+            <option value="data structures">data structures</option>
+            <option value="dfs and similar">dfs and similar</option>
+            <option value="divide and conquer">divide and conquer</option>
+            <option value="dp">dp</option>
+            <option value="dsu">dsu</option>
+            <option value="expression parsing">expression parsing</option>
+            <option value="fft">fft</option>
+            <option value="flows">flows</option>
+            <option value="games">games</option>
+            <option value="geometry">geometry</option>
+            <option value="graph matchings">graph matchings</option>
+            <option value="graphs">graphs</option>
+            <option value="greedy">greedy</option>
+            <option value="hashing">hashing</option>
+            <option value="implementation">implementation</option>
+            <option value="interactive">interactive</option>
+            <option value="math">math</option>
+            <option value="matrices">matrices</option>
+            <option value="meet-in-the-middle">meet-in-the-middle</option>
+            <option value="number theory">number theory</option>
+            <option value="probabilities">probabilities</option>
+            <option value="schedules">schedules</option>
+            <option value="shortest paths">shortest paths</option>
+            <option value="sortings">sortings</option>
+            <option value="string suffix structures">string suffix structures</option>
+            <option value="strings">strings</option>
+            <option value="ternary search">ternary search</option>
+            <option value="trees">trees</option>
+            <option value="two pointers">two pointers</option>
+          </select>
+        </label>
+        <label>
+          Target contest date <span class="optional">(optional)</span>
+          <input type="date" id="target-date-input" />
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Save profile</button>
+          <span id="profile-saved-note" class="saved-note" hidden>Saved.</span>
         </div>
-      </section>
+      </form>
 
-      <section class="card" id="profile-card">
-        <h2>Profile</h2>
-        <form id="profile-form" class="form-grid">
-          <label>
-            Codeforces handle
-            <input type="text" id="cf-handle-input" placeholder="e.g. tourist" autocomplete="off" />
-          </label>
-          <label>
-            Focus tag (earn &times;1.5 points)
-            <select id="focus-tags-input">
-              <option value="">None</option>
-              <option value="2-sat">2-sat</option>
-              <option value="binary search">binary search</option>
-              <option value="bitmasks">bitmasks</option>
-              <option value="brute force">brute force</option>
-              <option value="chinese remainder theorem">chinese remainder theorem</option>
-              <option value="combinatorics">combinatorics</option>
-              <option value="constructive algorithms">constructive algorithms</option>
-              <option value="data structures">data structures</option>
-              <option value="dfs and similar">dfs and similar</option>
-              <option value="divide and conquer">divide and conquer</option>
-              <option value="dp">dp</option>
-              <option value="dsu">dsu</option>
-              <option value="expression parsing">expression parsing</option>
-              <option value="fft">fft</option>
-              <option value="flows">flows</option>
-              <option value="games">games</option>
-              <option value="geometry">geometry</option>
-              <option value="graph matchings">graph matchings</option>
-              <option value="graphs">graphs</option>
-              <option value="greedy">greedy</option>
-              <option value="hashing">hashing</option>
-              <option value="implementation">implementation</option>
-              <option value="interactive">interactive</option>
-              <option value="math">math</option>
-              <option value="matrices">matrices</option>
-              <option value="meet-in-the-middle">meet-in-the-middle</option>
-              <option value="number theory">number theory</option>
-              <option value="probabilities">probabilities</option>
-              <option value="schedules">schedules</option>
-              <option value="shortest paths">shortest paths</option>
-              <option value="sortings">sortings</option>
-              <option value="string suffix structures">string suffix structures</option>
-              <option value="strings">strings</option>
-              <option value="ternary search">ternary search</option>
-              <option value="trees">trees</option>
-              <option value="two pointers">two pointers</option>
-            </select>
-          </label>
-          <label>
-            Target contest date <span class="optional">(optional)</span>
-            <input type="date" id="target-date-input" />
-          </label>
-          <div class="form-actions">
-            <button type="submit" class="btn-primary">Save profile</button>
-            <span id="profile-saved-note" class="saved-note" hidden>Saved.</span>
-          </div>
-        </form>
-
-        <div id="cf-verify-section" class="sub-panel"></div>
-      </section>
-    </div>
+      <div id="cf-verify-section" class="sub-panel"></div>
+    </section>
 
     <div class="dashboard-timeline-row">
       <section class="card" id="timeline-card">
@@ -144,7 +101,7 @@
 
     <section class="card" id="data-card">
       <h2>Backup &amp; Restore</h2>
-      <p class="card-subtitle">Everything is stored only in this browser (or synced to your account, if signed in). Export a backup, or move your data to another device/browser.</p>
+      <p class="card-subtitle">Everything is stored only in this browser. Export a backup, or move your data to another device/browser by exporting here and importing there.</p>
       <div class="data-actions">
         <button id="export-btn" type="button" class="btn-secondary">Export JSON</button>
         <label class="file-input-label">
@@ -164,12 +121,8 @@
     </p>
   </footer>
 
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script defer src="js/config.js"></script>
-  <script defer src="js/supabase-client.js"></script>
   <script defer src="js/storage.js"></script>
   <script defer src="js/dom-utils.js"></script>
-  <script defer src="js/auth.js"></script>
   <script defer src="js/theme.js"></script>
   <script defer src="js/nav.js"></script>
   <script defer src="js/shell.js"></script>

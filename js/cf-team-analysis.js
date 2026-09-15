@@ -88,8 +88,8 @@ const TeamAnalysis = {
   ASSIGNMENT_PERMS: [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]],
 
   // Same CF rank-tier table as CFAnalysis.RANK_TITLES, duplicated rather than pulling in all of
-  // cf-analysis.js (~500 lines tied to Store.data/Shell.isCloudMode/Codeforces-page DOM ids)
-  // just for this stable 10-line constant.
+  // cf-analysis.js (~500 lines tied to Store.data/Codeforces-page DOM ids) just for this stable
+  // 10-line constant.
   RANK_TITLES: [
     [3000, "Legendary Grandmaster"],
     [2600, "International Grandmaster"],

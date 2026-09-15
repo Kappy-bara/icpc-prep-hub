@@ -21,5 +21,4 @@
   }
 
   document.addEventListener("DOMContentLoaded", render);
-  document.addEventListener("icpc:auth-changed", render);
 })();

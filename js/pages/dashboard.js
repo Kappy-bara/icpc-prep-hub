@@ -1,4 +1,4 @@
-/** Dashboard page: account/sign-in, profile, timeline, roadmap summary, recent solves, backup. */
+/** Dashboard page: profile, Codeforces verification, timeline, roadmap summary, recent solves, backup. */
 (function () {
   let verifyState = null; // { problem, startedAtMs } while a CF verification is in progress
 
@@ -27,7 +27,7 @@
       const newHandle = $("cf-handle-input").value.trim();
       Store.update((d) => {
         if (d.profile.cfHandle !== newHandle) {
-          d.profile.cfVerified = false; // handle changed — needs (re-)verification in cloud mode
+          d.profile.cfVerified = false; // handle changed — needs (re-)verification
           // Also reset the start date, not just the verified flag — otherwise switching to a
           // different (already-owned or newly-forged) handle keeps the OLD start date, and that
           // handle's entire back-catalog of solves between the old date and now would suddenly
@@ -47,43 +47,20 @@
       const note = $("profile-saved-note");
       note.hidden = false;
       setTimeout(() => (note.hidden = true), 1800);
-      renderAccountCard();
+      renderCFVerifySection();
       refreshDynamic();
     });
   }
 
-  // --- Account card: sign-in, sign-out, CF handle verification ---
+  // --- Codeforces handle verification ---
 
-  function setSigninStatus(msg, kind) {
-    const el = $("signin-status");
-    if (!el) return;
-    el.textContent = msg;
-    el.className = `sync-status ${kind || ""}`;
-  }
-
-  function showSignedIn(signedIn, email) {
-    $("account-signed-out").hidden = signedIn;
-    $("account-signed-in").hidden = !signedIn;
-    if (signedIn) {
-      $("account-email").textContent = email || "";
-      $("account-avatar").textContent = (email || "?").charAt(0).toUpperCase();
-    }
-  }
-
-  async function markVerified(handle) {
+  function markVerified() {
     Store.update((d) => {
       d.profile.cfVerified = true;
       if (!d.profile.gamificationStart) d.profile.gamificationStart = todayISODate();
     });
     verifyState = null;
     renderProfileForm();
-    if (CLOUD_ENABLED && Store._userId) {
-      try {
-        await supabaseClient.from("profiles").update({ cf_handle: handle, cf_verified: true }).eq("id", Store._userId);
-      } catch (e) {
-        console.error("Failed to persist CF verification.", e);
-      }
-    }
     renderCFVerifySection();
   }
 
@@ -112,7 +89,7 @@
         <p class="card-subtitle">
           <strong>${escapeHtml(cfHandle)}</strong> isn't verified yet &mdash; you can still sync and
           explore its data, but solves score 0 points and your rewards stay locked (see the
-          Self-rule page) until you verify. Prove you own it here (works with or without cloud sign-in).
+          Self-rule page) until you verify. Prove you own it here.
         </p>
         <button id="start-verify-btn" type="button" class="btn-secondary">Start verification</button>
       `;
@@ -151,7 +128,7 @@
         return;
       }
       if (result.verified) {
-        markVerified(cfHandle);
+        markVerified();
       } else {
         statusEl.textContent = "No matching compile-error submission found yet. Submit it, then try again.";
         statusEl.className = "sync-status error";
@@ -169,7 +146,7 @@
       try {
         const ok = CFVerify.checkManual(text, cfHandle, problem, verifyState.startedAtMs);
         if (ok) {
-          markVerified(cfHandle);
+          markVerified();
         } else {
           statusEl.textContent = "No matching compile-error submission found in that JSON.";
           statusEl.className = "sync-status error";
@@ -178,44 +155,6 @@
         statusEl.textContent = `Couldn't parse that JSON: ${e.message}`;
         statusEl.className = "sync-status error";
       }
-    });
-  }
-
-  function renderAccountCard() {
-    // CF handle verification works with or without cloud sync — always render it.
-    renderCFVerifySection();
-  }
-
-  function wireAccountCard() {
-    if (!CLOUD_ENABLED) {
-      $("account-card-unavailable").hidden = false;
-      $("account-card-body").hidden = true;
-      return;
-    }
-
-    $("signin-form").addEventListener("submit", async (evt) => {
-      evt.preventDefault();
-      const email = $("signin-email-input").value.trim();
-      if (!email) return;
-      setSigninStatus("Sending magic link…", "");
-      try {
-        await Auth.signInWithEmail(email);
-        setSigninStatus("Check your email for a sign-in link.", "success");
-      } catch (e) {
-        setSigninStatus(`Couldn't send link: ${e.message}`, "error");
-      }
-    });
-
-    $("sign-out-btn").addEventListener("click", async () => {
-      await Auth.signOut();
-    });
-
-    Store.onCloudStatus((status, detail) => {
-      const el = $("cloud-sync-status");
-      if (!el) return;
-      const labels = { saving: "Saving…", saved: "Synced", error: `Sync error: ${detail}` };
-      el.textContent = labels[status] || "";
-      el.className = `sync-status ${status === "error" ? "error" : status === "saved" ? "success" : ""}`;
     });
   }
 
@@ -243,7 +182,7 @@
         status.textContent = "Import successful.";
         status.className = "sync-status success";
         renderProfileForm();
-        renderAccountCard();
+        renderCFVerifySection();
         refreshDynamic();
         Theme.apply();
       } catch (e) {
@@ -254,13 +193,12 @@
     });
 
     $("reset-btn").addEventListener("click", () => {
-      const cloudNote = Shell.isCloudMode() ? " This also overwrites your synced cloud copy." : "";
-      if (!confirm(`This clears all ICPC Prep Hub data (roadmap progress, points, logs, rewards).${cloudNote} This can't be undone unless you've exported a backup. Continue?`)) {
+      if (!confirm("This clears all ICPC Prep Hub data (roadmap progress, points, logs, rewards) on this browser. This can't be undone unless you've exported a backup. Continue?")) {
         return;
       }
       Store.resetAll();
       renderProfileForm();
-      renderAccountCard();
+      renderCFVerifySection();
       refreshDynamic();
       Theme.apply();
       $("data-status").textContent = "All data reset.";
@@ -271,23 +209,8 @@
   document.addEventListener("DOMContentLoaded", () => {
     renderProfileForm();
     wireProfileForm();
-    wireAccountCard();
+    renderCFVerifySection();
     wireDataCard();
-    // In local-only mode (or before cloud auth resolves) "icpc:auth-changed" never fires, so
-    // this needs its own initial render — otherwise handle verification stays invisible forever
-    // for anyone not signed in.
-    renderAccountCard();
-    refreshDynamic();
-  });
-
-  document.addEventListener("icpc:auth-changed", (evt) => {
-    verifyState = null;
-    renderProfileForm();
-    if (CLOUD_ENABLED) {
-      showSignedIn(Boolean(evt.detail.signedIn), evt.detail.email);
-      if (evt.detail.error) setSigninStatus(`Couldn't load your account data: ${evt.detail.error}`, "error");
-    }
-    renderAccountCard();
     refreshDynamic();
   });
 

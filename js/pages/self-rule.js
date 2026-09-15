@@ -181,6 +181,5 @@
     wireRewardsForm();
     refresh();
   });
-  document.addEventListener("icpc:auth-changed", refresh);
   document.addEventListener("icpc:points-changed", refreshPointsChange);
 })();

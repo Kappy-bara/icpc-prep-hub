@@ -6,7 +6,7 @@
 const CFAnalysis = {
   _tier: "tourist",
   _window: "lastYear",
-  _compareHandle: "tourist", // pre-filled default; overwritten with the last handle successfully compared against
+  _compareHandle: "jiangly", // pre-filled default; overwritten with the last handle successfully compared against
   _compareProblems: null, // that handle's fetched (unfiltered) solved problems, cached to avoid re-fetching on window toggle
   _compareError: null,
   _histogramTag: "all",
@@ -93,10 +93,14 @@ const CFAnalysis = {
 
   render(container) {
     if (!container) return;
-    // The 4 cohort tiers need the server-synced baseline (cloud sign-in required); "Compare
-    // with someone" is just a public API fetch and works either way, so it's always offered —
-    // in local-only mode it's the only tier shown, since the others would just error out.
-    const canUseCloudTiers = CLOUD_ENABLED && Shell.isCloudMode();
+    // The 4 cohort tiers need the server-synced baseline table, but NOT sign-in — cf_baseline_data
+    // and cf_percentiles are public-read tables (RLS policy `using (true)`, checked against the
+    // actual migration this session), so the anon Supabase client can read them whether or not
+    // anyone's signed in. The only real requirement is that this deployment has Supabase
+    // configured at all (CLOUD_ENABLED) — a fully local-only deployment (no Supabase project)
+    // genuinely has no server anywhere to serve this data from, so "Compare with someone" (a
+    // public Codeforces API call, no backend needed) is the only tier that still works there.
+    const canUseCloudTiers = CLOUD_ENABLED;
     const visibleTiers = canUseCloudTiers ? this.TIERS : this.TIERS.filter((t) => t.id === "compare");
     if (!canUseCloudTiers) this._tier = "compare";
     container.innerHTML = `
@@ -136,7 +140,7 @@ const CFAnalysis = {
       ${
         canUseCloudTiers
           ? ""
-          : `<p class="card-subtitle">Sign in (Dashboard → Account) to also compare against Tourist, Top 500, Top 10,000, and Average-user baselines — those need the cloud-synced sample data. "Compare with someone" works either way.</p>`
+          : `<p class="card-subtitle">This deployment doesn't have cloud sync configured, so there's no server anywhere to serve the Tourist / Top 500 / Top 10,000 / Average-user sample data from. "Compare with someone" still works — it's just a live public Codeforces API call, no backend needed.</p>`
       }
       <div class="report-toggle" id="cf-window-toggle">
         ${this.WINDOWS.map((w) => `<button type="button" data-window="${w.id}" class="${w.id === this._window ? "active" : ""}">${w.label}</button>`).join("")}
@@ -194,8 +198,8 @@ const CFAnalysis = {
   async handleRecommend() {
     const statusEl = $("cf-recommend-status");
     const root = $("cf-recommend-root");
-    if (!CLOUD_ENABLED || !Shell.isCloudMode() || !CFBaseline.isLoaded() || this._tier === "compare") {
-      statusEl.textContent = 'Sign in and select a baseline tier above (not "Compare with someone") first — recommendations are based on your weak tags from there.';
+    if (!CLOUD_ENABLED || !CFBaseline.isLoaded() || this._tier === "compare") {
+      statusEl.textContent = 'Select a baseline tier above (not "Compare with someone") first — recommendations are based on your weak tags from there.';
       statusEl.className = "sync-status error";
       return;
     }

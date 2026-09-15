@@ -135,10 +135,4 @@
     renderVerifyBadge();
     refreshDynamic();
   });
-
-  document.addEventListener("icpc:auth-changed", () => {
-    $("manual-api-link").href = Store.data.profile.cfHandle ? CFSync.apiUrl(Store.data.profile.cfHandle) : "#";
-    renderVerifyBadge();
-    refreshDynamic();
-  });
 })();

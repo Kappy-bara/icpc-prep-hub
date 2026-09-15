@@ -1,13 +1,13 @@
 /**
- * Compares the signed-in user's own solved-tag ratios against real-player-sampled
- * baseline data synced daily by a Supabase Edge Function (see
- * supabase/functions/sync-cf-baseline and README "Codeforces baseline data").
- * Fetched live from the `cf_baseline_data` / `cf_percentiles` tables — requires cloud
- * mode (sign-in); there's no local/offline fallback for the cohort tiers specifically,
- * since that data genuinely can't be computed client-side. The one-off "compare with a
- * specific handle" mode (compareWithHandleProblems) is the local-mode-friendly
- * alternative — it's just a public API fetch, no server-side data needed. Rendered by
- * js/cf-analysis.js.
+ * Compares your own solved-tag ratios against real-player-sampled baseline data synced
+ * daily by a Supabase Edge Function (see supabase/functions/sync-cf-baseline and README
+ * "Codeforces baseline data"). Fetched live from the `cf_baseline_data` / `cf_percentiles`
+ * tables — public-read, no sign-in needed, but this deployment must have Supabase
+ * configured (see js/config.js); there's no local/offline fallback for the cohort tiers
+ * specifically, since that data genuinely can't be computed client-side. The one-off
+ * "compare with a specific handle" mode (compareWithHandleProblems) is the fully-local-
+ * friendly alternative — it's just a public API fetch, no server-side data needed.
+ * Rendered by js/cf-analysis.js.
  */
 const CF_BASELINE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const CF_BASELINE_MIN_SOLVES = 5;
@@ -174,9 +174,10 @@ const CFBaseline = {
 
   /**
    * Fetches one specific Codeforces handle's live public solve history — not stored anywhere
-   * (never touches your own solvedLog or points, purely read-only for comparison). Works with
-   * or without cloud sign-in, unlike the cohort tiers, since it's just a client-side fetch of
-   * public data instead of the server-synced baseline. Resolves { ok, problems } or
+   * (never touches your own solvedLog or points, purely read-only for comparison). Works even
+   * in a fully local-only deployment with no Supabase project at all, unlike the cohort tiers,
+   * since it's just a client-side fetch of public data instead of the server-synced baseline.
+   * Resolves { ok, problems } or
    * { ok: false, error }; cache the `problems` and pass to compareWithHandleProblems() so
    * switching the last-year/all-time window doesn't require re-fetching.
    */

@@ -37,8 +37,4 @@
     prefillOwnHandle();
     wireForm();
   });
-
-  document.addEventListener("icpc:auth-changed", () => {
-    prefillOwnHandle();
-  });
 })();
