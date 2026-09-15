@@ -173,6 +173,13 @@ const Roadmap = {
         nameEl.textContent = topic.name;
         textWrap.appendChild(nameEl);
 
+        if (topic.what) {
+          const whatEl = document.createElement("span");
+          whatEl.className = "topic-what";
+          whatEl.textContent = topic.what;
+          textWrap.appendChild(whatEl);
+        }
+
         const whyEl = document.createElement("span");
         whyEl.className = "topic-why";
         whyEl.textContent = topic.why;

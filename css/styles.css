@@ -690,6 +690,11 @@ button:disabled:hover {
   font-weight: 500;
 }
 
+.topic-what {
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
 .topic-why {
   font-size: 0.82rem;
   color: var(--text-muted);

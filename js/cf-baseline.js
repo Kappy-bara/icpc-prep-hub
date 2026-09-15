@@ -12,6 +12,12 @@ const CF_BASELINE_MIN_SOLVES = 5;
 // for this tag — dividing by a near-zero denominator would blow any nonzero solve up into a
 // meaningless "Excellent". Below this, don't compute a ratio at all; say so instead.
 const CF_BASELINE_MIN_EXPECTED = 0.5;
+// Laplace/additive smoothing added to both sides of the ratio: r = (yourCount + K) / (expectedCount + K).
+// Without this, a tiny sample on either side produces wild, overconfident ratios — "1 solve vs
+// an average of 0.6" is technically r=1.67 ("Strong") from 1 data point, not real evidence. Adding
+// K "phantom" solves to both sides pulls small samples toward On-Par (r=1) and only lets a verdict
+// swing to Strong/Excellent once you've actually solved enough in that tag to trust it.
+const CF_BASELINE_SMOOTHING_K = 5;
 
 function cfBaselineCleanTags(tags) {
   return (tags || []).filter((t) => !t.startsWith("*"));
@@ -19,8 +25,9 @@ function cfBaselineCleanTags(tags) {
 
 /**
  * Classifies yourCount against expectedCount (= baselineRatio * yourTotal — the count you'd
- * have if you matched the baseline's tag mix exactly). R = yourCount / expectedCount is the
- * single normalized signal driving both the verdict band and the color hue.
+ * have if you matched the baseline's tag mix exactly). R = (yourCount + K) / (expectedCount + K)
+ * — see CF_BASELINE_SMOOTHING_K — is the single normalized signal driving both the verdict band
+ * and the color hue.
  *
  *   R <  0.3           Very Weak
  *   0.3 <= R < 0.6      Weak
@@ -36,7 +43,7 @@ function cfBaselineCleanTags(tags) {
 function cfBaselineClassify(yourCount, expectedCount) {
   if (yourCount === 0) return { verdict: "start", label: "Just Start Buddy", r: 0 };
   if (expectedCount < CF_BASELINE_MIN_EXPECTED) return { verdict: "rare", label: "Rare Tag — No Baseline", r: null };
-  const r = yourCount / expectedCount;
+  const r = (yourCount + CF_BASELINE_SMOOTHING_K) / (expectedCount + CF_BASELINE_SMOOTHING_K);
   if (r < 0.3) return { verdict: "very-weak", label: "Very Weak", r };
   if (r < 0.6) return { verdict: "weak", label: "Weak", r };
   if (r < 1.25) return { verdict: "on-par", label: "On-Par", r };
