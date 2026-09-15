@@ -1480,8 +1480,11 @@ details p {
   white-space: nowrap;
 }
 
-/* Team Analyzer tag-rating chart: a floating min-max range instead of a single flat bar, so the
-   spread of difficulty within a tag is visible, not just its average. */
+/* Team Analyzer tag-rating chart: built from individually-hoverable 100-wide rating segments
+   (not one smooth fill), so hovering a specific spot on the bar reveals exactly how many
+   problems at that rating, in that tag, this person solved — a mini histogram-per-row rather
+   than a single flattened average. Segments live in their own clipped/rounded wrapper so the
+   average marker (a sibling, not inside it) can still stick out past the track's edges. */
 .rating-range-track {
   position: relative;
   height: 8px;
@@ -1490,12 +1493,17 @@ details p {
   border-radius: 999px;
 }
 
-.rating-range-fill {
+.rating-range-segments {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.rating-range-segment {
   position: absolute;
   top: 0;
   height: 100%;
-  border-radius: 999px;
-  opacity: 0.35;
 }
 
 .rating-range-marker {

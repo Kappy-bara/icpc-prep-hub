@@ -182,7 +182,11 @@ skip that section and the app is 100% local-only and backend-free.
     number, with a marker at the average and the solve count alongside it
     — solving a tag from 1000 to 2600 reads very differently from a tight
     1700-1900 cluster even at the same average, and flattening that to one
-    number hides it.
+    number hides it. Each bar is actually built from individually-hoverable
+    100-wide rating segments (same bucketing as the Codeforces page's
+    histogram below), with opacity scaled to that bucket's share of the
+    person's solves in the tag — hover any point to see exactly how many
+    problems at that rating, in that tag, they solved.
   - **Non-topic signals**, directly answering "where do you lack besides
     topics" — each person's overall accuracy/bug-rate, a callout when
     accuracy is notably worse specifically on implementation-heavy problems,
