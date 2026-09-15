@@ -92,6 +92,13 @@ skip that section and the app is 100% local-only and backend-free.
   - **Accuracy per tag** — average wrong attempts before AC, by tag.
   - **Rating trajectory** — a chart of your rating across contests, plus
     your live percentile among active rated Codeforces users.
+  - **Problem ratings** — a histogram of solved-problem count by difficulty
+    band, bars colored like Codeforces' own rating tiers (gray → green →
+    cyan → blue → violet → orange → red), optionally filtered to a single
+    tag via a dropdown so you can see, say, just your `dp` solves' rating
+    spread instead of everything at once. The bucket range trims itself to
+    whatever's actually in the (filtered) data, so it never shows a long
+    empty tail for ratings you haven't reached yet.
   - **Solve activity** — a GitHub-style heatmap of your solving consistency
     over the last year.
   - **Unsolved/attempted** — problems you've tried but not solved, as
@@ -111,35 +118,68 @@ skip that section and the app is 100% local-only and backend-free.
     classifies problems by topic, the Coder is the fastest/cleanest
     implementer of standard-technique problems, the Thinker cracks the
     hardest, most insight-heavy ones. Each role is scored from the signal
-    that actually matches its real job — Reader from topic *breadth*
-    (Pielou's evenness index over each person's tag distribution, blended
-    with distinct-tag count — a generalist beats a narrow specialist here
-    regardless of rating), Coder from standard-technique tag strength blended
-    with accuracy and live-contest solve speed, Thinker from insight-tag
-    strength blended with current rating and "reach" (the average rating of
-    a person's *hardest* solves minus their own rating — a ceiling/ambition
-    signal grounded in how Codeforces itself defines problem difficulty
-    relative to a solver's rating, using their peak reach rather than a
-    lifetime average so a decade of easy warm-up solves doesn't swamp the
-    signal for experienced players). The 3-way assignment is picked by
-    exhaustively scoring all 6 possible permutations, not a first-come-
-    first-served greedy pick, which is provably non-optimal even at this
-    size (the classic assignment problem, generally solved by the Hungarian
-    algorithm — trivial to brute-force at exactly 3 members).
+    that actually matches its real job:
+    - **Reader** — topic *breadth*, computed over only each person's most
+      recent ~150 solves, not their lifetime history (Pielou's evenness
+      index blended with distinct-tag count). Lifetime counts were tried
+      first and produced a real bug: a player with thousands of career
+      solves mechanically touches nearly every tag in existence just from
+      volume, which made the highest-volume player look like the best
+      "generalist" regardless of whether that was still true of their
+      *current* solving pattern — a sample-size artifact, not a real signal.
+    - **Coder** — per-topic *rating* (not solve-count ratio — see below) in
+      standard-technique tags, blended with accuracy and live-contest solve
+      speed.
+    - **Thinker** — per-topic rating in insight-heavy tags, blended with
+      current rating and "reach" (the average rating of a person's
+      *hardest* solves minus their own rating — a ceiling/ambition signal
+      grounded in how Codeforces itself defines problem difficulty relative
+      to a solver's rating, using peak reach rather than a lifetime average
+      so a decade of easy warm-up solves doesn't swamp the signal for
+      experienced players).
+
+    The 3-way assignment is picked by exhaustively scoring all 6 possible
+    permutations, not a first-come-first-served greedy pick, which is
+    provably non-optimal even at this size (the classic assignment problem,
+    generally solved by the Hungarian algorithm — trivial to brute-force at
+    exactly 3 members).
+  - **Strength is a per-topic RATING, not a solve-count ratio.** A tag's
+    "share of your solves" only measures how much you *practiced* it, not
+    how good you are at it — solving 100 easy problems in a tag produces a
+    higher ratio than solving 20 hard ones, despite the second person
+    clearly being stronger there. Coder/Thinker scoring and the whole Domain
+    split below instead use each person's average Codeforces *rating*
+    within a tag (the same number space as their own rating, so "~2800" in
+    a domain reads exactly like a rating) — a genuine strength measure, not
+    a practice-volume measure. The tag-mix comparison chart still shows
+    plain solve-share percentages (now with the raw count alongside each
+    one) since that's a legitimately different, still-useful question:
+    *where does this person's practice concentrate*, as opposed to *how
+    strong are they*.
   - **Domain split — Math & Number Theory / Graphs & Data Structures /
     Geometry & Strings.** A second, independent axis from Role — real teams
     also assign topic ownership ("whoever's problem this clearly is, they
     take it") separately from workflow role, and the two don't have to line
-    up. Same optimal-assignment approach, scored purely from each person's
-    tag-cluster concentration in that domain.
+    up. Same optimal-assignment approach, scored from each person's
+    per-topic rating (see above) in that domain's tags.
   - **Team gaps, split into two real failure modes.** *Knowledge gaps* —
-    topics nobody on the team solves much of at all. *Execution gaps* —
-    topics the team attempts plenty but still gets wrong a lot (aggregated
-    accuracy across all 3 members, not an average of percentages, which
-    would misweight small samples) — a different, more specific problem
-    ("we know the theory, we keep messing up the write-and-debug") than a
-    knowledge gap, matching the classic post-contest-review distinction
-    described in ICPC coaching writeups.
+    topics nobody on the team solves much of at all, now shown with the
+    actual best-coverage percentage per tag. *Execution gaps* — topics the
+    team attempts plenty but still gets wrong a lot (aggregated accuracy
+    across all 3 members' raw counts, not an average of percentages, which
+    would misweight small samples), shown with the real attempt count — a
+    different, more specific problem ("we know the theory, we keep messing
+    up the write-and-debug") than a knowledge gap, matching the classic
+    post-contest-review distinction described in ICPC coaching writeups.
+  - **Team stats + a full scoring breakdown.** A headline row (average team
+    rating, rating spread, one combined accuracy figure, how many of the
+    app's core ICPC tags the team has touched at all) up front, and a
+    collapsible "Full role & domain scoring breakdown" showing every
+    member's actual score/rating for every role and domain (not just the
+    winner), plus a "close backup" or "single point of failure" note per
+    role/domain based on how close the #1 and #2 scores are — so the
+    Team Insights card is a real comparative breakdown, not just a bare
+    winner-takes-all label and a gap list.
   - **Non-topic signals**, directly answering "where do you lack besides
     topics" — each person's overall accuracy/bug-rate, a callout when
     accuracy is notably worse specifically on implementation-heavy problems,

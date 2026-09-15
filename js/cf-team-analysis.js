@@ -8,8 +8,22 @@
  * The role/domain model and the tag buckets behind it are grounded in real ICPC coaching
  * literature, not invented from scratch — see README's "ICPC Team Analyzer" section for the
  * sources (Neel Mishra's "ICPC Team Strategy"; the KTH contest-wiki "Team strategy" page; and
- * Codeforces' own "Rating the Difficulty of Codeforces Problems" for the reach/ceiling metric).
- * Reader breadth uses Pielou's evenness index, a standard diversity-index technique.
+ * Codeforces' own "Rating the Difficulty of Codeforces Problems" for the reach/ceiling metric
+ * and for the per-topic rating methodology below).
+ *
+ * Two deliberate methodology choices worth calling out (both found by testing against real
+ * lopsided teams, not designed upfront):
+ *  - Strength-in-a-topic is measured as a per-topic RATING (the average Codeforces difficulty of
+ *    the problems solved in that topic — the same number space as a player's own rating), not a
+ *    solve-count RATIO. A ratio conflates "how much I practice this" with "how good I am at it"
+ *    — someone can rack up a high ratio solving 100 easy problems in a tag while someone else
+ *    solves 20 hard ones in it and is clearly stronger. See topicRatings()/topicRatingAvg().
+ *  - Reader breadth is computed over each member's most RECENT solves (READER_RECENT_WINDOW),
+ *    not their lifetime history. A player with thousands of career solves will have mechanically
+ *    touched nearly every tag in existence just from sheer volume, which made the highest-volume
+ *    player look like the best "generalist" regardless of whether that's true — a sample-size
+ *    artifact, not a real signal. See recentTagCounts().
+ * Reader breadth itself uses Pielou's evenness index, a standard diversity-index technique.
  *
  * "Insights" here are a deterministic template built from the real computed numbers, not a live
  * AI call — an LLM API key can't be safely embedded in this site's client-side JS the way the
@@ -91,6 +105,8 @@ const TeamAnalysis = {
 
   MIN_CONTEST_SOLVES_FOR_SPEED: 5,
   MIN_TAG_SAMPLE: 2,
+  MIN_TOPIC_RATING_SAMPLE: 3, // fewer rated solves in a tag than this = not enough signal to trust its average rating
+  READER_RECENT_WINDOW: 150, // Reader breadth looks at only this many of a member's MOST RECENT solves — see file header
   KNOWLEDGE_GAP_RATIO_CUTOFF: 0.03,
   EXECUTION_GAP_MIN_COUNT: 6,
   EXECUTION_GAP_ACCURACY_CUTOFF: 60,
@@ -99,6 +115,8 @@ const TeamAnalysis = {
   IMPLEMENTATION_GAP_PTS: 15,
   REACH_TOP_N: 10, // how many of a member's hardest solves define their "ceiling"
   REACH_MIN_SAMPLE: 3, // below this many rated solves, reach isn't a meaningful signal
+  DOMAIN_BACKUP_RATING_GAP: 200, // roughly one CF color-tier — below this, the #2 person counts as a close backup
+  ROLE_BACKUP_MARGIN: 0.15, // same idea on the 0..1 normalized role-fit scale
   TAG_COMPARISON_MAX_ROWS: 20,
 
   rankTitle(rating) {
@@ -109,7 +127,7 @@ const TeamAnalysis = {
     return null;
   },
 
-  /** One handle's full picture: solved problems, tag ratios, accuracy, live-contest speed, rating. */
+  /** One handle's full picture: solved problems, tag ratios/ratings, accuracy, live-contest speed, rating. */
   async fetchMemberData(handle) {
     const [subsResult, ratingResult] = await Promise.all([CFSync.fetchRawSubmissions(handle), CFSync.fetchRatingHistory(handle)]);
     if (!subsResult.ok) return { handle, ok: false, error: subsResult.error };
@@ -117,12 +135,13 @@ const TeamAnalysis = {
     const problems = CFSync.extractSolved(submissions);
     const attemptStats = CFSync.deriveAttemptStats(submissions);
     const tagStats = CFBaseline.tagRatiosFromEntries(problems);
+    const topicRatings = this.topicRatings(problems);
     const speed = this.computeSolveSpeed(submissions);
     const accuracyByTag = this.computeAccuracyByTag(problems, attemptStats);
     const overallAccuracy = this.computeOverallAccuracy(problems, attemptStats);
     const ratingHistory = ratingResult.ok ? ratingResult.history : [];
     const currentRating = ratingHistory.length ? ratingHistory[ratingHistory.length - 1].newRating : null;
-    return { handle, ok: true, problems, tagStats, speed, accuracyByTag, overallAccuracy, currentRating, totalSolved: problems.length };
+    return { handle, ok: true, problems, tagStats, topicRatings, speed, accuracyByTag, overallAccuracy, currentRating, totalSolved: problems.length };
   },
 
   /**
@@ -177,16 +196,90 @@ const TeamAnalysis = {
       count++;
       totalWrong += attemptStats[p.key] || 0;
     }
-    return { accuracyPct: (count / (count + totalWrong)) * 100, count };
+    return { accuracyPct: (count / (count + totalWrong)) * 100, count, totalWrong };
   },
 
   /**
-   * Pielou's evenness index (a standard ecology/information-theory diversity measure) applied to
-   * a member's tag counts: 1.0 means solves are spread perfectly evenly across every tag they've
-   * touched (a true generalist — good Reader material), 0 means everything is concentrated in
-   * one tag (a narrow specialist). Computed on tag-occurrence counts, not solved-problem counts,
-   * since one problem can carry several tags — treating each tag-occurrence as one unit of the
-   * distribution is what makes this a valid probability distribution to take entropy over.
+   * Team-wide headline numbers, shown up front so "Team insights" doesn't open straight into a
+   * bare gap list — average/spread of rating (spread flags a very lopsided team early), one
+   * combined accuracy figure (aggregated from raw counts across all 3 members, not an average of
+   * percentages, which would misweight whoever has fewer solves), and how much of the app's core
+   * ICPC tag list the team has touched at all vs. never gone near.
+   */
+  computeTeamStats(members) {
+    const ratings = members.map((m) => m.currentRating).filter((r) => r != null);
+    const avgRating = ratings.length ? Math.round(ratings.reduce((s, r) => s + r, 0) / ratings.length) : null;
+    const ratingSpread = ratings.length >= 2 ? Math.max(...ratings) - Math.min(...ratings) : null;
+    let count = 0;
+    let totalWrong = 0;
+    for (const m of members) {
+      if (!m.overallAccuracy) continue;
+      count += m.overallAccuracy.count;
+      totalWrong += m.overallAccuracy.totalWrong;
+    }
+    const combinedAccuracy = count ? (count / (count + totalWrong)) * 100 : null;
+    const tagsCovered = this.CORE_TAGS.filter((tag) => members.some((m) => (m.tagStats.counts[tag] || 0) > 0)).length;
+    return { avgRating, ratingSpread, combinedAccuracy, tagsCovered, totalCoreTags: this.CORE_TAGS.length };
+  },
+
+  /**
+   * Per-tag STRENGTH, not practice volume: the average Codeforces rating of the problems a
+   * member has solved that carry each tag — the same number space as a player's own rating, so
+   * "Math & Number Theory: ~2800" reads exactly like a rating. This is deliberately NOT a solve-
+   * count ratio (see file header) — a ratio only tells you how much of someone's practice
+   * concentrated on a tag, not how hard a problem in it they can actually solve. Gated by
+   * MIN_TOPIC_RATING_SAMPLE per tag so a tag touched only once or twice doesn't produce a noisy
+   * "rating" off a single data point.
+   */
+  topicRatings(problems) {
+    const byTag = {};
+    for (const p of problems) {
+      if (p.rating == null) continue;
+      for (const tag of p.tags || []) {
+        if (!byTag[tag]) byTag[tag] = { sum: 0, count: 0 };
+        byTag[tag].sum += p.rating;
+        byTag[tag].count += 1;
+      }
+    }
+    const out = {};
+    for (const [tag, s] of Object.entries(byTag)) {
+      if (s.count < this.MIN_TOPIC_RATING_SAMPLE) continue;
+      out[tag] = { avgRating: s.sum / s.count, count: s.count };
+    }
+    return out;
+  },
+
+  /** Average topic rating across `tags`, over only the ones this member has enough signal for; null if none. */
+  topicRatingAvg(member, tags) {
+    const vals = tags.map((t) => member.topicRatings[t]).filter(Boolean).map((s) => s.avgRating);
+    if (!vals.length) return null;
+    return vals.reduce((s, v) => s + v, 0) / vals.length;
+  },
+
+  /**
+   * Tag-occurrence counts over only a member's most recent N solves (READER_RECENT_WINDOW) — see
+   * file header for why lifetime counts are the wrong input for a breadth/generalist signal.
+   * `p.tags` can include CF's internal "*special" marker tag; filtered out the same way
+   * CFBaseline's own tag-ratio helper does, so this stays consistent with tagStats elsewhere.
+   */
+  recentTagCounts(member, n) {
+    const recent = [...member.problems].sort((a, b) => (a.solvedDate < b.solvedDate ? 1 : -1)).slice(0, n);
+    const counts = {};
+    for (const p of recent) {
+      for (const tag of cfBaselineCleanTags(p.tags)) {
+        counts[tag] = (counts[tag] || 0) + 1;
+      }
+    }
+    return counts;
+  },
+
+  /**
+   * Pielou's evenness index (a standard ecology/information-theory diversity measure): 1.0 means
+   * solves are spread perfectly evenly across every tag touched (a true generalist — good Reader
+   * material), 0 means everything is concentrated in one tag (a narrow specialist). Computed on
+   * tag-occurrence counts, not solved-problem counts, since one problem can carry several tags —
+   * treating each tag-occurrence as one unit of the distribution is what makes this a valid
+   * probability distribution to take entropy over.
    */
   tagEvenness(counts) {
     const values = Object.values(counts).filter((c) => c > 0);
@@ -279,65 +372,71 @@ const TeamAnalysis = {
     return `Especially bug-prone on "${worst.tag}" problems (${worst.pct.toFixed(0)}% vs ${overall.accuracyPct.toFixed(0)}% overall accuracy) — worth extra care there.`;
   },
 
-  tagAvg(member, tags) {
-    return tags.reduce((s, t) => s + (member.tagStats.ratios[t] || 0), 0) / tags.length;
-  },
-
   /**
    * Reader/Coder/Thinker scores, each built from signals that actually match that role's real
-   * job (see file header for sourcing) rather than one generic "tag cluster" formula for all
-   * three:
+   * job (see file header for sourcing) rather than one generic formula for all three:
    *  - Reader: breadth, not raw skill — Pielou's evenness (see tagEvenness) blended with distinct
-   *    tag count. A Reader's job is recognizing ANY problem type fast, so a broad generalist beats
-   *    a narrow specialist here regardless of rating.
-   *  - Coder: tag strength in "standard technique" problems, blended with overall accuracy and
-   *    live-contest solve speed — the three things that define fast, clean, standard-problem
-   *    execution.
-   *  - Thinker: tag strength in "insight-heavy" problems, blended with current rating and
-   *    "reach" (computeReach) — the two direct measures of raw problem-solving power research
-   *    ties to this role, on top of topic profile.
-   * Every optional component (accuracy, speed, rating, reach) degrades gracefully via
-   * normalizeValues when a member doesn't have that data, instead of unfairly zeroing them out.
+   *    tag count, both computed over each member's RECENT solves only (see recentTagCounts and
+   *    the file header for why). A Reader's job is recognizing ANY problem type fast, so a broad
+   *    recent generalist beats a narrow specialist here regardless of rating or career length.
+   *  - Coder: per-topic RATING (see topicRatingAvg) in "standard technique" tags, blended with
+   *    overall accuracy and live-contest solve speed — the three things that define fast, clean,
+   *    standard-problem execution.
+   *  - Thinker: per-topic RATING in "insight-heavy" tags, blended with current rating and "reach"
+   *    (computeReach) — the two direct measures of raw problem-solving power research ties to
+   *    this role, on top of a topic-specific difficulty ceiling.
+   * Every component is null-safe end to end: normalizeValues degrades gracefully whenever a
+   * member lacks a given signal (no live-contest submissions, no rated solves in a tag bucket,
+   * etc.), falling back to whatever data they do have instead of unfairly zeroing them out.
    */
   scoreRoles(members) {
-    const evenness = members.map((m) => this.tagEvenness(m.tagStats.counts));
-    const breadthCount = members.map((m) => Object.keys(m.tagStats.counts).length);
+    const recentCounts = members.map((m) => this.recentTagCounts(m, this.READER_RECENT_WINDOW));
+    const evenness = recentCounts.map((c) => this.tagEvenness(c));
+    const breadthCount = recentCounts.map((c) => Object.keys(c).length);
     const nEven = normalizeValues(evenness);
     const nBreadth = normalizeValues(breadthCount);
     const readerScore = members.map((_, i) => 0.5 * nEven[i] + 0.5 * nBreadth[i]);
 
-    const coderTagRaw = members.map((m) => this.tagAvg(m, this.CODER_TAGS));
+    const coderTagRaw = members.map((m) => this.topicRatingAvg(m, this.CODER_TAGS));
     const accRaw = members.map((m) => (m.overallAccuracy ? m.overallAccuracy.accuracyPct / 100 : null));
     const speedRaw = members.map((m) => (m.speed.insufficientData ? null : -m.speed.medianMinutes));
     const nCoderTag = normalizeValues(coderTagRaw);
     const nAcc = normalizeValues(accRaw);
     const nSpeed = normalizeValues(speedRaw);
     const coderScore = members.map((_, i) => {
-      const parts = [nCoderTag[i]];
+      const parts = [];
+      if (coderTagRaw[i] != null) parts.push(nCoderTag[i]);
       if (accRaw[i] != null) parts.push(nAcc[i]);
       if (speedRaw[i] != null) parts.push(nSpeed[i]);
-      return parts.reduce((s, v) => s + v, 0) / parts.length;
+      return parts.length ? parts.reduce((s, v) => s + v, 0) / parts.length : 0.5;
     });
 
-    const thinkerTagRaw = members.map((m) => this.tagAvg(m, this.THINKER_TAGS));
+    const thinkerTagRaw = members.map((m) => this.topicRatingAvg(m, this.THINKER_TAGS));
     const ratingRaw = members.map((m) => m.currentRating);
     const reachRaw = members.map((m) => this.computeReach(m));
     const nThinkerTag = normalizeValues(thinkerTagRaw);
     const nRating = normalizeValues(ratingRaw);
     const nReach = normalizeValues(reachRaw);
     const thinkerScore = members.map((_, i) => {
-      const parts = [nThinkerTag[i]];
+      const parts = [];
+      if (thinkerTagRaw[i] != null) parts.push(nThinkerTag[i]);
       if (ratingRaw[i] != null) parts.push(nRating[i]);
       if (reachRaw[i] != null) parts.push(nReach[i]);
-      return parts.reduce((s, v) => s + v, 0) / parts.length;
+      return parts.length ? parts.reduce((s, v) => s + v, 0) / parts.length : 0.5;
     });
 
     return members.map((_, i) => [readerScore[i], coderScore[i], thinkerScore[i]]);
   },
 
-  /** Pure tag-cluster ownership — the domain axis is deliberately simpler than roles: just "whose solves concentrate here." */
+  /** Raw (non-normalized) per-topic rating per domain — [domainIdx][memberIdx], null where a member lacks enough data. */
+  rawDomainRatings(members) {
+    return this.DOMAINS.map((d) => members.map((m) => this.topicRatingAvg(m, d.tags)));
+  },
+
+  /** Domain ownership from per-topic RATING (not solve-count ratio) — "whose problem is this, strength-wise." */
   scoreDomains(members) {
-    const byDomain = this.DOMAINS.map((d) => normalizeValues(members.map((m) => this.tagAvg(m, d.tags))));
+    const raw = this.rawDomainRatings(members);
+    const byDomain = raw.map((col) => normalizeValues(col));
     return members.map((_, mi) => byDomain.map((col) => col[mi]));
   },
 
@@ -379,7 +478,7 @@ const TeamAnalysis = {
   },
 
   /** Deterministic, data-grounded summary — not free-form generation, see file header. */
-  buildSummaryParagraph(member, roleLabel, domainLabel, speedRankLabel) {
+  buildSummaryParagraph(member, roleLabel, domainLabel, domainRating, speedRankLabel) {
     const rank = this.rankTitle(member.currentRating);
     const ratingPart = member.currentRating != null ? `rated ${member.currentRating}${rank ? ` (${rank})` : ""}` : "unrated";
     const topTags = this.topTags(member, 2);
@@ -387,7 +486,8 @@ const TeamAnalysis = {
     const acc = member.overallAccuracy;
     const accPart = acc ? ` ${this.accuracyLabel(acc.accuracyPct)} accuracy (${acc.accuracyPct.toFixed(0)}%).` : " Not enough solves yet to measure accuracy.";
     const speedPart = speedRankLabel ? ` ${speedRankLabel}.` : member.speed.insufficientData ? " Not enough live-contest data to rank solving speed." : "";
-    return `${member.handle} is ${ratingPart}, ${member.totalSolved} solved.${topTagsPart}${accPart}${speedPart} Suggested role: ${roleLabel} (owns ${domainLabel}).`;
+    const domainPart = domainRating != null ? `${domainLabel}, ~${Math.round(domainRating)} rated` : domainLabel;
+    return `${member.handle} is ${ratingPart}, ${member.totalSolved} solved.${topTagsPart}${accPart}${speedPart} Suggested role: ${roleLabel} (owns ${domainPart}).`;
   },
 
   /**
@@ -423,10 +523,20 @@ const TeamAnalysis = {
     const roleAssignment = this.bestAssignment(roleMatrix);
     const domainMatrix = this.scoreDomains(members);
     const domainAssignment = this.bestAssignment(domainMatrix);
+    const rawDomainRatings = this.rawDomainRatings(members);
     const speedLabels = this.rankSpeeds(members);
     const knowledgeGaps = this.computeKnowledgeGaps(members);
     const executionGaps = this.computeExecutionGaps(members);
+    const teamStats = this.computeTeamStats(members);
     const totalUnique = new Set(members.flatMap((m) => m.problems.map((p) => p.key))).size;
+
+    const statTile = (value, label) => `<div class="stat-tile"><div class="stat-value">${value}</div><div class="stat-label">${label}</div></div>`;
+    const teamStatsHtml = [
+      statTile(teamStats.avgRating ?? "—", "avg. team rating"),
+      statTile(teamStats.ratingSpread != null ? teamStats.ratingSpread : "—", "rating spread"),
+      statTile(teamStats.combinedAccuracy != null ? teamStats.combinedAccuracy.toFixed(0) + "%" : "—", "combined accuracy"),
+      statTile(`${teamStats.tagsCovered}/${teamStats.totalCoreTags}`, "core tags covered"),
+    ].join("");
 
     const rolesTableHtml = members
       .map((m, i) => {
@@ -435,14 +545,19 @@ const TeamAnalysis = {
       })
       .join("");
     const domainsTableHtml = members
-      .map((m, i) => `<div class="stat-tile"><div class="stat-value">${escapeHtml(this.DOMAINS[domainAssignment[i]].label)}</div><div class="stat-label">${escapeHtml(m.handle)}</div></div>`)
+      .map((m, i) => {
+        const domainIdx = domainAssignment[i];
+        const rating = rawDomainRatings[domainIdx][i];
+        const ratingLabel = rating != null ? `~${Math.round(rating)} rated` : "not enough data yet";
+        return `<div class="stat-tile" title="${escapeHtml(ratingLabel)}"><div class="stat-value">${escapeHtml(this.DOMAINS[domainIdx].label)}</div><div class="stat-label">${escapeHtml(m.handle)} &middot; ${escapeHtml(ratingLabel)}</div></div>`;
+      })
       .join("");
 
     const knowledgeGapsHtml = knowledgeGaps.length
-      ? `<p class="card-subtitle"><strong>Knowledge gaps</strong> &mdash; nobody on the team solves much of: ${knowledgeGaps.map((g) => escapeHtml(g.tag)).join(", ")}. Worth learning together.</p>`
+      ? `<p class="card-subtitle"><strong>Knowledge gaps</strong> &mdash; nobody on the team solves much of: ${knowledgeGaps.map((g) => `${escapeHtml(g.tag)} (best: ${Math.round(g.maxRatio * 100)}%)`).join(", ")}. Worth learning together.</p>`
       : `<p class="card-subtitle"><strong>Knowledge gaps</strong> &mdash; none found among common ICPC topics; solid shared coverage.</p>`;
     const executionGapsHtml = executionGaps.length
-      ? `<p class="card-subtitle"><strong>Execution gaps</strong> &mdash; the team attempts these plenty but still gets them wrong a lot: ${executionGaps.map((g) => `${escapeHtml(g.tag)} (${g.accuracyPct.toFixed(0)}%)`).join(", ")}. Not a knowledge problem &mdash; worth extra care on the write-and-debug side.</p>`
+      ? `<p class="card-subtitle"><strong>Execution gaps</strong> &mdash; the team attempts these plenty but still gets them wrong a lot: ${executionGaps.map((g) => `${escapeHtml(g.tag)} (${g.accuracyPct.toFixed(0)}% on ${g.count} attempts)`).join(", ")}. Not a knowledge problem &mdash; worth extra care on the write-and-debug side.</p>`
       : `<p class="card-subtitle"><strong>Execution gaps</strong> &mdash; none found; accuracy holds up on the tags the team attempts often.</p>`;
 
     root.innerHTML = `
@@ -452,21 +567,42 @@ const TeamAnalysis = {
           Suggested roles based on solve history &mdash; a starting point, not a verdict.
           ${members.length} handles compared, ${totalUnique} unique problems solved across the team.
         </p>
+        <div class="report-windows">${teamStatsHtml}</div>
         <h3 class="card-section-label">Role (who does what during the contest)</h3>
         <div class="report-windows">${rolesTableHtml}</div>
         <h3 class="card-section-label">Domain (whose problem is it when it's clearly one topic)</h3>
         <div class="report-windows">${domainsTableHtml}</div>
+        <details class="sub-panel">
+          <summary>Full role &amp; domain scoring breakdown</summary>
+          <p class="card-subtitle">
+            How close was the call? Bars are each person's score for that role/domain relative to
+            the other two on this team (not an absolute measure) &mdash; domain rows also show the
+            real average Codeforces rating behind the bar. A "close backup" note means someone else
+            could reasonably cover that role/domain if the assigned person is unavailable.
+          </p>
+          <h4 class="card-section-label">Role fit</h4>
+          ${this.renderRoleFitHtml(members, roleMatrix)}
+          <h4 class="card-section-label">Domain rating</h4>
+          ${this.renderDomainFitHtml(members, domainMatrix, rawDomainRatings)}
+        </details>
         ${knowledgeGapsHtml}
         ${executionGapsHtml}
       </section>
       <div class="card-grid">
-        ${members.map((m, i) => this.memberCardHtml(m, this.ROLES[roleAssignment[i]].label, this.DOMAINS[domainAssignment[i]].label, speedLabels[i])).join("")}
+        ${members
+          .map((m, i) => {
+            const domainIdx = domainAssignment[i];
+            return this.memberCardHtml(m, this.ROLES[roleAssignment[i]].label, this.DOMAINS[domainIdx].label, rawDomainRatings[domainIdx][i], speedLabels[i]);
+          })
+          .join("")}
       </div>
       <section class="card">
         <h2>Tag mix comparison</h2>
         <p class="card-subtitle">
-          Each bar shows what share of that person's solves carry the tag &mdash; the same
-          "share of solves" percentage used elsewhere in this app, not a head-to-head score.
+          Each bar shows what share of that person's solves carry the tag (with the raw solve
+          count alongside it) &mdash; the same "share of solves" percentage used elsewhere in this
+          app, not a head-to-head score. This is about *practice volume* per tag; see "Domain
+          rating" above for actual per-topic strength.
         </p>
         <div id="team-tag-comparison-root"></div>
       </section>
@@ -474,7 +610,56 @@ const TeamAnalysis = {
     this.renderTagComparison($("team-tag-comparison-root"), members);
   },
 
-  memberCardHtml(member, roleLabel, domainLabel, speedRankLabel) {
+  /** Small colored dot + handle + bar + value row, shared by the role-fit and domain-fit breakdowns and the tag comparison. */
+  fitLineHtml(member, color, pct, valueLabel) {
+    return `
+      <div class="bar-team-line">
+        <span class="bar-team-dot" style="background:${color}"></span>
+        <span class="bar-team-handle">${escapeHtml(member.handle)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <span class="bar-count">${escapeHtml(valueLabel)}</span>
+      </div>`;
+  },
+
+  renderRoleFitHtml(members, roleMatrix) {
+    const colors = ["var(--accent)", "var(--secondary)", "var(--warn)"];
+    return this.ROLES.map((role, ri) => {
+      const scored = members.map((m, mi) => ({ mi, score: roleMatrix[mi][ri] })).sort((a, b) => b.score - a.score);
+      const gap = scored[0].score - scored[1].score;
+      const backupNote =
+        gap < this.ROLE_BACKUP_MARGIN
+          ? `${escapeHtml(members[scored[1].mi].handle)} is a solid backup here.`
+          : `${escapeHtml(members[scored[0].mi].handle)} is clearly ahead here &mdash; a single point of failure if they're unavailable.`;
+      const lines = members.map((m, i) => this.fitLineHtml(m, colors[i], Math.round(roleMatrix[i][ri] * 100), String(Math.round(roleMatrix[i][ri] * 100)))).join("");
+      return `<div class="bar-row-team"><span class="bar-label">${escapeHtml(role.label)}</span>${lines}<p class="card-subtitle" style="margin:.3rem 0 0">${backupNote}</p></div>`;
+    }).join("");
+  },
+
+  renderDomainFitHtml(members, domainMatrix, rawDomainRatings) {
+    const colors = ["var(--accent)", "var(--secondary)", "var(--warn)"];
+    return this.DOMAINS.map((domain, di) => {
+      const raw = rawDomainRatings[di];
+      const scored = members.map((m, mi) => ({ mi, rating: raw[mi] })).filter((x) => x.rating != null).sort((a, b) => b.rating - a.rating);
+      let backupNote;
+      if (scored.length >= 2) {
+        const gap = scored[0].rating - scored[1].rating;
+        backupNote =
+          gap < this.DOMAIN_BACKUP_RATING_GAP
+            ? `${escapeHtml(members[scored[1].mi].handle)} is a close backup here (${Math.round(gap)} rating apart).`
+            : `${escapeHtml(members[scored[0].mi].handle)} is well ahead here (+${Math.round(gap)} over ${escapeHtml(members[scored[1].mi].handle)}) &mdash; a single point of failure if they're unavailable.`;
+      } else if (scored.length === 1) {
+        backupNote = `Only ${escapeHtml(members[scored[0].mi].handle)} has enough solves here to measure a rating.`;
+      } else {
+        backupNote = `Nobody on the team has enough solves here yet to measure a rating.`;
+      }
+      const lines = members
+        .map((m, i) => this.fitLineHtml(m, colors[i], Math.round(domainMatrix[i][di] * 100), raw[i] != null ? `~${Math.round(raw[i])}` : "n/a"))
+        .join("");
+      return `<div class="bar-row-team"><span class="bar-label">${escapeHtml(domain.label)}</span>${lines}<p class="card-subtitle" style="margin:.3rem 0 0">${backupNote}</p></div>`;
+    }).join("");
+  },
+
+  memberCardHtml(member, roleLabel, domainLabel, domainRating, speedRankLabel) {
     const rank = this.rankTitle(member.currentRating);
     const acc = member.overallAccuracy;
     const accPct = acc ? acc.accuracyPct.toFixed(0) : null;
@@ -484,12 +669,13 @@ const TeamAnalysis = {
         ? "N/A"
         : `${Math.round(member.speed.medianMinutes)}m`;
     const implCallout = this.implementationCallout(member);
-    const summary = this.buildSummaryParagraph(member, roleLabel, domainLabel, speedRankLabel);
+    const summary = this.buildSummaryParagraph(member, roleLabel, domainLabel, domainRating, speedRankLabel);
     const topTags = this.topTags(member, 4);
+    const domainTitle = domainRating != null ? `~${Math.round(domainRating)} rated in this domain` : "not enough solves here to rate yet";
 
     return `
       <div class="card">
-        <h3>${escapeHtml(member.handle)} <span class="role-badge">${escapeHtml(roleLabel)}</span><span class="role-badge domain-badge">${escapeHtml(domainLabel)}</span></h3>
+        <h3>${escapeHtml(member.handle)} <span class="role-badge">${escapeHtml(roleLabel)}</span><span class="role-badge domain-badge" title="${escapeHtml(domainTitle)}">${escapeHtml(domainLabel)}</span></h3>
         <p class="card-subtitle">${escapeHtml(summary)}</p>
         <div class="report-windows">
           <div class="stat-tile"><div class="stat-value">${member.currentRating ?? "—"}</div><div class="stat-label">${escapeHtml(rank || "rating")}</div></div>
@@ -528,14 +714,9 @@ const TeamAnalysis = {
           const lines = members
             .map((m, i) => {
               const ratio = m.tagStats.ratios[r.tag] || 0;
+              const count = m.tagStats.counts[r.tag] || 0;
               const pct = Math.round(ratio * 100);
-              return `
-              <div class="bar-team-line">
-                <span class="bar-team-dot" style="background:${colors[i]}"></span>
-                <span class="bar-team-handle">${escapeHtml(m.handle)}</span>
-                <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${colors[i]}"></div></div>
-                <span class="bar-count">${pct}%</span>
-              </div>`;
+              return this.fitLineHtml(m, colors[i], pct, `${pct}% (${count})`);
             })
             .join("");
           return `

@@ -9,6 +9,29 @@ const CFAnalysis = {
   _compareHandle: "", // last handle successfully compared against
   _compareProblems: null, // that handle's fetched (unfiltered) solved problems, cached to avoid re-fetching on window toggle
   _compareError: null,
+  _histogramTag: "all",
+
+  // Approximate real Codeforces rating-tier colors, checked high-to-low. Purely cosmetic (ties a
+  // bar's color to the difficulty band it represents, same idea as the site's own color-coded
+  // handles), not tied to the app's `--accent`/`--secondary` theme tokens on purpose — these are
+  // meant to read as "Codeforces colors," which stay fixed regardless of light/dark theme.
+  RATING_COLOR_BANDS: [
+    [3000, "#7f1d1d"], // Legendary Grandmaster
+    [2400, "#e02b2b"], // Grandmaster / International Grandmaster
+    [2100, "#f0a020"], // Master / International Master
+    [1900, "#b23bcf"], // Candidate Master
+    [1600, "#3366ff"], // Expert
+    [1400, "#17a2b8"], // Specialist
+    [1200, "#2eb82e"], // Pupil
+    [0, "#8a8a8a"], // Newbie
+  ],
+
+  ratingColor(rating) {
+    for (const [cutoff, color] of this.RATING_COLOR_BANDS) {
+      if (rating >= cutoff) return color;
+    }
+    return this.RATING_COLOR_BANDS[this.RATING_COLOR_BANDS.length - 1][1];
+  },
 
   TIERS: [
     { id: "tourist", label: "Tourist" },
@@ -85,6 +108,11 @@ const CFAnalysis = {
         <div id="cf-rating-chart-root"></div>
       </div>
       <div class="cf-analysis-section">
+        <h3>Problem ratings</h3>
+        <p class="card-subtitle">How many solved problems fall in each difficulty band, colored like Codeforces' own rating tiers &mdash; optionally filtered to a single tag.</p>
+        <div id="cf-rating-histogram-root"></div>
+      </div>
+      <div class="cf-analysis-section">
         <h3>Solve activity</h3>
         <div id="cf-heatmap-root"></div>
       </div>
@@ -121,6 +149,7 @@ const CFAnalysis = {
     this.renderBaseline($("cf-baseline-root"), $("cf-baseline-subtitle"));
     this.renderAccuracy($("cf-accuracy-root"));
     this.renderRatingChart($("cf-rating-chart-root"));
+    this.renderRatingHistogram($("cf-rating-histogram-root"));
     this.renderHeatmap($("cf-heatmap-root"));
     this.renderUnsolved($("cf-unsolved-root"));
     $("cf-recommend-root").innerHTML = "";
@@ -478,6 +507,95 @@ const CFAnalysis = {
       </div>
       <p class="card-subtitle">${n} contest${n === 1 ? "" : "s"} · current rating ${last.newRating}${rankLabel}${peakLabel}${percentileLabel}</p>
     `;
+  },
+
+  /** Distinct tags across the synced solved log, most-solved first — for the histogram's tag filter. */
+  histogramTagOptions() {
+    const counts = {};
+    for (const p of Store.data.solvedLog) {
+      for (const tag of cfBaselineCleanTags(p.tags)) counts[tag] = (counts[tag] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([tag]) => tag);
+  },
+
+  /**
+   * Histogram of solved-problem count by rating (100-wide buckets), optionally filtered to one
+   * tag. Bars are colored like real Codeforces rating tiers (see RATING_COLOR_BANDS) so the
+   * difficulty band reads at a glance the way a CF handle color does. Bucket range is trimmed to
+   * [min, max] of whatever's actually in the filtered data, not a fixed 800-3500 span, so someone
+   * who's only solved up to 1800 doesn't see a long empty tail.
+   */
+  renderRatingHistogram(root) {
+    if (!root) return;
+    const tagFilter = this._histogramTag;
+    const solved = Store.data.solvedLog.filter((p) => p.rating != null && (tagFilter === "all" || (p.tags || []).includes(tagFilter)));
+    const tagOptions = this.histogramTagOptions();
+
+    const selectHtml = `
+      <div class="sync-actions">
+        <label class="card-subtitle" for="cf-histogram-tag-select" style="margin:0">Filter by tag:</label>
+        <select id="cf-histogram-tag-select" class="compare-handle-input">
+          <option value="all" ${tagFilter === "all" ? "selected" : ""}>All tags</option>
+          ${tagOptions.map((t) => `<option value="${escapeHtml(t)}" ${t === tagFilter ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
+        </select>
+      </div>
+    `;
+
+    if (!solved.length) {
+      const emptyMsg =
+        tagFilter === "all" ? "Sync your Codeforces handle above to see this." : `No rated solves tagged "${escapeHtml(tagFilter)}" yet.`;
+      root.innerHTML = `${selectHtml}<p class="empty-note">${emptyMsg}</p>`;
+      this.wireHistogramSelect(root);
+      return;
+    }
+
+    const counts = {};
+    for (const p of solved) {
+      const bucket = Math.floor(p.rating / 100) * 100;
+      counts[bucket] = (counts[bucket] || 0) + 1;
+    }
+    const seenBuckets = Object.keys(counts).map(Number);
+    const minBucket = Math.min(...seenBuckets);
+    const maxBucket = Math.max(...seenBuckets);
+    const allBuckets = [];
+    for (let b = minBucket; b <= maxBucket; b += 100) allBuckets.push(b);
+    const maxCount = Math.max(...allBuckets.map((b) => counts[b] || 0));
+
+    root.innerHTML = `
+      ${selectHtml}
+      <div class="rating-histogram-row">
+        <div class="rating-histogram-axis">
+          <span>${maxCount}</span>
+          <span>${Math.round(maxCount / 2)}</span>
+          <span>0</span>
+        </div>
+        <div class="rating-histogram-body">
+          <div class="rating-histogram-bars">
+            ${allBuckets
+              .map((b) => {
+                const count = counts[b] || 0;
+                const pct = maxCount ? (count / maxCount) * 100 : 0;
+                return `<div class="rating-histogram-bar-wrap" title="${b}: ${count} solved"><div class="rating-histogram-bar" style="height:${pct}%;background:${this.ratingColor(b)}"></div></div>`;
+              })
+              .join("")}
+          </div>
+          <div class="rating-histogram-labels">${allBuckets.map((b) => `<span>${b}</span>`).join("")}</div>
+        </div>
+      </div>
+      <p class="card-subtitle">${solved.length} rated solve${solved.length === 1 ? "" : "s"}${tagFilter === "all" ? "" : ` tagged "${escapeHtml(tagFilter)}"`}.</p>
+    `;
+    this.wireHistogramSelect(root);
+  },
+
+  wireHistogramSelect(root) {
+    const select = root.querySelector("#cf-histogram-tag-select");
+    if (!select) return;
+    select.addEventListener("change", () => {
+      this._histogramTag = select.value;
+      this.renderRatingHistogram(root);
+    });
   },
 
   renderUnsolved(root) {
