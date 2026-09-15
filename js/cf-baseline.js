@@ -3,8 +3,11 @@
  * baseline data synced daily by a Supabase Edge Function (see
  * supabase/functions/sync-cf-baseline and README "Codeforces baseline data").
  * Fetched live from the `cf_baseline_data` / `cf_percentiles` tables — requires cloud
- * mode (sign-in); there's no local/offline fallback for this feature specifically,
- * since the data genuinely can't be computed client-side. Rendered by js/cf-analysis.js.
+ * mode (sign-in); there's no local/offline fallback for the cohort tiers specifically,
+ * since that data genuinely can't be computed client-side. The one-off "compare with a
+ * specific handle" mode (compareWithHandleProblems) is the local-mode-friendly
+ * alternative — it's just a public API fetch, no server-side data needed. Rendered by
+ * js/cf-analysis.js.
  */
 const CF_BASELINE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const CF_BASELINE_MIN_SOLVES = 5;
@@ -119,10 +122,8 @@ const CFBaseline = {
     return window === "lastYear" ? new Date(Date.now() - CF_BASELINE_YEAR_MS).toISOString() : null;
   },
 
-  /** { total, counts: {tag: count}, ratios: {tag: ratio} } for the user's own solvedLog in the given window. */
-  yourTagRatios(window) {
-    const cutoff = this.windowCutoffISO(window);
-    const entries = Store.data.solvedLog.filter((p) => !cutoff || p.solvedDate >= cutoff);
+  /** { total, counts: {tag: count}, ratios: {tag: ratio} } for an arbitrary list of {tags} entries. */
+  tagRatiosFromEntries(entries) {
     const total = entries.length;
     const counts = {};
     for (const p of entries) {
@@ -133,6 +134,13 @@ const CFBaseline = {
     const ratios = {};
     for (const [tag, count] of Object.entries(counts)) ratios[tag] = count / total;
     return { total, counts, ratios };
+  },
+
+  /** { total, counts: {tag: count}, ratios: {tag: ratio} } for the user's own solvedLog in the given window. */
+  yourTagRatios(window) {
+    const cutoff = this.windowCutoffISO(window);
+    const entries = Store.data.solvedLog.filter((p) => !cutoff || p.solvedDate >= cutoff);
+    return this.tagRatiosFromEntries(entries);
   },
 
   /** Per-tag comparison rows for the given tier ("tourist"|"top500"|"top10000"|"average") and window ("allTime"|"lastYear"). Call ensureLoaded() first. */
@@ -161,6 +169,53 @@ const CFBaseline = {
       ratingCutoff: tierData.ratingCutoff,
       avgSolvedCount: baselineWindow.problemCount,
       sampleSize: baselineWindow.sampleSize,
+    };
+  },
+
+  /**
+   * Fetches one specific Codeforces handle's live public solve history — not stored anywhere
+   * (never touches your own solvedLog or points, purely read-only for comparison). Works with
+   * or without cloud sign-in, unlike the cohort tiers, since it's just a client-side fetch of
+   * public data instead of the server-synced baseline. Resolves { ok, problems } or
+   * { ok: false, error }; cache the `problems` and pass to compareWithHandleProblems() so
+   * switching the last-year/all-time window doesn't require re-fetching.
+   */
+  async fetchHandleProblems(handle) {
+    const result = await CFSync.fetchLive(handle);
+    if (!result.ok) return { ok: false, error: result.error };
+    return { ok: true, problems: result.problems };
+  },
+
+  /** Pure (no fetch) per-tag comparison against an already-fetched handle's problems, for the given window. */
+  compareWithHandleProblems({ handle, problems, window }) {
+    const cutoff = this.windowCutoffISO(window);
+    const theirEntries = problems.filter((p) => !cutoff || p.solvedDate >= cutoff);
+    const theirs = this.tagRatiosFromEntries(theirEntries);
+    const yours = this.yourTagRatios(window);
+
+    if (!theirs.total) {
+      return { ok: false, error: `${handle} has no solves in this window yet.` };
+    }
+
+    const allTags = new Set([...Object.keys(theirs.ratios), ...Object.keys(yours.ratios)]);
+    const rows = [...allTags].map((tag) => {
+      const yourRatio = yours.ratios[tag] || 0;
+      const yourCount = yours.counts[tag] || 0;
+      const baselineRatio = theirs.ratios[tag] || 0;
+      const expectedCount = baselineRatio * yours.total;
+      const { verdict, label, r } = cfBaselineClassify(yourCount, expectedCount);
+      const hue = r === null ? null : cfBaselineHue(r);
+      return { tag, yourRatio, yourCount, baselineRatio, expectedCount, verdict, verdictLabel: label, r, hue };
+    });
+    rows.sort((a, b) => b.baselineRatio - a.baselineRatio);
+
+    return {
+      ok: true,
+      rows,
+      yourTotal: yours.total,
+      theirTotal: theirs.total,
+      theirHandle: handle,
+      insufficientData: yours.total < CF_BASELINE_MIN_SOLVES,
     };
   },
 

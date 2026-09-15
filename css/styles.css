@@ -872,6 +872,11 @@ button:disabled:hover {
   margin-bottom: 0.9rem;
 }
 
+.compare-handle-input {
+  width: 220px;
+  max-width: 100%;
+}
+
 .sync-status {
   font-size: 0.85rem;
   color: var(--text-muted);

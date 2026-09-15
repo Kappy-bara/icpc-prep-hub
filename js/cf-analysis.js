@@ -6,12 +6,16 @@
 const CFAnalysis = {
   _tier: "top500",
   _window: "lastYear",
+  _compareHandle: "", // last handle successfully compared against
+  _compareProblems: null, // that handle's fetched (unfiltered) solved problems, cached to avoid re-fetching on window toggle
+  _compareError: null,
 
   TIERS: [
     { id: "tourist", label: "Tourist" },
     { id: "top500", label: "Top 500" },
     { id: "top10000", label: "Top 10,000" },
     { id: "average", label: "Average user" },
+    { id: "compare", label: "Compare with someone" },
   ],
   WINDOWS: [
     { id: "lastYear", label: "Last year" },
@@ -41,20 +45,20 @@ const CFAnalysis = {
 
   render(container) {
     if (!container) return;
-    const showToggles = CLOUD_ENABLED && Shell.isCloudMode();
+    // The 4 cohort tiers need the server-synced baseline (cloud sign-in required); "Compare
+    // with someone" is just a public API fetch and works either way, so it's always offered —
+    // in local-only mode it's the only tier shown, since the others would just error out.
+    const canUseCloudTiers = CLOUD_ENABLED && Shell.isCloudMode();
+    const visibleTiers = canUseCloudTiers ? this.TIERS : this.TIERS.filter((t) => t.id === "compare");
+    if (!canUseCloudTiers) this._tier = "compare";
     container.innerHTML = `
       <div id="cf-summary-root"></div>
-      ${
-        showToggles
-          ? `
       <div class="report-toggle" id="cf-tier-toggle">
-        ${this.TIERS.map((t) => `<button type="button" data-tier="${t.id}" class="${t.id === this._tier ? "active" : ""}">${t.label}</button>`).join("")}
+        ${visibleTiers.map((t) => `<button type="button" data-tier="${t.id}" class="${t.id === this._tier ? "active" : ""}">${t.label}</button>`).join("")}
       </div>
       <div class="report-toggle" id="cf-window-toggle">
         ${this.WINDOWS.map((w) => `<button type="button" data-window="${w.id}" class="${w.id === this._window ? "active" : ""}">${w.label}</button>`).join("")}
-      </div>`
-          : ""
-      }
+      </div>
 
       <div class="cf-analysis-section">
         <h3>Your tag mix vs. the baseline</h3>
@@ -121,8 +125,8 @@ const CFAnalysis = {
   async handleRecommend() {
     const statusEl = $("cf-recommend-status");
     const root = $("cf-recommend-root");
-    if (!CLOUD_ENABLED || !Shell.isCloudMode() || !CFBaseline.isLoaded()) {
-      statusEl.textContent = "Sign in and view the tag-mix comparison above first — recommendations are based on your weak tags from there.";
+    if (!CLOUD_ENABLED || !Shell.isCloudMode() || !CFBaseline.isLoaded() || this._tier === "compare") {
+      statusEl.textContent = 'Sign in and select a baseline tier above (not "Compare with someone") first — recommendations are based on your weak tags from there.';
       statusEl.className = "sync-status error";
       return;
     }
@@ -226,54 +230,12 @@ const CFAnalysis = {
     `;
   },
 
-  async renderBaseline(root, subtitleEl) {
-    if (!CLOUD_ENABLED || !Shell.isCloudMode()) {
-      subtitleEl.textContent = "Requires an account — this comparison is synced from real player data on our server.";
-      root.innerHTML = `<p class="empty-note">Sign in on the <a href="dashboard.html">Dashboard</a> to see your tag mix compared against real sampled Codeforces players. Everything else on this page still works without an account.</p>`;
-      return;
-    }
-    if (!CFBaseline.isLoaded()) {
-      subtitleEl.textContent = "Loading…";
-      root.innerHTML = `<p class="empty-note">Loading baseline data…</p>`;
-      try {
-        await CFBaseline.ensureLoaded();
-      } catch (e) {
-        subtitleEl.textContent = "";
-        root.innerHTML = `<p class="empty-note">Couldn't load baseline data: ${escapeHtml(e.message)}</p>`;
-        return;
-      }
-    }
-
-    const result = CFBaseline.compareTags({ tier: this._tier, window: this._window });
-    let cutoffLabel;
-    if (this._tier === "tourist") cutoffLabel = "a specific named player";
-    else if (this._tier === "average") cutoffLabel = `~${result.ratingCutoff} rated`;
-    else cutoffLabel = `${result.ratingCutoff}+ rated`;
-    const sampleNote = this._tier === "tourist" ? "" : `, averaged across 500 real sampled players, updated daily`;
-    subtitleEl.textContent = `${result.tierLabel} (${cutoffLabel}${sampleNote})`;
-
-    if (!result.sampleSize) {
-      root.innerHTML = `<p class="empty-note">No baseline data for this window yet.</p>`;
-      return;
-    }
-    if (result.insufficientData) {
-      root.innerHTML = `<p class="empty-note">Log or sync at least 5 solves in this window to see a comparison (you have ${result.yourTotal}).</p>`;
-      return;
-    }
-
-    const rows = result.rows;
+  /** Legend + the actual bar rows — shared by the cohort-tier comparison and the "compare with someone" tier. */
+  renderComparisonRowsHtml(rows) {
     const maxRatio = Math.max(0.01, ...rows.map((r) => Math.max(r.yourRatio, r.baselineRatio)));
     const pct = (r) => Math.round(r * 100);
     const verdictColor = (r) => (r.hue === null ? "var(--text-muted)" : `hsl(${r.hue.toFixed(0)}, 68%, 50%)`);
-
-    const windowLabel = this._window === "lastYear" ? "last year" : "all time";
-    const totalsLabel = this._tier === "tourist" ? `Tourist solved (${windowLabel})` : `${result.tierLabel} avg. solved (${windowLabel})`;
-
-    root.innerHTML = `
-      <div class="report-windows cf-totals">
-        <div class="stat-tile"><div class="stat-value">${result.yourTotal}</div><div class="stat-label">you solved (${windowLabel})</div></div>
-        <div class="stat-tile"><div class="stat-value">${result.avgSolvedCount}</div><div class="stat-label">${totalsLabel}</div></div>
-      </div>
+    return `
       <div class="cf-legend">
         <span><span class="cf-legend-swatch" style="background:var(--text-muted);opacity:.35"></span>Baseline</span>
         <span class="cf-gradient-legend">
@@ -300,6 +262,116 @@ const CFAnalysis = {
           })
           .join("")}
       </div>
+    `;
+  },
+
+  renderCompareTier(root, subtitleEl) {
+    subtitleEl.textContent = "Paste any public Codeforces handle to compare your tag mix against theirs — nothing is synced or stored, it's fetched fresh each time.";
+
+    let resultHtml = "";
+    if (this._compareError) {
+      resultHtml = `<p class="sync-status error">${escapeHtml(this._compareError)}</p>`;
+    } else if (this._compareProblems) {
+      const result = CFBaseline.compareWithHandleProblems({ handle: this._compareHandle, problems: this._compareProblems, window: this._window });
+      if (!result.ok) {
+        resultHtml = `<p class="sync-status error">${escapeHtml(result.error)}</p>`;
+      } else if (result.insufficientData) {
+        resultHtml = `<p class="empty-note">Log or sync at least 5 of your own solves in this window to see a comparison (you have ${result.yourTotal}).</p>`;
+      } else {
+        const windowLabel = this._window === "lastYear" ? "last year" : "all time";
+        resultHtml = `
+          <div class="report-windows cf-totals">
+            <div class="stat-tile"><div class="stat-value">${result.yourTotal}</div><div class="stat-label">you solved (${windowLabel})</div></div>
+            <div class="stat-tile"><div class="stat-value">${result.theirTotal}</div><div class="stat-label">${escapeHtml(result.theirHandle)} solved (${windowLabel})</div></div>
+          </div>
+          ${this.renderComparisonRowsHtml(result.rows)}
+        `;
+      }
+    }
+
+    root.innerHTML = `
+      <div class="sync-actions">
+        <input type="text" id="cf-compare-handle-input" class="compare-handle-input" placeholder="e.g. tourist" value="${escapeHtml(this._compareHandle)}" />
+        <button id="cf-compare-btn" type="button" class="btn-secondary">Compare</button>
+        <span id="cf-compare-status" class="sync-status"></span>
+      </div>
+      ${resultHtml}
+    `;
+
+    $("cf-compare-btn").addEventListener("click", () => this.handleCompare());
+    $("cf-compare-handle-input").addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter") {
+        evt.preventDefault();
+        this.handleCompare();
+      }
+    });
+  },
+
+  async handleCompare() {
+    const handle = $("cf-compare-handle-input").value.trim();
+    const statusEl = $("cf-compare-status");
+    if (!handle) {
+      statusEl.textContent = "Enter a handle first.";
+      statusEl.className = "sync-status error";
+      return;
+    }
+    statusEl.textContent = "Fetching…";
+    statusEl.className = "sync-status";
+    const result = await CFBaseline.fetchHandleProblems(handle);
+    if (!result.ok) {
+      this._compareProblems = null;
+      this._compareError = `Couldn't fetch ${handle}: ${result.error}`;
+    } else {
+      this._compareHandle = handle;
+      this._compareProblems = result.problems;
+      this._compareError = null;
+    }
+    this.render($("cf-analysis-root"));
+  },
+
+  async renderBaseline(root, subtitleEl) {
+    if (this._tier === "compare") {
+      this.renderCompareTier(root, subtitleEl);
+      return;
+    }
+    if (!CFBaseline.isLoaded()) {
+      subtitleEl.textContent = "Loading…";
+      root.innerHTML = `<p class="empty-note">Loading baseline data…</p>`;
+      try {
+        await CFBaseline.ensureLoaded();
+      } catch (e) {
+        subtitleEl.textContent = "";
+        root.innerHTML = `<p class="empty-note">Couldn't load baseline data: ${escapeHtml(e.message)}</p>`;
+        return;
+      }
+    }
+
+    const result = CFBaseline.compareTags({ tier: this._tier, window: this._window });
+    let cutoffLabel;
+    if (this._tier === "tourist") cutoffLabel = "a specific named player";
+    else if (this._tier === "average") cutoffLabel = `~${result.ratingCutoff} rated`;
+    else cutoffLabel = `${result.ratingCutoff}+ rated`;
+    const sampleNote = this._tier === "tourist" ? "" : `, averaged across 1500 real sampled players, updated daily`;
+    subtitleEl.textContent = `${result.tierLabel} (${cutoffLabel}${sampleNote})`;
+
+    if (!result.sampleSize) {
+      root.innerHTML = `<p class="empty-note">No baseline data for this window yet.</p>`;
+      return;
+    }
+    if (result.insufficientData) {
+      root.innerHTML = `<p class="empty-note">Log or sync at least 5 solves in this window to see a comparison (you have ${result.yourTotal}).</p>`;
+      return;
+    }
+
+    const windowLabel = this._window === "lastYear" ? "last year" : "all time";
+    const totalsLabel = this._tier === "tourist" ? `Tourist solved (${windowLabel})` : `${result.tierLabel} avg. solved (${windowLabel})`;
+
+    root.innerHTML = `
+      <div class="report-windows cf-totals">
+        <div class="stat-tile"><div class="stat-value">${result.yourTotal}</div><div class="stat-label">you solved (${windowLabel})</div></div>
+        <div class="stat-tile"><div class="stat-value">${result.avgSolvedCount}</div><div class="stat-label">${totalsLabel}</div></div>
+      </div>
+      ${this.renderComparisonRowsHtml(result.rows)}
     `;
   },
 

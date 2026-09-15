@@ -49,7 +49,7 @@ deliberately left for later rather than over-built now:
 The baseline data (see [README § Codeforces baseline
 data](README.md#codeforces-baseline-data)) is now a real daily background
 job — `supabase/functions/sync-cf-baseline`, cron-triggered every few
-minutes, sampling 500 real users per tier — not a manually-regenerated
+minutes, sampling 1,500 real users per tier — not a manually-regenerated
 static file. A few things are deliberately left for later rather than
 over-built now:
 

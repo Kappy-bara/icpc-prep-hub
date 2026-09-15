@@ -70,11 +70,16 @@ skip that section and the app is 100% local-only and backend-free.
 - **Codeforces Analysis** — normalizes your solved-tag ratios against what's
   *naturally* common on Codeforces, so raw counts aren't misread ("you
   solved 100 math and 30 trees" isn't "trees is weak" if math is just far
-  more common at your rating level). Compares you against three tiers (Top
-  500 / Top 10,000 / Average user, using real, current rating cutoffs), each
-  toggleable between the last year and all-time. See
-  [Codeforces baseline data](#codeforces-baseline-data) for how the baseline
-  numbers are generated. Also on this page:
+  more common at your rating level). Compares you against three cohort tiers
+  (Top 500 / Top 10,000 / Average user, using real, current rating cutoffs)
+  plus Tourist by name, each toggleable between the last year and all-time.
+  See [Codeforces baseline data](#codeforces-baseline-data) for how the
+  baseline numbers are generated. A fifth tier, **Compare with someone**,
+  lets you paste any public Codeforces handle and get the same tag-mix
+  comparison against that one specific player instead of a sampled cohort —
+  their data is fetched fresh on demand and never stored, and unlike the
+  cohort tiers it needs no account, so it's the one part of this comparison
+  that works in local-only mode too. Also on this page:
   - **Accuracy per tag** — average wrong attempts before AC, by tag.
   - **Rating trajectory** — a chart of your rating across contests, plus
     your live percentile among active rated Codeforces users.
@@ -249,36 +254,39 @@ the problem set — an earlier version bucketed *problems* by rating as a
 proxy for "what a typical player at this tier solves," which produced
 numbers that got misread as real solve counts (a "baseline pool" of 1,662
 problems is not "the average user solves 1,662 problems"). Every tier's
-numbers now come from real players: a large sample (500 by default) of real
+numbers now come from real players: a large sample (1,500 by default) of real
 rated users whose *current rating* falls in that band gets its solve
 history fetched and averaged — both the overall solved count and the tag
 mix. Tourist is the same technique with a sample size of exactly one, by
 name.
 
-**This requires cloud sync to be configured** (see [Cloud sync
-setup](#cloud-sync-setup-optional) above) — there's no local-only fallback
-for this specific feature, since the data genuinely can't be computed
-client-side. Every other feature on the Codeforces page (accuracy per tag,
-rating trajectory, solve activity, unsolved list, next-problem
-recommendations) still works fully in local-only mode; only the "your tag
-mix vs. the baseline" comparison itself needs an account.
+**The four cohort tiers require cloud sync to be configured** (see [Cloud
+sync setup](#cloud-sync-setup-optional) above) — there's no local-only
+fallback for those specifically, since that data genuinely can't be
+computed client-side. The fifth tier, Compare with someone, is the
+exception: it's just a live client-side fetch of one handle's public data,
+so it works with or without an account. Every other feature on the
+Codeforces page (accuracy per tag, rating trajectory, solve activity,
+unsolved list, next-problem recommendations) also still works fully in
+local-only mode.
 
 ### How it's computed: a daily background job, not a one-off script
 
-Sampling 500 real users × 3 tiers means ~1,500 Codeforces API calls, and
+Sampling 1,500 real users × 3 tiers means ~4,500 Codeforces API calls, and
 Codeforces asks for no more than ~1 request/2s — that's a lot of sequential
 waiting, far more than a single Supabase Edge Function invocation is allowed
 to run (150s wall-clock time on the free tier, 400s on paid). So this isn't
 a script you run once — it's [`supabase/functions/sync-cf-baseline`](supabase/functions/sync-cf-baseline),
 an Edge Function that a `pg_cron` job invokes every few minutes. Each
-invocation does one small batch (~40 users, well under the time limit) and
-saves its progress to a `cf_baseline_sync_state` table; the next invocation
-picks up where the last one left off. A full daily cycle (refresh rating
-cutoffs/percentiles + Tourist, then Top 500, then Top 10,000, then Average
-user) takes roughly 2 hours of these short invocations, then the job goes
-idle until the next day. The app reads the finished result from a
-`cf_baseline_data` table (public read, write-only via the service role) —
-never the in-progress state.
+invocation works a time-budgeted batch (~50 users, well under the platform's
+wall-clock limit) and checkpoints its progress to a `cf_baseline_sync_state`
+table after every single user; the next invocation picks up where the last
+one left off. A full daily cycle (refresh rating cutoffs/percentiles +
+Tourist, then Top 500, then Top 10,000, then Average user) takes roughly
+4-5 hours of these short invocations, then the job goes idle until the next
+day. The app reads the finished result from a `cf_baseline_data` table
+(public read, write-only via the service role) — never the in-progress
+state.
 
 ### Deploying it
 

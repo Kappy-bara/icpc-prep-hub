@@ -2,7 +2,7 @@
 // (see README "Codeforces baseline data" for the cron setup). One invocation processes
 // as many sampled users as fit in a safe time budget, respecting Codeforces' ~1-request/2s
 // rate limit and Supabase Edge Functions' own wall-clock execution limit (150s free tier) —
-// the *job* spans many short invocations over ~2 hours once a day; no single invocation
+// the *job* spans many short invocations over ~4-5 hours once a day; no single invocation
 // runs long, and it checkpoints progress after every single user (not just at the end of a
 // batch), so a run that gets killed by the platform never loses more than one user's work.
 //
@@ -20,7 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const CF_API = "https://codeforces.com/api";
 const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const AVERAGE_BAND = 200;
-const SAMPLE_TARGET = 500; // real users sampled per tier
+const SAMPLE_TARGET = 1500; // real users sampled per tier
 const REQUEST_DELAY_MS = 2000; // Codeforces' courtesy rate limit
 // Stop pulling more users once this much wall-clock time has passed in this invocation,
 // leaving a big safety margin below Supabase's 150s (free tier) hard kill — a batch of 40
