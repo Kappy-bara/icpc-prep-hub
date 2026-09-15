@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --bg: #f6f4f7;
   --bg-elevated: #ffffff;
   --bg-inset: #f1eef2;
@@ -21,6 +22,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #121218;
     --bg-elevated: #1b1c25;
     --bg-inset: #242530;
@@ -42,6 +44,7 @@
 }
 
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #121218;
   --bg-elevated: #1b1c25;
   --bg-inset: #242530;
@@ -62,6 +65,7 @@
 }
 
 :root[data-theme="light"] {
+  color-scheme: light;
   --bg: #f6f4f7;
   --bg-elevated: #ffffff;
   --bg-inset: #f1eef2;
@@ -258,6 +262,7 @@ input[type="text"],
 input[type="date"],
 input[type="number"],
 input[type="email"],
+select,
 textarea {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -273,6 +278,7 @@ input[type="text"]:focus,
 input[type="date"]:focus,
 input[type="number"]:focus,
 input[type="email"]:focus,
+select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--accent);
@@ -283,6 +289,11 @@ textarea {
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.8rem;
+}
+
+select option {
+  background: var(--bg-elevated);
+  color: var(--text);
 }
 
 .form-actions {
@@ -379,6 +390,7 @@ button:disabled:hover {
 }
 
 .form-grid label input,
+.form-grid label select,
 .form-grid label textarea {
   background: transparent;
   border: none;
@@ -387,6 +399,7 @@ button:disabled:hover {
 }
 
 .form-grid label input:focus,
+.form-grid label select:focus,
 .form-grid label textarea:focus {
   outline: none;
 }
@@ -537,55 +550,72 @@ button:disabled:hover {
   white-space: nowrap;
 }
 
-.subject-card {
-  margin: 0;
-  border-bottom: none;
-}
-
-.subject-grid {
+.roadmap-layout {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: 280px 1fr;
+  gap: 1.5rem;
   align-items: start;
 }
 
-.subject-card[open] {
-  grid-column: 1 / -1;
-}
-
-.subject-card summary {
-  cursor: pointer;
+.subject-nav {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
   gap: 0.5rem;
-  font-weight: 600;
-  list-style: none;
-  padding: 0;
+  position: sticky;
+  top: 1.25rem;
 }
 
-.subject-card summary::-webkit-details-marker {
-  display: none;
+.subject-nav-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  color: var(--text);
+  box-shadow: var(--shadow);
 }
 
-.subject-card summary:hover .subject-title {
-  color: var(--accent);
+.subject-nav-item:hover {
+  border-color: var(--accent);
 }
 
-.subject-summary-top {
+.subject-nav-item.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.subject-nav-top {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.6rem;
 }
 
-.subject-title {
-  font-size: 1.02rem;
-  transition: color 0.12s ease;
+.subject-nav-name {
+  font-weight: 600;
+  font-size: 0.92rem;
 }
 
-.subject-progress-bar {
-  height: 6px;
+.subject-nav-count {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.subject-nav-bar {
+  height: 5px;
+}
+
+.subject-detail {
+  min-width: 0;
+}
+
+.subject-detail-title {
+  margin: 0 0 0.3rem;
+  font-size: 1.2rem;
 }
 
 .subject-progress {
@@ -598,7 +628,23 @@ button:disabled:hover {
 .subject-blurb {
   color: var(--text-muted);
   font-size: 0.85rem;
-  margin: 0.7rem 0 0.7rem;
+  margin: 0 0 0.9rem;
+}
+
+@media (max-width: 760px) {
+  .roadmap-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .subject-nav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .subject-nav-item {
+    flex: 1 1 220px;
+  }
 }
 
 .phase-block h4 {
@@ -1039,6 +1085,34 @@ details p {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+}
+
+@keyframes reward-redeemed-pulse {
+  0% {
+    transform: scale(1);
+    border-color: var(--border);
+    box-shadow: 0 0 0 0 var(--accent-soft);
+  }
+  35% {
+    transform: scale(1.035);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 10px var(--accent-soft);
+  }
+  100% {
+    transform: scale(1);
+    border-color: var(--border);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.reward-tile-redeemed {
+  animation: reward-redeemed-pulse 0.55s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reward-tile-redeemed {
+    animation: none;
+  }
 }
 
 .reward-name {

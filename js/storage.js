@@ -22,9 +22,9 @@ function defaultData() {
     profile: {
       cfHandle: "",
       cfVerified: false, // mirrors profiles.cf_verified in cloud mode; unused in local mode
-      gamificationStart: null, // ISO date string, set once at onboarding
-      focusTags: ["strings"],
-      targetDate: null, // ISO date string, optional
+      gamificationStart: null, // ISO date string, auto-set the day the CF handle is first verified
+      focusTags: [], // at most one tag, chosen from the dropdown
+      targetDate: "2026-10-03", // ISO date string, editable
     },
     theme: "system", // "system" | "light" | "dark"
     roadmapProgress: {}, // { [topicId]: true }
@@ -48,9 +48,9 @@ function defaultData() {
       lastRatingSyncAt: null, // ISO timestamp, informational only
     },
     rewards: [
-      { id: "r-youtube", name: "15-minute YouTube break", cost: 20 },
-      { id: "r-treat", name: "A small treat / snack", cost: 30 },
-      { id: "r-afternoon", name: "A guilt-free lazy afternoon", cost: 150 },
+      { id: "r-youtube", name: "15-minute YouTube break", cost: 20, locked: true },
+      { id: "r-treat", name: "A small treat / snack", cost: 30, locked: true },
+      { id: "r-afternoon", name: "A guilt-free lazy afternoon", cost: 150, locked: true },
     ],
     redemptions: [
       // { id, rewardId, rewardName, cost, date }

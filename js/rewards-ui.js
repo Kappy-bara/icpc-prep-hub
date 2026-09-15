@@ -1,5 +1,7 @@
 /** Reward catalog + redemption history, self-refreshing on redeem/remove. */
 const RewardsUI = {
+  _justRedeemedId: null, // briefly set right after a successful redeem, to play a one-shot animation on that tile
+
   render(listRoot, historyRoot) {
     if (!listRoot) return;
     const { rewards, points } = Store.data;
@@ -9,8 +11,8 @@ const RewardsUI = {
       listRoot.innerHTML = rewards
         .map(
           (r) => `
-          <div class="reward-tile">
-            <button type="button" class="btn-icon btn-remove-reward" data-reward-id="${r.id}" aria-label="Remove reward">&times;</button>
+          <div class="reward-tile${r.id === this._justRedeemedId ? " reward-tile-redeemed" : ""}">
+            ${isLockedReward(r) ? "" : `<button type="button" class="btn-icon btn-remove-reward" data-reward-id="${r.id}" aria-label="Remove reward">&times;</button>`}
             <span class="reward-name">${escapeHtml(r.name)}</span>
             <span class="reward-cost">${r.cost} pts</span>
             <button type="button" class="btn-secondary btn-redeem" data-reward-id="${r.id}" ${points.balance < r.cost ? "disabled" : ""}>Redeem</button>
@@ -18,10 +20,12 @@ const RewardsUI = {
         )
         .join("");
     }
+    this._justRedeemedId = null;
 
     listRoot.querySelectorAll(".btn-redeem").forEach((btn) => {
       btn.addEventListener("click", () => {
-        Gamification.redeemReward(btn.dataset.rewardId);
+        const result = Gamification.redeemReward(btn.dataset.rewardId);
+        if (result.ok) this._justRedeemedId = btn.dataset.rewardId;
         this.render(listRoot, historyRoot);
         Nav.updatePointsBadge();
       });

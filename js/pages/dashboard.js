@@ -6,18 +6,11 @@
     return new Date().toISOString().slice(0, 10);
   }
 
-  function parseTags(text) {
-    return text
-      .split(",")
-      .map((t) => t.trim().toLowerCase())
-      .filter(Boolean);
-  }
-
   function renderProfileForm() {
     const p = Store.data.profile;
     $("cf-handle-input").value = p.cfHandle || "";
     $("gamification-start-input").value = p.gamificationStart || "";
-    $("focus-tags-input").value = (p.focusTags || []).join(", ");
+    $("focus-tags-input").value = (p.focusTags && p.focusTags[0]) || "";
     $("target-date-input").value = p.targetDate || "";
   }
 
@@ -39,7 +32,8 @@
         }
         d.profile.cfHandle = newHandle;
         d.profile.gamificationStart = $("gamification-start-input").value || null;
-        d.profile.focusTags = parseTags($("focus-tags-input").value);
+        const chosenTag = $("focus-tags-input").value;
+        d.profile.focusTags = chosenTag ? [chosenTag] : [];
         d.profile.targetDate = $("target-date-input").value || null;
       });
       const note = $("profile-saved-note");
@@ -71,8 +65,10 @@
   async function markVerified(handle) {
     Store.update((d) => {
       d.profile.cfVerified = true;
+      if (!d.profile.gamificationStart) d.profile.gamificationStart = todayISODate();
     });
     verifyState = null;
+    renderProfileForm();
     if (CLOUD_ENABLED && Store._userId) {
       try {
         await supabaseClient.from("profiles").update({ cf_handle: handle, cf_verified: true }).eq("id", Store._userId);

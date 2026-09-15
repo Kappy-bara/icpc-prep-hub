@@ -78,6 +78,9 @@ const Roadmap = {
     `;
   },
 
+  /** id of the subject currently shown in the detail pane; persists across re-renders within a page view. */
+  _selectedSubjectId: null,
+
   render(container) {
     container.innerHTML = "";
 
@@ -92,86 +95,105 @@ const Roadmap = {
     `;
     container.appendChild(summary);
 
-    const grid = document.createElement("div");
-    grid.className = "subject-grid";
-    container.appendChild(grid);
+    if (!this._selectedSubjectId || !ROADMAP.some((s) => s.id === this._selectedSubjectId)) {
+      this._selectedSubjectId = ROADMAP[0].id;
+    }
 
-    ROADMAP.forEach((subject, idx) => {
+    const layout = document.createElement("div");
+    layout.className = "roadmap-layout";
+    container.appendChild(layout);
+
+    const nav = document.createElement("nav");
+    nav.className = "subject-nav";
+    nav.setAttribute("aria-label", "Subjects");
+    layout.appendChild(nav);
+
+    ROADMAP.forEach((subject) => {
       const sp = this.subjectProgress(subject);
-      const details = document.createElement("details");
-      details.className = "card subject-card";
-      details.open = idx === 0;
-
-      const summaryEl = document.createElement("summary");
-      summaryEl.innerHTML = `
-        <div class="subject-summary-top">
-          <span class="subject-title">${subject.name}</span>
-          <span class="subject-progress">${sp.done}/${sp.total} &middot; ${sp.percent}%</span>
-        </div>
-        <div class="progress-bar subject-progress-bar"><div class="progress-fill" style="width:${sp.percent}%"></div></div>
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "subject-nav-item" + (subject.id === this._selectedSubjectId ? " active" : "");
+      btn.innerHTML = `
+        <span class="subject-nav-top">
+          <span class="subject-nav-name">${escapeHtml(subject.name)}</span>
+          <span class="subject-nav-count">${sp.done}/${sp.total}</span>
+        </span>
+        <div class="progress-bar subject-nav-bar"><div class="progress-fill" style="width:${sp.percent}%"></div></div>
       `;
-      details.appendChild(summaryEl);
-
-      const blurb = document.createElement("p");
-      blurb.className = "subject-blurb";
-      blurb.textContent = subject.blurb;
-      details.appendChild(blurb);
-
-      for (const phase of subject.phases) {
-        const phaseEl = document.createElement("div");
-        phaseEl.className = "phase-block";
-        const phaseHeading = document.createElement("h4");
-        phaseHeading.textContent = phase.name;
-        phaseEl.appendChild(phaseHeading);
-
-        const list = document.createElement("ul");
-        list.className = "topic-list";
-        for (const topic of phase.topics) {
-          const li = document.createElement("li");
-          li.className = "topic-item";
-
-          const label = document.createElement("label");
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.checked = this.isDone(topic.id);
-          checkbox.addEventListener("change", () => {
-            this.setDone(topic.id, checkbox.checked);
-            this.render(container);
-            document.dispatchEvent(new CustomEvent("roadmap:changed"));
-          });
-          label.appendChild(checkbox);
-
-          const textWrap = document.createElement("span");
-          textWrap.className = "topic-text";
-          const nameEl = document.createElement("span");
-          nameEl.className = "topic-name";
-          nameEl.textContent = topic.name;
-          textWrap.appendChild(nameEl);
-
-          const whyEl = document.createElement("span");
-          whyEl.className = "topic-why";
-          whyEl.textContent = topic.why;
-          textWrap.appendChild(whyEl);
-
-          if (topic.resource) {
-            const link = document.createElement("a");
-            link.className = "topic-resource";
-            link.href = topic.resource.url;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            link.textContent = `→ ${topic.resource.label}`;
-            textWrap.appendChild(link);
-          }
-
-          label.appendChild(textWrap);
-          li.appendChild(label);
-          list.appendChild(li);
-        }
-        phaseEl.appendChild(list);
-        details.appendChild(phaseEl);
-      }
-
-      grid.appendChild(details);
+      btn.addEventListener("click", () => {
+        this._selectedSubjectId = subject.id;
+        this.render(container);
+      });
+      nav.appendChild(btn);
     });
+
+    const subject = ROADMAP.find((s) => s.id === this._selectedSubjectId);
+    const detail = document.createElement("div");
+    detail.className = "card subject-detail";
+    layout.appendChild(detail);
+
+    const heading = document.createElement("h3");
+    heading.className = "subject-detail-title";
+    heading.textContent = subject.name;
+    detail.appendChild(heading);
+
+    const blurb = document.createElement("p");
+    blurb.className = "subject-blurb";
+    blurb.textContent = subject.blurb;
+    detail.appendChild(blurb);
+
+    for (const phase of subject.phases) {
+      const phaseEl = document.createElement("div");
+      phaseEl.className = "phase-block";
+      const phaseHeading = document.createElement("h4");
+      phaseHeading.textContent = phase.name;
+      phaseEl.appendChild(phaseHeading);
+
+      const list = document.createElement("ul");
+      list.className = "topic-list";
+      for (const topic of phase.topics) {
+        const li = document.createElement("li");
+        li.className = "topic-item";
+
+        const label = document.createElement("label");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = this.isDone(topic.id);
+        checkbox.addEventListener("change", () => {
+          this.setDone(topic.id, checkbox.checked);
+          this.render(container);
+          document.dispatchEvent(new CustomEvent("roadmap:changed"));
+        });
+        label.appendChild(checkbox);
+
+        const textWrap = document.createElement("span");
+        textWrap.className = "topic-text";
+        const nameEl = document.createElement("span");
+        nameEl.className = "topic-name";
+        nameEl.textContent = topic.name;
+        textWrap.appendChild(nameEl);
+
+        const whyEl = document.createElement("span");
+        whyEl.className = "topic-why";
+        whyEl.textContent = topic.why;
+        textWrap.appendChild(whyEl);
+
+        if (topic.resource) {
+          const link = document.createElement("a");
+          link.className = "topic-resource";
+          link.href = topic.resource.url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = `→ ${topic.resource.label}`;
+          textWrap.appendChild(link);
+        }
+
+        label.appendChild(textWrap);
+        li.appendChild(label);
+        list.appendChild(li);
+      }
+      phaseEl.appendChild(list);
+      detail.appendChild(phaseEl);
+    }
   },
 };

@@ -48,6 +48,12 @@ const ROADMAP = [
             resource: { label: "cp-algorithms: Factorial modulo p", url: "https://cp-algorithms.com/algebra/factorial-modulo.html" },
           },
           {
+            id: "math.inclusion-exclusion",
+            name: "Inclusion-exclusion principle",
+            why: "Counts \"at least one property holds\" by adding and subtracting overlapping cases — the standard tool behind derangements, coprime-counting, and constraint-violation counting problems.",
+            resource: { label: "cp-algorithms: The Inclusion-Exclusion Principle", url: "https://cp-algorithms.com/combinatorics/inclusion-exclusion.html" },
+          },
+          {
             id: "math.crt",
             name: "Chinese Remainder Theorem",
             why: "Combines several modular constraints into one — shows up whenever a problem gives you multiple \"x ≡ a (mod m)\" facts.",
@@ -119,6 +125,12 @@ const ROADMAP = [
         name: "Foundations",
         topics: [
           {
+            id: "ds.stl-basics",
+            name: "C++ STL essentials (vector, pair, set/map, sort & built-in algorithms)",
+            why: "Contest code lives and dies by fluent STL use — knowing which container or <algorithm> call to reach for turns a 20-line manual implementation into one line.",
+            resource: { label: "USACO Guide: Introduction to Data Structures", url: "https://usaco.guide/bronze/intro-ds" },
+          },
+          {
             id: "ds.arrays-prefix-sums",
             name: "Arrays, prefix sums & difference arrays",
             why: "O(1) range-sum and range-update after O(n) prep is the cheapest speedup you'll ever add to a solution.",
@@ -129,6 +141,12 @@ const ROADMAP = [
             name: "Stacks, queues & monotonic stack/queue",
             why: "Linear-time solutions to \"next greater element\" and sliding-window-minimum problems, where the naive approach is O(n²).",
             resource: { label: "cp-algorithms: Minimum Stack / Minimum Queue", url: "https://cp-algorithms.com/data_structures/stack_queue_modification.html" },
+          },
+          {
+            id: "ds.priority-queue",
+            name: "Priority queue / heap",
+            why: "The default structure whenever you need repeated access to the current min/max — Dijkstra, Huffman-style greedy, and k-way merge all build on it.",
+            resource: { label: "USACO Guide: Priority Queues", url: "https://usaco.guide/silver/priority-queues" },
           },
           {
             id: "ds.dsu",
@@ -149,8 +167,14 @@ const ROADMAP = [
           },
           {
             id: "ds.segment-tree",
-            name: "Segment tree (range query + update, lazy propagation)",
-            why: "The single most reusable data structure in competitive programming — range min/max/sum/gcd with point or range updates.",
+            name: "Segment tree (range query, point update)",
+            why: "The single most reusable data structure in competitive programming — range min/max/sum/gcd with point updates.",
+            resource: { label: "cp-algorithms: Segment Tree", url: "https://cp-algorithms.com/data_structures/segment_tree.html" },
+          },
+          {
+            id: "ds.lazy-propagation",
+            name: "Lazy propagation (range updates on segment trees)",
+            why: "Defers pending range updates onto child nodes only when needed, turning O(n) range updates into O(log n) — without it, a segment tree only supports point updates.",
             resource: { label: "cp-algorithms: Segment Tree", url: "https://cp-algorithms.com/data_structures/segment_tree.html" },
           },
           {
@@ -219,6 +243,12 @@ const ROADMAP = [
             resource: { label: "cp-algorithms: Breadth First Search", url: "https://cp-algorithms.com/graph/breadth-first-search.html" },
           },
           {
+            id: "graphs.tree-basics",
+            name: "Tree basics (rooting, DFS order, diameter)",
+            why: "Rooting a tree and computing DFS in/out times and diameter are the building blocks every tree-DP and tree-query technique below assumes you already have.",
+            resource: { label: "USACO Guide: Introduction to Tree Algorithms", url: "https://usaco.guide/silver/intro-tree" },
+          },
+          {
             id: "graphs.topo-sort",
             name: "Topological sort",
             why: "Orders tasks by dependency — a prerequisite for almost all DAG dynamic programming.",
@@ -248,6 +278,12 @@ const ROADMAP = [
             resource: { label: "cp-algorithms: Floyd-Warshall", url: "https://cp-algorithms.com/graph/all-pair-shortest-path-floyd-warshall.html" },
           },
           {
+            id: "graphs.01-bfs",
+            name: "0-1 BFS & multi-source BFS",
+            why: "A deque-based BFS variant that handles 0/1 edge weights in O(V+E), and multi-source BFS answers \"distance to the nearest of many sources\" without a separate run per source.",
+            resource: { label: "cp-algorithms: 0-1 BFS", url: "https://cp-algorithms.com/graph/01_bfs.html" },
+          },
+          {
             id: "graphs.mst",
             name: "Minimum spanning tree (Kruskal / Prim)",
             why: "A classic greedy-plus-DSU pattern that also underlies many \"connect everything at minimum total cost\" problems.",
@@ -270,6 +306,12 @@ const ROADMAP = [
             name: "LCA with binary lifting",
             why: "O(log n) ancestor and distance queries on a tree power a huge share of tree-DP and tree-path problems.",
             resource: { label: "cp-algorithms: LCA - Binary Lifting", url: "https://cp-algorithms.com/graph/lca_binary_lifting.html" },
+          },
+          {
+            id: "graphs.euler-path",
+            name: "Euler path & circuit (Hierholzer's algorithm)",
+            why: "Finds a walk that uses every edge exactly once — the classic \"draw this graph without lifting your pen\" problem, and a recurring ICPC set-piece.",
+            resource: { label: "cp-algorithms: Finding the Eulerian path", url: "https://cp-algorithms.com/graph/euler_path.html" },
           },
         ],
       },
@@ -305,6 +347,18 @@ const ROADMAP = [
             name: "Heavy-light decomposition",
             why: "Path queries and updates on a tree in O(log² n) — a World-Finals-tier technique built on top of segment trees.",
             resource: { label: "cp-algorithms: Heavy-light decomposition", url: "https://cp-algorithms.com/graph/hld.html" },
+          },
+          {
+            id: "graphs.centroid-decomposition",
+            name: "Centroid decomposition",
+            why: "Recursively splits a tree at its centroid to answer path-counting/path-query problems in O(n log n) total — a staple of Div1 E/F tree problems.",
+            resource: { label: "USACO Guide: Centroid Decomposition", url: "https://usaco.guide/plat/centroid" },
+          },
+          {
+            id: "graphs.small-to-large",
+            name: "Small-to-large merging (DSU on tree)",
+            why: "Merges children's data into the larger sibling's structure each time, answering subtree-aggregate queries in O(n log n) instead of O(n²).",
+            resource: { label: "USACO Guide: Small-To-Large Merging", url: "https://usaco.guide/plat/merging" },
           },
         ],
       },
@@ -551,6 +605,12 @@ const ROADMAP = [
       {
         name: "Core",
         topics: [
+          {
+            id: "geometry.line-sweep",
+            name: "Line sweep",
+            why: "Sweeps a line across the plane processing events in order — the standard technique behind segment-intersection detection, rectangle union area, and closest-pair alternatives.",
+            resource: { label: "cp-algorithms: Search for a pair of intersecting segments", url: "https://cp-algorithms.com/geometry/intersecting_segments.html" },
+          },
           {
             id: "geometry.convex-hull",
             name: "Convex hull (Graham scan / monotone chain)",

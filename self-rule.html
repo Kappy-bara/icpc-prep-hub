@@ -12,16 +12,26 @@
   <header id="site-nav" class="topbar"></header>
 
   <main class="container">
+    <section class="card" id="points-overview-card">
+      <h2>Your points</h2>
+      <div id="points-overview-root"></div>
+    </section>
+
+    <section class="card" id="points-activity-card">
+      <h2>Points activity</h2>
+      <div id="points-activity-root"></div>
+    </section>
+
     <section class="card" id="formula-card">
       <h2>How points work</h2>
       <div class="report-windows">
         <div class="stat-tile"><div class="stat-value">&divide;100</div><div class="stat-label">rated problem: round(rating / 100)</div></div>
         <div class="stat-tile"><div class="stat-value">5</div><div class="stat-label">flat points for unrated problems</div></div>
-        <div class="stat-tile"><div class="stat-value">&times;1.5</div><div class="stat-label">bonus for your focus tags</div></div>
+        <div class="stat-tile"><div class="stat-value">&times;1.5</div><div class="stat-label">bonus for your focus tag</div></div>
         <div class="stat-tile"><div class="stat-value">1</div><div class="stat-label">minimum points per solve</div></div>
       </div>
       <p class="card-subtitle">
-        Focus tags: <strong id="formula-focus-tags">&mdash;</strong>. Gamification start date:
+        Focus tag: <strong id="formula-focus-tags">&mdash;</strong>. Gamification start date:
         <strong id="formula-start-date">not set</strong> &mdash; solves from that date onward earn points;
         anything solved before it is logged for stats on the <a href="codeforces.html">Codeforces page</a>
         but scores 0, so importing your whole history doesn't hand you a windfall. Change either on the

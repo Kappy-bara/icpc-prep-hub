@@ -20,6 +20,13 @@ function problemKey(contestId, index) {
   return `${contestId}${index}`;
 }
 
+// The 3 starter rewards ship as `locked: true`, but a profile saved before that field
+// existed won't have it on disk — match by id too so already-installed users are covered.
+const LOCKED_REWARD_IDS = ["r-youtube", "r-treat", "r-afternoon"];
+function isLockedReward(reward) {
+  return Boolean(reward) && (reward.locked === true || LOCKED_REWARD_IDS.includes(reward.id));
+}
+
 const Gamification = {
   computePoints,
   problemKey,
@@ -77,6 +84,7 @@ const Gamification = {
         date: new Date().toISOString(),
       });
     });
+    document.dispatchEvent(new CustomEvent("icpc:points-changed"));
     return { ok: true };
   },
 
@@ -88,11 +96,16 @@ const Gamification = {
         cost,
       });
     });
+    document.dispatchEvent(new CustomEvent("icpc:points-changed"));
   },
 
   removeReward(rewardId) {
+    const reward = Store.data.rewards.find((r) => r.id === rewardId);
+    if (isLockedReward(reward)) return { ok: false, reason: "locked" };
     Store.update((data) => {
       data.rewards = data.rewards.filter((r) => r.id !== rewardId);
     });
+    document.dispatchEvent(new CustomEvent("icpc:points-changed"));
+    return { ok: true };
   },
 };
