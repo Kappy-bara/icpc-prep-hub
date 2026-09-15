@@ -1,10 +1,17 @@
 /**
- * Compares the signed-in user's own solved-tag ratios against the static
- * CF_BASELINE_DATA (see js/cf-baseline-data.js + scripts/generate-cf-baseline.js).
- * Pure computation, no DOM — rendered by js/cf-analysis.js.
+ * Compares the signed-in user's own solved-tag ratios against real-player-sampled
+ * baseline data synced daily by a Supabase Edge Function (see
+ * supabase/functions/sync-cf-baseline and README "Codeforces baseline data").
+ * Fetched live from the `cf_baseline_data` / `cf_percentiles` tables — requires cloud
+ * mode (sign-in); there's no local/offline fallback for this feature specifically,
+ * since the data genuinely can't be computed client-side. Rendered by js/cf-analysis.js.
  */
 const CF_BASELINE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const CF_BASELINE_MIN_SOLVES = 5;
+// Below this expected count, the baseline sample (only ~10 real players) has almost no signal
+// for this tag — dividing by a near-zero denominator would blow any nonzero solve up into a
+// meaningless "Excellent". Below this, don't compute a ratio at all; say so instead.
+const CF_BASELINE_MIN_EXPECTED = 0.5;
 
 function cfBaselineCleanTags(tags) {
   return (tags || []).filter((t) => !t.startsWith("*"));
@@ -23,10 +30,13 @@ function cfBaselineCleanTags(tags) {
  *
  * Zero solves in a tag that's part of the baseline gets its own friendly verdict rather than
  * being lumped in with "Very Weak" — you haven't failed at it, you just haven't started.
+ * A too-rare baseline (see CF_BASELINE_MIN_EXPECTED) also gets its own neutral verdict rather
+ * than a fabricated ratio — an unreliable denominator, not a real signal either way.
  */
 function cfBaselineClassify(yourCount, expectedCount) {
   if (yourCount === 0) return { verdict: "start", label: "Just Start Buddy", r: 0 };
-  const r = expectedCount > 0 ? yourCount / expectedCount : 2.5; // no baseline presence at all -> treat as a strong signal
+  if (expectedCount < CF_BASELINE_MIN_EXPECTED) return { verdict: "rare", label: "Rare Tag — No Baseline", r: null };
+  const r = yourCount / expectedCount;
   if (r < 0.3) return { verdict: "very-weak", label: "Very Weak", r };
   if (r < 0.6) return { verdict: "weak", label: "Weak", r };
   if (r < 1.25) return { verdict: "on-par", label: "On-Par", r };
@@ -60,6 +70,43 @@ function cfBaselineHue(r) {
 }
 
 const CFBaseline = {
+  _tiers: null, // { [tierId]: { label, ratingCutoff, windows } }, once loaded
+  _percentiles: null,
+  _loadPromise: null,
+
+  /** True once tiers+percentiles have been successfully fetched this page session. */
+  isLoaded() {
+    return this._tiers !== null;
+  },
+
+  /** Fetches cf_baseline_data + cf_percentiles from Supabase (once; cached for the session). Requires cloud mode. */
+  async ensureLoaded() {
+    if (this._tiers) return;
+    if (!CLOUD_ENABLED) throw new Error("Cloud sync isn't configured.");
+    if (!this._loadPromise) {
+      this._loadPromise = (async () => {
+        const [tiersRes, pctRes] = await Promise.all([
+          supabaseClient.from("cf_baseline_data").select("*"),
+          supabaseClient.from("cf_percentiles").select("percentiles").eq("id", true).maybeSingle(),
+        ]);
+        if (tiersRes.error) throw tiersRes.error;
+        if (!tiersRes.data || !tiersRes.data.length) throw new Error("No baseline data synced yet — check back soon.");
+        const tiers = {};
+        for (const row of tiersRes.data) {
+          tiers[row.tier] = { label: row.label, ratingCutoff: row.rating_cutoff, windows: row.windows };
+        }
+        this._tiers = tiers;
+        this._percentiles = pctRes.data ? pctRes.data.percentiles : {};
+      })();
+    }
+    try {
+      await this._loadPromise;
+    } catch (e) {
+      this._loadPromise = null; // allow retry on next call
+      throw e;
+    }
+  },
+
   /** "allTime" -> no cutoff; "lastYear" -> ISO cutoff 1 year ago. */
   windowCutoffISO(window) {
     return window === "lastYear" ? new Date(Date.now() - CF_BASELINE_YEAR_MS).toISOString() : null;
@@ -81,9 +128,9 @@ const CFBaseline = {
     return { total, counts, ratios };
   },
 
-  /** Per-tag comparison rows for the given tier ("top500"|"top10000"|"average") and window ("allTime"|"lastYear"). */
+  /** Per-tag comparison rows for the given tier ("tourist"|"top500"|"top10000"|"average") and window ("allTime"|"lastYear"). Call ensureLoaded() first. */
   compareTags({ tier, window }) {
-    const tierData = CF_BASELINE_DATA.tiers[tier];
+    const tierData = this._tiers[tier];
     const baselineWindow = tierData.windows[window];
     const yours = this.yourTagRatios(window);
 
@@ -94,7 +141,7 @@ const CFBaseline = {
       const baselineRatio = baselineWindow.tagRatios[tag] || 0;
       const expectedCount = baselineRatio * yours.total;
       const { verdict, label, r } = cfBaselineClassify(yourCount, expectedCount);
-      const hue = cfBaselineHue(r);
+      const hue = r === null ? null : cfBaselineHue(r);
       return { tag, yourRatio, yourCount, baselineRatio, expectedCount, verdict, verdictLabel: label, r, hue };
     });
     rows.sort((a, b) => b.baselineRatio - a.baselineRatio);
@@ -110,12 +157,11 @@ const CFBaseline = {
     };
   },
 
-  /** Smallest p (1-99) such that a rating this high clears the "top p%" cutoff, or null without a rating. */
+  /** Smallest p (1-99) such that a rating this high clears the "top p%" cutoff, or null without a rating or unloaded data. */
   percentileForRating(rating) {
-    if (rating == null) return null;
-    const percentiles = CF_BASELINE_DATA.percentiles;
+    if (rating == null || !this._percentiles) return null;
     for (let p = 1; p <= 99; p++) {
-      if (percentiles[p] <= rating) return p;
+      if (this._percentiles[p] <= rating) return p;
     }
     return 99;
   },

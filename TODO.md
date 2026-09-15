@@ -44,20 +44,29 @@ deliberately left for later rather than over-built now:
 - No password-based login option — magic link only, by design (simpler,
   fewer footguns), but worth an issue if there's demand for it.
 
-## Codeforces baseline automation
+## Codeforces baseline sync hardening
 
-`js/cf-baseline-data.js` (see [README § Codeforces baseline
-data](README.md#codeforces-baseline-data)) is currently a static file,
-regenerated manually and periodically by running
-`scripts/generate-cf-baseline.js` and committing the result. That's the
-right amount of infrastructure for now, but a natural next step once the
-project has any recurring backend jobs anyway: turn the generator into a
-Supabase Edge Function on a cron schedule, writing into a small table
-instead of a committed file — removes the manual regeneration step
-entirely, and the baseline data would go through the same cache/read path
-as everything else already in `profiles`. Also a natural place to build the
-real top-CF-users leaderboard idea (see Team role-split suggestions above)
-if that's ever picked up, since both need the same kind of scheduled job.
+The baseline data (see [README § Codeforces baseline
+data](README.md#codeforces-baseline-data)) is now a real daily background
+job — `supabase/functions/sync-cf-baseline`, cron-triggered every few
+minutes, sampling 500 real users per tier — not a manually-regenerated
+static file. A few things are deliberately left for later rather than
+over-built now:
+
+- No monitoring/alerting if the cron job silently stops advancing (e.g. CF
+  changes their API shape, or the function starts erroring every
+  invocation) — you'd only notice by seeing `cf_baseline_data.updated_at`
+  go stale. Worth a scheduled check that alerts if it hasn't updated in,
+  say, 36 hours.
+- Failed per-user fetches within a batch are silently skipped (logged, not
+  retried) — if Codeforces has a bad moment during a run, that batch's
+  sample is just slightly smaller, not wrong, but there's no backfill.
+- The sampling pool is rebuilt from a fresh `user.ratedList` call at every
+  phase transition (4 times per cycle) rather than cached once — simple and
+  self-correcting, but slightly wasteful.
+- This is also the natural place to build the real top-CF-users leaderboard
+  idea (see Team role-split suggestions above) if that's ever picked up,
+  since it needs the same kind of scheduled server-side job.
 
 ## Other ideas
 

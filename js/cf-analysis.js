@@ -41,14 +41,20 @@ const CFAnalysis = {
 
   render(container) {
     if (!container) return;
+    const showToggles = CLOUD_ENABLED && Shell.isCloudMode();
     container.innerHTML = `
       <div id="cf-summary-root"></div>
+      ${
+        showToggles
+          ? `
       <div class="report-toggle" id="cf-tier-toggle">
         ${this.TIERS.map((t) => `<button type="button" data-tier="${t.id}" class="${t.id === this._tier ? "active" : ""}">${t.label}</button>`).join("")}
       </div>
       <div class="report-toggle" id="cf-window-toggle">
         ${this.WINDOWS.map((w) => `<button type="button" data-window="${w.id}" class="${w.id === this._window ? "active" : ""}">${w.label}</button>`).join("")}
-      </div>
+      </div>`
+          : ""
+      }
 
       <div class="cf-analysis-section">
         <h3>Your tag mix vs. the baseline</h3>
@@ -115,6 +121,11 @@ const CFAnalysis = {
   async handleRecommend() {
     const statusEl = $("cf-recommend-status");
     const root = $("cf-recommend-root");
+    if (!CLOUD_ENABLED || !Shell.isCloudMode() || !CFBaseline.isLoaded()) {
+      statusEl.textContent = "Sign in and view the tag-mix comparison above first — recommendations are based on your weak tags from there.";
+      statusEl.className = "sync-status error";
+      return;
+    }
     const weakTags = this.currentWeakTags();
     if (!weakTags.length) {
       statusEl.textContent = "No weak tags found for this tier/window — nothing specific to recommend against.";
@@ -215,13 +226,30 @@ const CFAnalysis = {
     `;
   },
 
-  renderBaseline(root, subtitleEl) {
+  async renderBaseline(root, subtitleEl) {
+    if (!CLOUD_ENABLED || !Shell.isCloudMode()) {
+      subtitleEl.textContent = "Requires an account — this comparison is synced from real player data on our server.";
+      root.innerHTML = `<p class="empty-note">Sign in on the <a href="dashboard.html">Dashboard</a> to see your tag mix compared against real sampled Codeforces players. Everything else on this page still works without an account.</p>`;
+      return;
+    }
+    if (!CFBaseline.isLoaded()) {
+      subtitleEl.textContent = "Loading…";
+      root.innerHTML = `<p class="empty-note">Loading baseline data…</p>`;
+      try {
+        await CFBaseline.ensureLoaded();
+      } catch (e) {
+        subtitleEl.textContent = "";
+        root.innerHTML = `<p class="empty-note">Couldn't load baseline data: ${escapeHtml(e.message)}</p>`;
+        return;
+      }
+    }
+
     const result = CFBaseline.compareTags({ tier: this._tier, window: this._window });
     let cutoffLabel;
     if (this._tier === "tourist") cutoffLabel = "a specific named player";
     else if (this._tier === "average") cutoffLabel = `~${result.ratingCutoff} rated`;
     else cutoffLabel = `${result.ratingCutoff}+ rated`;
-    const sampleNote = this._tier === "tourist" ? "" : `, averaged across ${result.sampleSize} real sampled players`;
+    const sampleNote = this._tier === "tourist" ? "" : `, averaged across 500 real sampled players, updated daily`;
     subtitleEl.textContent = `${result.tierLabel} (${cutoffLabel}${sampleNote})`;
 
     if (!result.sampleSize) {
@@ -236,7 +264,7 @@ const CFAnalysis = {
     const rows = result.rows;
     const maxRatio = Math.max(0.01, ...rows.map((r) => Math.max(r.yourRatio, r.baselineRatio)));
     const pct = (r) => Math.round(r * 100);
-    const verdictColor = (r) => (r.verdict === "start" ? "var(--text-muted)" : `hsl(${r.hue.toFixed(0)}, 68%, 50%)`);
+    const verdictColor = (r) => (r.hue === null ? "var(--text-muted)" : `hsl(${r.hue.toFixed(0)}, 68%, 50%)`);
 
     const windowLabel = this._window === "lastYear" ? "last year" : "all time";
     const totalsLabel = this._tier === "tourist" ? `Tourist solved (${windowLabel})` : `${result.tierLabel} avg. solved (${windowLabel})`;

@@ -9,11 +9,11 @@ const RewardsUI = {
       listRoot.innerHTML = rewards
         .map(
           (r) => `
-          <div class="reward-row">
+          <div class="reward-tile">
+            <button type="button" class="btn-icon btn-remove-reward" data-reward-id="${r.id}" aria-label="Remove reward">&times;</button>
             <span class="reward-name">${escapeHtml(r.name)}</span>
             <span class="reward-cost">${r.cost} pts</span>
             <button type="button" class="btn-secondary btn-redeem" data-reward-id="${r.id}" ${points.balance < r.cost ? "disabled" : ""}>Redeem</button>
-            <button type="button" class="btn-icon btn-remove-reward" data-reward-id="${r.id}" aria-label="Remove reward">&times;</button>
           </div>`
         )
         .join("");

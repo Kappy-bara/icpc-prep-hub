@@ -14,16 +14,18 @@
   <main class="container">
     <section class="card" id="formula-card">
       <h2>How points work</h2>
-      <p>
-        Base points are <code>round(rating / 100)</code> for rated problems, or a flat <strong>5</strong> for
-        unrated ones. Solves tagged with one of your focus tags (<span id="formula-focus-tags">&mdash;</span>)
-        earn &times;1.5 points. Every solve is worth at least 1 point.
-      </p>
-      <p>
-        Your gamification start date is <span id="formula-start-date">not set</span>. Solves from that date
-        onward earn points; anything solved before it is logged for stats on the
-        <a href="codeforces.html">Codeforces page</a> but scores 0 &mdash; so importing your whole history
-        doesn't hand you a windfall. Change either of these on the <a href="dashboard.html">Dashboard</a>.
+      <div class="report-windows">
+        <div class="stat-tile"><div class="stat-value">&divide;100</div><div class="stat-label">rated problem: round(rating / 100)</div></div>
+        <div class="stat-tile"><div class="stat-value">5</div><div class="stat-label">flat points for unrated problems</div></div>
+        <div class="stat-tile"><div class="stat-value">&times;1.5</div><div class="stat-label">bonus for your focus tags</div></div>
+        <div class="stat-tile"><div class="stat-value">1</div><div class="stat-label">minimum points per solve</div></div>
+      </div>
+      <p class="card-subtitle">
+        Focus tags: <strong id="formula-focus-tags">&mdash;</strong>. Gamification start date:
+        <strong id="formula-start-date">not set</strong> &mdash; solves from that date onward earn points;
+        anything solved before it is logged for stats on the <a href="codeforces.html">Codeforces page</a>
+        but scores 0, so importing your whole history doesn't hand you a windfall. Change either on the
+        <a href="dashboard.html">Dashboard</a>.
       </p>
     </section>
 
@@ -31,21 +33,23 @@
       <h2>Rewards</h2>
       <div id="rewards-list" class="rewards-list"></div>
 
-      <details>
-        <summary>Add a reward</summary>
-        <form id="add-reward-form" class="form-grid">
-          <label>Name <input type="text" id="reward-name-input" placeholder="e.g. Movie night" /></label>
-          <label>Cost (points) <input type="number" id="reward-cost-input" min="1" step="1" /></label>
-          <div class="form-actions">
-            <button type="submit" class="btn-secondary">Add reward</button>
-          </div>
-        </form>
-      </details>
+      <div class="card-grid">
+        <details class="sub-panel">
+          <summary>Add a reward</summary>
+          <form id="add-reward-form" class="form-grid">
+            <label>Name <input type="text" id="reward-name-input" placeholder="e.g. Movie night" /></label>
+            <label>Cost (points) <input type="number" id="reward-cost-input" min="1" step="1" /></label>
+            <div class="form-actions">
+              <button type="submit" class="btn-secondary">Add reward</button>
+            </div>
+          </form>
+        </details>
 
-      <details>
-        <summary>Redemption history</summary>
-        <div id="redemption-history" class="redemption-history"></div>
-      </details>
+        <details class="sub-panel">
+          <summary>Redemption history</summary>
+          <div id="redemption-history" class="redemption-history"></div>
+        </details>
+      </div>
     </section>
   </main>
 

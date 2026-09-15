@@ -12,79 +12,88 @@
   <header id="site-nav" class="topbar"></header>
 
   <main class="container">
-    <section class="card" id="account-card">
-      <h2>Account &amp; Cloud Sync</h2>
+    <div class="card-grid">
+      <section class="card" id="account-card">
+        <h2>Account &amp; Cloud Sync</h2>
 
-      <p id="account-card-unavailable" class="card-subtitle" hidden>
-        Cloud sync isn't configured for this deployment (see <code>js/config.js</code> and the README) &mdash;
-        the app works fully in local-only mode without it.
-      </p>
+        <p id="account-card-unavailable" class="card-subtitle" hidden>
+          Cloud sync isn't configured for this deployment (see <code>js/config.js</code> and the README) &mdash;
+          the app works fully in local-only mode without it.
+        </p>
 
-      <div id="account-card-body">
-        <div id="account-signed-out">
-          <p class="card-subtitle">
-            Sign in with a magic link (no password) to sync your roadmap, points, and logs across devices.
-            Local-only mode works fine without this.
-          </p>
-          <form id="signin-form" class="form-grid">
-            <label>
-              Email
-              <input type="email" id="signin-email-input" placeholder="you@example.com" required autocomplete="email" />
-            </label>
-            <div class="form-actions">
-              <button type="submit" class="btn-primary">Send magic link</button>
-              <span id="signin-status" class="sync-status"></span>
+        <div id="account-card-body">
+          <div id="account-signed-out">
+            <p class="card-subtitle">
+              Sign in with a magic link (no password) to sync your roadmap, points, and logs across devices.
+              Local-only mode works fine without this.
+            </p>
+            <form id="signin-form" class="form-grid">
+              <label>
+                Email
+                <input type="email" id="signin-email-input" placeholder="you@example.com" required autocomplete="email" />
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">Send magic link</button>
+                <span id="signin-status" class="sync-status"></span>
+              </div>
+            </form>
+          </div>
+
+          <div id="account-signed-in" hidden>
+            <div class="account-header">
+              <div class="account-identity">
+                <span class="avatar" id="account-avatar"></span>
+                <div>
+                  <div class="account-email" id="account-email"></div>
+                  <span id="cloud-sync-status" class="sync-status"></span>
+                </div>
+              </div>
+              <button id="sign-out-btn" type="button" class="btn-icon">Sign out</button>
             </div>
-          </form>
+            <div id="cf-verify-section" class="sub-panel"></div>
+          </div>
         </div>
+      </section>
 
-        <div id="account-signed-in" hidden>
-          <p>
-            Signed in as <strong id="account-email"></strong>.
-            <span id="cloud-sync-status" class="sync-status"></span>
-          </p>
-          <div id="cf-verify-section"></div>
-          <button id="sign-out-btn" type="button" class="btn-secondary">Sign out</button>
-        </div>
-      </div>
-    </section>
+      <section class="card" id="profile-card">
+        <h2>Profile</h2>
+        <form id="profile-form" class="form-grid">
+          <label>
+            Codeforces handle
+            <input type="text" id="cf-handle-input" placeholder="e.g. tourist" autocomplete="off" />
+          </label>
+          <label>
+            Gamification start date
+            <input type="date" id="gamification-start-input" />
+            <small>Solves from this date onward earn points; earlier solves are logged for stats only.</small>
+          </label>
+          <label>
+            Focus tags (comma-separated, earn &times;1.5 points)
+            <input type="text" id="focus-tags-input" placeholder="e.g. strings, geometry" />
+          </label>
+          <label>
+            Target contest date <span class="optional">(optional)</span>
+            <input type="date" id="target-date-input" />
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Save profile</button>
+            <span id="profile-saved-note" class="saved-note" hidden>Saved.</span>
+          </div>
+        </form>
+      </section>
+    </div>
 
-    <section class="card" id="profile-card">
-      <h2>Profile</h2>
-      <form id="profile-form" class="form-grid">
-        <label>
-          Codeforces handle
-          <input type="text" id="cf-handle-input" placeholder="e.g. tourist" autocomplete="off" />
-        </label>
-        <label>
-          Gamification start date
-          <input type="date" id="gamification-start-input" />
-          <small>Solves from this date onward earn points; earlier solves are logged for stats only.</small>
-        </label>
-        <label>
-          Focus tags (comma-separated, earn &times;1.5 points)
-          <input type="text" id="focus-tags-input" placeholder="e.g. strings, geometry" />
-        </label>
-        <label>
-          Target contest date <span class="optional">(optional)</span>
-          <input type="date" id="target-date-input" />
-        </label>
-        <div class="form-actions">
-          <button type="submit" class="btn-primary">Save profile</button>
-          <span id="profile-saved-note" class="saved-note" hidden>Saved.</span>
-        </div>
-      </form>
-    </section>
+    <div class="card-grid">
+      <section class="card" id="timeline-card">
+        <h2>Timeline</h2>
+        <div id="timeline-root"></div>
+      </section>
 
-    <section class="card" id="timeline-card">
-      <h2>Timeline</h2>
-      <div id="timeline-root"></div>
-    </section>
-
-    <section class="card" id="roadmap-summary-card">
-      <h2>Roadmap progress</h2>
-      <div id="roadmap-summary-root"></div>
-    </section>
+      <section class="card" id="roadmap-summary-card">
+        <h2>Roadmap progress</h2>
+        <div id="roadmap-summary-root"></div>
+      </section>
+    </div>
 
     <section class="card" id="recent-solves-card">
       <h2>Recent solves</h2>

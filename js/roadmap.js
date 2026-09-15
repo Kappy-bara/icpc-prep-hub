@@ -92,16 +92,23 @@ const Roadmap = {
     `;
     container.appendChild(summary);
 
+    const grid = document.createElement("div");
+    grid.className = "subject-grid";
+    container.appendChild(grid);
+
     ROADMAP.forEach((subject, idx) => {
       const sp = this.subjectProgress(subject);
       const details = document.createElement("details");
-      details.className = "subject-block";
+      details.className = "card subject-card";
       details.open = idx === 0;
 
       const summaryEl = document.createElement("summary");
       summaryEl.innerHTML = `
-        <span class="subject-title">${subject.name}</span>
-        <span class="subject-progress">${sp.done}/${sp.total} · ${sp.percent}%</span>
+        <div class="subject-summary-top">
+          <span class="subject-title">${subject.name}</span>
+          <span class="subject-progress">${sp.done}/${sp.total} &middot; ${sp.percent}%</span>
+        </div>
+        <div class="progress-bar subject-progress-bar"><div class="progress-fill" style="width:${sp.percent}%"></div></div>
       `;
       details.appendChild(summaryEl);
 
@@ -164,7 +171,7 @@ const Roadmap = {
         details.appendChild(phaseEl);
       }
 
-      container.appendChild(details);
+      grid.appendChild(details);
     });
   },
 };

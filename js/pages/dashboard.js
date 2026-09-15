@@ -62,7 +62,10 @@
   function showSignedIn(signedIn, email) {
     $("account-signed-out").hidden = signedIn;
     $("account-signed-in").hidden = !signedIn;
-    if (signedIn) $("account-email").textContent = email || "";
+    if (signedIn) {
+      $("account-email").textContent = email || "";
+      $("account-avatar").textContent = (email || "?").charAt(0).toUpperCase();
+    }
   }
 
   async function markVerified(handle) {
