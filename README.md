@@ -171,20 +171,27 @@ skip that section and the app is 100% local-only and backend-free.
     different, more specific problem ("we know the theory, we keep messing
     up the write-and-debug") than a knowledge gap, matching the classic
     post-contest-review distinction described in ICPC coaching writeups.
-  - **Team stats + a full scoring breakdown.** A headline row (average team
+  - **Team stats + a per-tag rating chart.** A headline row (average team
     rating, rating spread, one combined accuracy figure, how many of the
     app's core ICPC tags the team has touched at all) up front, and a
-    collapsible "Full role & domain scoring breakdown" showing every
-    member's actual score/rating for every role and domain (not just the
-    winner), plus a "close backup" or "single point of failure" note per
-    role/domain based on how close the #1 and #2 scores are — so the
-    Team Insights card is a real comparative breakdown, not just a bare
-    winner-takes-all label and a gap list.
+    "Tag ratings" chart showing all 3 members' real per-topic rating for
+    every core ICPC tag they have enough solves to rate (not just the
+    Role/Domain winners) — a plain comparison, sorted by the team's best
+    rating per tag, with no added commentary.
   - **Non-topic signals**, directly answering "where do you lack besides
     topics" — each person's overall accuracy/bug-rate, a callout when
     accuracy is notably worse specifically on implementation-heavy problems,
     and live-contest solve speed ranked relative to the other two (not an
     absolute "fast/slow" score, since there's no fair universal cutoff).
+  - **Fetches are sequenced, not fired all at once, and retry transient
+    failures.** Firing all 3 handles' requests simultaneously (6 total: 2
+    Codeforces endpoints x 3 handles) reliably triggered CF's rate limiting
+    — either failing the whole analysis, or worse, silently dropping just
+    one handle's rating-history call while their submissions call
+    succeeded, which used to be mistaken for "this person is unrated"
+    instead of "this request failed." Handles are now fetched one at a
+    time with a short stagger, and a rate-limit/server-hiccup failure gets
+    retried a couple of times before being surfaced as a real error.
   - An earlier prototype of this app had a hardcoded, non-generalizing
     3-person team-roles card; this is the real version, built from actual
     solve history and real ICPC coaching methodology instead. The per-person

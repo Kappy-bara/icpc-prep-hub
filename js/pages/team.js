@@ -21,7 +21,7 @@
       setStatus("Fetching handles…", "");
       $("team-results-root").innerHTML = "";
 
-      const result = await TeamAnalysis.analyze(handles);
+      const result = await TeamAnalysis.analyze(handles, { onProgress: (msg) => setStatus(msg, "") });
       btn.disabled = false;
 
       if (!result.ok) {

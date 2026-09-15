@@ -11,6 +11,11 @@ const CFAnalysis = {
   _compareError: null,
   _histogramTag: "all",
 
+  // Below this many rated solves, an average-rating figure is too noisy to trust — same
+  // reasoning and same value as TeamAnalysis.MIN_TOPIC_RATING_SAMPLE (js/cf-team-analysis.js),
+  // duplicated rather than shared since the two pages/modules don't otherwise depend on each other.
+  MIN_TOPIC_RATING_SAMPLE: 3,
+
   // Approximate real Codeforces rating-tier colors, checked high-to-low. Purely cosmetic (ties a
   // bar's color to the difficulty band it represents, same idea as the site's own color-coded
   // handles), not tied to the app's `--accent`/`--secondary` theme tokens on purpose — these are
@@ -91,9 +96,9 @@ const CFAnalysis = {
       <div class="cf-analysis-section">
         <h3>Your tag mix vs. the baseline</h3>
         <p class="card-subtitle">
-          Each percentage is that tag's share of total solves &mdash; e.g. "40% vs 45%" means
-          40% of <em>your</em> solves carry this tag, vs 45% of theirs. It's a mix comparison,
-          not an accuracy or match score.
+          Each percentage is the share of <strong>solved problems that have this tag</strong>
+          &mdash; e.g. "40% vs 45%" means 40% of everything <em>you've</em> solved is tagged this
+          way, vs 45% of theirs. It's a mix comparison, not an accuracy or match score.
         </p>
         <p class="card-subtitle" id="cf-baseline-subtitle"></p>
         <div id="cf-baseline-root"></div>
@@ -563,8 +568,22 @@ const CFAnalysis = {
     for (let b = minBucket; b <= maxBucket; b += 100) allBuckets.push(b);
     const maxCount = Math.max(...allBuckets.map((b) => counts[b] || 0));
 
+    // The topic rating: this filtered set's average problem rating — the same "how strong am I
+    // here" number the Team Analyzer computes per tag (see js/cf-team-analysis.js topicRatings),
+    // not just a raw solve count. Flagged as low-confidence under a small sample rather than
+    // hidden outright, so switching to a rarely-touched tag doesn't look broken.
+    const avgRating = Math.round(solved.reduce((s, p) => s + p.rating, 0) / solved.length);
+    const lowSample = solved.length < this.MIN_TOPIC_RATING_SAMPLE;
+    const ratingStatsHtml = `
+      <div class="report-windows cf-totals">
+        <div class="stat-tile"><div class="stat-value">${avgRating}</div><div class="stat-label">${tagFilter === "all" ? "avg. rating" : `avg. rating in "${escapeHtml(tagFilter)}"`}${lowSample ? " (low sample)" : ""}</div></div>
+        <div class="stat-tile"><div class="stat-value">${solved.length}</div><div class="stat-label">rated solve${solved.length === 1 ? "" : "s"}</div></div>
+      </div>
+    `;
+
     root.innerHTML = `
       ${selectHtml}
+      ${ratingStatsHtml}
       <div class="rating-histogram-row">
         <div class="rating-histogram-axis">
           <span>${maxCount}</span>

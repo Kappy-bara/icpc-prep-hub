@@ -103,6 +103,10 @@ const TeamAnalysis = {
     [0, "Newbie"],
   ],
 
+  FETCH_RETRIES: 2, // extra attempts after the first, only for retryable (rate-limit/transient) failures
+  RETRY_DELAY_MS: 1500,
+  HANDLE_STAGGER_MS: 400, // gap before starting the next handle's fetches, on top of full sequencing below
+
   MIN_CONTEST_SOLVES_FOR_SPEED: 5,
   MIN_TAG_SAMPLE: 2,
   MIN_TOPIC_RATING_SAMPLE: 3, // fewer rated solves in a tag than this = not enough signal to trust its average rating
@@ -115,9 +119,9 @@ const TeamAnalysis = {
   IMPLEMENTATION_GAP_PTS: 15,
   REACH_TOP_N: 10, // how many of a member's hardest solves define their "ceiling"
   REACH_MIN_SAMPLE: 3, // below this many rated solves, reach isn't a meaningful signal
-  DOMAIN_BACKUP_RATING_GAP: 200, // roughly one CF color-tier — below this, the #2 person counts as a close backup
-  ROLE_BACKUP_MARGIN: 0.15, // same idea on the 0..1 normalized role-fit scale
   TAG_COMPARISON_MAX_ROWS: 20,
+  TAG_RATING_MIN: 800, // fixed scale for the tag-rating bar chart (real CF rating floor/ceiling),
+  TAG_RATING_MAX: 3500, // so bar width is comparable across tags/members, not re-normalized per row
 
   rankTitle(rating) {
     if (rating == null) return null;
@@ -127,10 +131,40 @@ const TeamAnalysis = {
     return null;
   },
 
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  },
+
+  /**
+   * Codeforces' API rate-limits bursts of concurrent requests — firing all 3 handles' fetches at
+   * once (this app used to) reliably produced two different-looking symptoms of the same root
+   * cause: the whole analyze() call failing outright (a 429/503 on one of the requests), or a
+   * *specific* member quietly showing "unrated" because only their rating-history call got
+   * rate-limited while their submissions call happened to succeed (fetchMemberData previously
+   * treated a failed rating fetch as "this person just has no rated history" instead of "this
+   * request failed"). Retrying a couple of times before giving up fixes both — but only for
+   * failures that look transient (rate-limit/server-hiccup HTTP codes, or a generic network
+   * error); a permanent failure like "handle not found" (HTTP 400) is retried for nothing, so
+   * fail fast there instead of making the user wait through pointless retries.
+   */
+  async fetchWithRetry(fetchFn) {
+    let result;
+    for (let attempt = 0; attempt <= this.FETCH_RETRIES; attempt++) {
+      result = await fetchFn();
+      if (result.ok) return result;
+      const transient = /HTTP (429|503|502|504)/.test(result.error || "") || /network|fetch/i.test(result.error || "");
+      if (!transient || attempt === this.FETCH_RETRIES) return result;
+      await this.sleep(this.RETRY_DELAY_MS);
+    }
+    return result;
+  },
+
   /** One handle's full picture: solved problems, tag ratios/ratings, accuracy, live-contest speed, rating. */
   async fetchMemberData(handle) {
-    const [subsResult, ratingResult] = await Promise.all([CFSync.fetchRawSubmissions(handle), CFSync.fetchRatingHistory(handle)]);
+    const subsResult = await this.fetchWithRetry(() => CFSync.fetchRawSubmissions(handle));
     if (!subsResult.ok) return { handle, ok: false, error: subsResult.error };
+    const ratingResult = await this.fetchWithRetry(() => CFSync.fetchRatingHistory(handle));
+    if (!ratingResult.ok) return { handle, ok: false, error: `rating history: ${ratingResult.error}` };
     const submissions = subsResult.submissions;
     const problems = CFSync.extractSolved(submissions);
     const attemptStats = CFSync.deriveAttemptStats(submissions);
@@ -139,8 +173,7 @@ const TeamAnalysis = {
     const speed = this.computeSolveSpeed(submissions);
     const accuracyByTag = this.computeAccuracyByTag(problems, attemptStats);
     const overallAccuracy = this.computeOverallAccuracy(problems, attemptStats);
-    const ratingHistory = ratingResult.ok ? ratingResult.history : [];
-    const currentRating = ratingHistory.length ? ratingHistory[ratingHistory.length - 1].newRating : null;
+    const currentRating = ratingResult.history.length ? ratingResult.history[ratingResult.history.length - 1].newRating : null;
     return { handle, ok: true, problems, tagStats, topicRatings, speed, accuracyByTag, overallAccuracy, currentRating, totalSolved: problems.length };
   },
 
@@ -491,19 +524,31 @@ const TeamAnalysis = {
   },
 
   /**
-   * Validates and fetches all 3 handles. Returns { ok:true, members } on full success, or
-   * { ok:false, error } (a pre-fetch validation problem, no fetch attempted) / { ok:false,
-   * error, members } (one or more handles failed to fetch — error lists which ones) otherwise.
-   * On success, caches members for render() to read.
+   * Validates and fetches all 3 handles ONE AT A TIME (with a short stagger between each), not
+   * via Promise.all — firing all 3 handles' requests simultaneously (6 total: 2 endpoints x 3
+   * handles) reliably triggered Codeforces' rate limiting, either failing the whole analysis or
+   * silently dropping a single handle's rating fetch (see fetchWithRetry's doc comment). This is
+   * slower (each handle now waits for the previous one) but far more reliable — combined with
+   * fetchWithRetry, a single transient hiccup no longer surfaces as a bug.
+   *
+   * Returns { ok:true, members } on full success, or { ok:false, error } (a pre-fetch validation
+   * problem, no fetch attempted) / { ok:false, error, members } (one or more handles failed even
+   * after retries — error lists which ones) otherwise. On success, caches members for render().
+   * `onProgress(message)`, if given, is called before each handle starts fetching.
    */
-  async analyze(handles) {
+  async analyze(handles, { onProgress } = {}) {
     const trimmed = handles.map((h) => (h || "").trim());
     if (trimmed.some((h) => !h)) return { ok: false, error: "Enter all three Codeforces handles." };
     const lower = trimmed.map((h) => h.toLowerCase());
     if (new Set(lower).size !== lower.length) {
       return { ok: false, error: "Enter three different handles — you can't compare a handle with itself." };
     }
-    const members = await Promise.all(trimmed.map((h) => this.fetchMemberData(h)));
+    const members = [];
+    for (let i = 0; i < trimmed.length; i++) {
+      if (onProgress) onProgress(`Fetching ${trimmed[i]}… (${i + 1}/${trimmed.length})`);
+      members.push(await this.fetchMemberData(trimmed[i]));
+      if (i < trimmed.length - 1) await this.sleep(this.HANDLE_STAGGER_MS);
+    }
     const failed = members.filter((m) => !m.ok);
     if (failed.length) {
       return { ok: false, error: failed.map((m) => `${m.handle}: ${m.error}`).join(" · "), members };
@@ -572,19 +617,6 @@ const TeamAnalysis = {
         <div class="report-windows">${rolesTableHtml}</div>
         <h3 class="card-section-label">Domain (whose problem is it when it's clearly one topic)</h3>
         <div class="report-windows">${domainsTableHtml}</div>
-        <details class="sub-panel">
-          <summary>Full role &amp; domain scoring breakdown</summary>
-          <p class="card-subtitle">
-            How close was the call? Bars are each person's score for that role/domain relative to
-            the other two on this team (not an absolute measure) &mdash; domain rows also show the
-            real average Codeforces rating behind the bar. A "close backup" note means someone else
-            could reasonably cover that role/domain if the assigned person is unavailable.
-          </p>
-          <h4 class="card-section-label">Role fit</h4>
-          ${this.renderRoleFitHtml(members, roleMatrix)}
-          <h4 class="card-section-label">Domain rating</h4>
-          ${this.renderDomainFitHtml(members, domainMatrix, rawDomainRatings)}
-        </details>
         ${knowledgeGapsHtml}
         ${executionGapsHtml}
       </section>
@@ -597,20 +629,25 @@ const TeamAnalysis = {
           .join("")}
       </div>
       <section class="card">
+        <h2>Tag ratings</h2>
+        <div id="team-tag-ratings-root"></div>
+      </section>
+      <section class="card">
         <h2>Tag mix comparison</h2>
         <p class="card-subtitle">
-          Each bar shows what share of that person's solves carry the tag (with the raw solve
-          count alongside it) &mdash; the same "share of solves" percentage used elsewhere in this
-          app, not a head-to-head score. This is about *practice volume* per tag; see "Domain
-          rating" above for actual per-topic strength.
+          Each percentage is the share of that person's <strong>solved problems that have this
+          tag</strong> (e.g. "31%" means 31% of everything they've solved is tagged this way),
+          with the raw solve count alongside it &mdash; not a head-to-head score. This is about
+          *practice volume* per tag; see "Tag ratings" above for actual per-topic strength.
         </p>
         <div id="team-tag-comparison-root"></div>
       </section>
     `;
+    this.renderTagRatings($("team-tag-ratings-root"), members);
     this.renderTagComparison($("team-tag-comparison-root"), members);
   },
 
-  /** Small colored dot + handle + bar + value row, shared by the role-fit and domain-fit breakdowns and the tag comparison. */
+  /** Small colored dot + handle + bar + value row, shared by the tag-ratings and tag-comparison charts. */
   fitLineHtml(member, color, pct, valueLabel) {
     return `
       <div class="bar-team-line">
@@ -621,42 +658,45 @@ const TeamAnalysis = {
       </div>`;
   },
 
-  renderRoleFitHtml(members, roleMatrix) {
-    const colors = ["var(--accent)", "var(--secondary)", "var(--warn)"];
-    return this.ROLES.map((role, ri) => {
-      const scored = members.map((m, mi) => ({ mi, score: roleMatrix[mi][ri] })).sort((a, b) => b.score - a.score);
-      const gap = scored[0].score - scored[1].score;
-      const backupNote =
-        gap < this.ROLE_BACKUP_MARGIN
-          ? `${escapeHtml(members[scored[1].mi].handle)} is a solid backup here.`
-          : `${escapeHtml(members[scored[0].mi].handle)} is clearly ahead here &mdash; a single point of failure if they're unavailable.`;
-      const lines = members.map((m, i) => this.fitLineHtml(m, colors[i], Math.round(roleMatrix[i][ri] * 100), String(Math.round(roleMatrix[i][ri] * 100)))).join("");
-      return `<div class="bar-row-team"><span class="bar-label">${escapeHtml(role.label)}</span>${lines}<p class="card-subtitle" style="margin:.3rem 0 0">${backupNote}</p></div>`;
-    }).join("");
+  /** Bar-width position of `rating` on the fixed TAG_RATING_MIN..TAG_RATING_MAX scale, clamped 0..100. */
+  ratingBarPct(rating) {
+    const pct = ((rating - this.TAG_RATING_MIN) / (this.TAG_RATING_MAX - this.TAG_RATING_MIN)) * 100;
+    return Math.max(0, Math.min(100, pct));
   },
 
-  renderDomainFitHtml(members, domainMatrix, rawDomainRatings) {
+  /**
+   * Per-tag rating chart, one row per CORE_TAG each member has enough solves to rate, no
+   * commentary — just each person's real per-topic Codeforces rating (see topicRatings), bar
+   * width on a fixed absolute scale so tags stay comparable against each other, not just within
+   * their own row. Sorted by the team's best rating in that tag, descending.
+   */
+  renderTagRatings(root, members) {
+    if (!root) return;
     const colors = ["var(--accent)", "var(--secondary)", "var(--warn)"];
-    return this.DOMAINS.map((domain, di) => {
-      const raw = rawDomainRatings[di];
-      const scored = members.map((m, mi) => ({ mi, rating: raw[mi] })).filter((x) => x.rating != null).sort((a, b) => b.rating - a.rating);
-      let backupNote;
-      if (scored.length >= 2) {
-        const gap = scored[0].rating - scored[1].rating;
-        backupNote =
-          gap < this.DOMAIN_BACKUP_RATING_GAP
-            ? `${escapeHtml(members[scored[1].mi].handle)} is a close backup here (${Math.round(gap)} rating apart).`
-            : `${escapeHtml(members[scored[0].mi].handle)} is well ahead here (+${Math.round(gap)} over ${escapeHtml(members[scored[1].mi].handle)}) &mdash; a single point of failure if they're unavailable.`;
-      } else if (scored.length === 1) {
-        backupNote = `Only ${escapeHtml(members[scored[0].mi].handle)} has enough solves here to measure a rating.`;
-      } else {
-        backupNote = `Nobody on the team has enough solves here yet to measure a rating.`;
-      }
-      const lines = members
-        .map((m, i) => this.fitLineHtml(m, colors[i], Math.round(domainMatrix[i][di] * 100), raw[i] != null ? `~${Math.round(raw[i])}` : "n/a"))
-        .join("");
-      return `<div class="bar-row-team"><span class="bar-label">${escapeHtml(domain.label)}</span>${lines}<p class="card-subtitle" style="margin:.3rem 0 0">${backupNote}</p></div>`;
-    }).join("");
+    const rows = this.CORE_TAGS.map((tag) => ({
+      tag,
+      ratings: members.map((m) => (m.topicRatings[tag] ? m.topicRatings[tag].avgRating : null)),
+    })).filter((r) => r.ratings.some((v) => v != null));
+
+    if (!rows.length) {
+      root.innerHTML = `<p class="empty-note">Not enough rated solves yet to show per-tag ratings.</p>`;
+      return;
+    }
+    rows.sort((a, b) => Math.max(...b.ratings.map((v) => v ?? 0)) - Math.max(...a.ratings.map((v) => v ?? 0)));
+
+    root.innerHTML = rows
+      .map((r) => {
+        const lines = members
+          .map((m, i) => {
+            const rating = r.ratings[i];
+            const pct = rating != null ? this.ratingBarPct(rating) : 0;
+            const label = rating != null ? `~${Math.round(rating)}` : "n/a";
+            return this.fitLineHtml(m, colors[i], pct, label);
+          })
+          .join("");
+        return `<div class="bar-row-team"><span class="bar-label">${escapeHtml(r.tag)}</span>${lines}</div>`;
+      })
+      .join("");
   },
 
   memberCardHtml(member, roleLabel, domainLabel, domainRating, speedRankLabel) {
