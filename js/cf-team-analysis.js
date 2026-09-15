@@ -269,15 +269,17 @@ const TeamAnalysis = {
     for (const p of problems) {
       if (p.rating == null) continue;
       for (const tag of p.tags || []) {
-        if (!byTag[tag]) byTag[tag] = { sum: 0, count: 0 };
+        if (!byTag[tag]) byTag[tag] = { sum: 0, count: 0, min: Infinity, max: -Infinity };
         byTag[tag].sum += p.rating;
         byTag[tag].count += 1;
+        byTag[tag].min = Math.min(byTag[tag].min, p.rating);
+        byTag[tag].max = Math.max(byTag[tag].max, p.rating);
       }
     }
     const out = {};
     for (const [tag, s] of Object.entries(byTag)) {
       if (s.count < this.MIN_TOPIC_RATING_SAMPLE) continue;
-      out[tag] = { avgRating: s.sum / s.count, count: s.count };
+      out[tag] = { avgRating: s.sum / s.count, count: s.count, min: s.min, max: s.max };
     }
     return out;
   },
@@ -630,6 +632,12 @@ const TeamAnalysis = {
       </div>
       <section class="card">
         <h2>Tag ratings</h2>
+        <p class="card-subtitle">
+          Each bar spans that person's lowest-to-highest solved rating in the tag, with a marker
+          at their average and the solve count in parens &mdash; the spread matters as much as
+          the average, since solving 1000 to 2600 in a tag reads very differently from a tight
+          1700-1900 cluster even at the same average.
+        </p>
         <div id="team-tag-ratings-root"></div>
       </section>
       <section class="card">
@@ -665,35 +673,61 @@ const TeamAnalysis = {
   },
 
   /**
-   * Per-tag rating chart, one row per CORE_TAG each member has enough solves to rate, no
-   * commentary — just each person's real per-topic Codeforces rating (see topicRatings), bar
-   * width on a fixed absolute scale so tags stay comparable against each other, not just within
-   * their own row. Sorted by the team's best rating in that tag, descending.
+   * One member's range-bar row for the tag-ratings chart: a floating fill spanning their
+   * lowest-to-highest solved rating in this tag (not just the average — a tag solved from 1000
+   * to 2600 reads very differently than one solved consistently around 1800, even if both
+   * average ~1800), a marker at the average, and the solve count alongside it.
+   */
+  ratingRangeLineHtml(member, color, stats) {
+    if (!stats) {
+      return `
+        <div class="bar-team-line">
+          <span class="bar-team-dot" style="background:${color}"></span>
+          <span class="bar-team-handle">${escapeHtml(member.handle)}</span>
+          <div class="rating-range-track"></div>
+          <span class="bar-count">n/a</span>
+        </div>`;
+    }
+    const minPct = this.ratingBarPct(stats.min);
+    const maxPct = this.ratingBarPct(stats.max);
+    const avgPct = this.ratingBarPct(stats.avgRating);
+    const width = Math.max(1, maxPct - minPct);
+    return `
+      <div class="bar-team-line">
+        <span class="bar-team-dot" style="background:${color}"></span>
+        <span class="bar-team-handle">${escapeHtml(member.handle)}</span>
+        <div class="rating-range-track">
+          <div class="rating-range-fill" style="left:${minPct}%;width:${width}%;background:${color}"></div>
+          <div class="rating-range-marker" style="left:${avgPct}%;background:${color}" title="avg ~${Math.round(stats.avgRating)}"></div>
+        </div>
+        <span class="bar-count">~${Math.round(stats.avgRating)} (${stats.count})</span>
+      </div>`;
+  },
+
+  /**
+   * Per-tag rating chart, one row per CORE_TAG each member has enough solves to rate — each
+   * person's real range of solved difficulty in that tag (light fill = lowest to highest solved,
+   * marker = average, count in parens), not just a single flattened number, on a fixed absolute
+   * scale so tags stay comparable against each other. Sorted by the team's best average rating in
+   * that tag, descending. No commentary, just the numbers.
    */
   renderTagRatings(root, members) {
     if (!root) return;
     const colors = ["var(--accent)", "var(--secondary)", "var(--warn)"];
     const rows = this.CORE_TAGS.map((tag) => ({
       tag,
-      ratings: members.map((m) => (m.topicRatings[tag] ? m.topicRatings[tag].avgRating : null)),
-    })).filter((r) => r.ratings.some((v) => v != null));
+      stats: members.map((m) => m.topicRatings[tag] || null),
+    })).filter((r) => r.stats.some((s) => s != null));
 
     if (!rows.length) {
       root.innerHTML = `<p class="empty-note">Not enough rated solves yet to show per-tag ratings.</p>`;
       return;
     }
-    rows.sort((a, b) => Math.max(...b.ratings.map((v) => v ?? 0)) - Math.max(...a.ratings.map((v) => v ?? 0)));
+    rows.sort((a, b) => Math.max(...b.stats.map((s) => (s ? s.avgRating : 0))) - Math.max(...a.stats.map((s) => (s ? s.avgRating : 0))));
 
     root.innerHTML = rows
       .map((r) => {
-        const lines = members
-          .map((m, i) => {
-            const rating = r.ratings[i];
-            const pct = rating != null ? this.ratingBarPct(rating) : 0;
-            const label = rating != null ? `~${Math.round(rating)}` : "n/a";
-            return this.fitLineHtml(m, colors[i], pct, label);
-          })
-          .join("");
+        const lines = members.map((m, i) => this.ratingRangeLineHtml(m, colors[i], r.stats[i])).join("");
         return `<div class="bar-row-team"><span class="bar-label">${escapeHtml(r.tag)}</span>${lines}</div>`;
       })
       .join("");

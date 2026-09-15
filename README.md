@@ -171,13 +171,18 @@ skip that section and the app is 100% local-only and backend-free.
     different, more specific problem ("we know the theory, we keep messing
     up the write-and-debug") than a knowledge gap, matching the classic
     post-contest-review distinction described in ICPC coaching writeups.
-  - **Team stats + a per-tag rating chart.** A headline row (average team
-    rating, rating spread, one combined accuracy figure, how many of the
-    app's core ICPC tags the team has touched at all) up front, and a
+  - **Team stats + a per-tag rating range chart.** A headline row (average
+    team rating, rating spread, one combined accuracy figure, how many of
+    the app's core ICPC tags the team has touched at all) up front, and a
     "Tag ratings" chart showing all 3 members' real per-topic rating for
     every core ICPC tag they have enough solves to rate (not just the
-    Role/Domain winners) — a plain comparison, sorted by the team's best
-    rating per tag, with no added commentary.
+    Role/Domain winners) — sorted by the team's best rating per tag, no
+    added commentary. Each bar is a floating min-to-max range of that
+    person's solved difficulty in the tag, not just a single averaged
+    number, with a marker at the average and the solve count alongside it
+    — solving a tag from 1000 to 2600 reads very differently from a tight
+    1700-1900 cluster even at the same average, and flattening that to one
+    number hides it.
   - **Non-topic signals**, directly answering "where do you lack besides
     topics" — each person's overall accuracy/bug-rate, a callout when
     accuracy is notably worse specifically on implementation-heavy problems,
