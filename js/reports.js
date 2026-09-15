@@ -144,7 +144,7 @@ const Reports = {
       row.className = "bar-row";
       row.innerHTML = `
         <div class="bar-row-top">
-          <span class="bar-label">${label}</span>
+          <span class="bar-label">${escapeHtml(label)}</span>
           <span class="bar-count">${count}</span>
         </div>
         <div class="bar-track"><div class="bar-fill" style="width:${(count / maxTag) * 100}%"></div></div>

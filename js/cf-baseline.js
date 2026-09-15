@@ -205,7 +205,12 @@ const CFBaseline = {
       const expectedCount = baselineRatio * yours.total;
       const { verdict, label, r } = cfBaselineClassify(yourCount, expectedCount);
       const hue = r === null ? null : cfBaselineHue(r);
-      return { tag, yourRatio, yourCount, baselineRatio, expectedCount, verdict, verdictLabel: label, r, hue };
+      // theirCount is their real, whole-number solve count in this tag — distinct from
+      // expectedCount (their ratio rescaled onto *your* total), which is what actually drives
+      // the verdict math but looks wrong printed next to a specific named player (e.g. "94.3
+      // jiangly" — jiangly obviously didn't solve a fractional number of problems).
+      const theirCount = theirs.counts[tag] || 0;
+      return { tag, yourRatio, yourCount, baselineRatio, expectedCount, theirCount, verdict, verdictLabel: label, r, hue };
     });
     rows.sort((a, b) => b.baselineRatio - a.baselineRatio);
 

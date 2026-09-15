@@ -158,7 +158,7 @@ const CFAnalysis = {
         const tagsLabel = (p.tags || []).slice(0, 4).join(", ");
         return `
           <div class="solved-row">
-            <span class="solved-key"><a href="https://codeforces.com/problemset/problem/${p.contestId}/${p.index}" target="_blank" rel="noopener noreferrer">${p.contestId}${p.index}</a></span>
+            <span class="solved-key"><a href="https://codeforces.com/problemset/problem/${encodeURIComponent(p.contestId)}/${encodeURIComponent(p.index)}" target="_blank" rel="noopener noreferrer">${escapeHtml(`${p.contestId}${p.index}`)}</a></span>
             <span class="solved-name">${escapeHtml(p.name)}</span>
             <span class="solved-rating">${p.rating}</span>
             <span class="solved-tags">${escapeHtml(tagsLabel)}</span>
@@ -233,10 +233,14 @@ const CFAnalysis = {
   /**
    * Legend + the actual bar rows — shared by the cohort-tier comparison and the "compare with
    * someone" tier. `otherLabel` names whoever/whatever the "baseline" side actually is (a
-   * specific player's handle for Tourist/Compare, or "avg" for the sampled-cohort tiers) so
-   * the per-row count doesn't call a single named player's numbers an "avg".
+   * specific player's handle for Compare, or "avg"/"tourist" for the other tiers) so the
+   * per-row count doesn't call a single named player's numbers an "avg". `useActualCount`
+   * shows each row's real, whole-number `theirCount` instead of the fractional `expectedCount`
+   * (their ratio rescaled onto *your* total) — only available when comparing against one
+   * specific player whose raw per-tag counts we actually fetched (not the sampled-cohort
+   * tiers, which only ever have an averaged ratio to work with).
    */
-  renderComparisonRowsHtml(rows, otherLabel) {
+  renderComparisonRowsHtml(rows, otherLabel, useActualCount) {
     const maxRatio = Math.max(0.01, ...rows.map((r) => Math.max(r.yourRatio, r.baselineRatio)));
     const pct = (r) => Math.round(r * 100);
     const verdictColor = (r) => (r.hue === null ? "var(--text-muted)" : `hsl(${r.hue.toFixed(0)}, 68%, 50%)`);
@@ -252,10 +256,11 @@ const CFAnalysis = {
         ${rows
           .map((r) => {
             const color = verdictColor(r);
+            const otherCount = useActualCount ? r.theirCount : r.expectedCount.toFixed(1);
             return `
           <div class="bar-row-compare">
             <div class="bar-row-top">
-              <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount} you / ${r.expectedCount.toFixed(1)} ${escapeHtml(otherLabel)})</span></span>
+              <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount} you / ${otherCount} ${escapeHtml(otherLabel)})</span></span>
               <span class="bar-verdict" style="color:${color}">${r.verdictLabel} &middot; ${pct(r.yourRatio)}% vs ${pct(r.baselineRatio)}%</span>
             </div>
             <div class="bar-track-dual">
@@ -289,7 +294,7 @@ const CFAnalysis = {
             <div class="stat-tile"><div class="stat-value">${result.yourTotal}</div><div class="stat-label">you solved (${windowLabel})</div></div>
             <div class="stat-tile"><div class="stat-value">${result.theirTotal}</div><div class="stat-label">${escapeHtml(result.theirHandle)} solved (${windowLabel})</div></div>
           </div>
-          ${this.renderComparisonRowsHtml(result.rows, result.theirHandle)}
+          ${this.renderComparisonRowsHtml(result.rows, result.theirHandle, true)}
         `;
       }
     }
