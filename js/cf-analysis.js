@@ -16,6 +16,26 @@ const CFAnalysis = {
   // duplicated rather than shared since the two pages/modules don't otherwise depend on each other.
   MIN_TOPIC_RATING_SAMPLE: 3,
 
+  /**
+   * Rating-weighted average: each solve's contribution is weighted by the SQUARE of its own
+   * rating, so harder solves count proportionally more than easier ones — a plain mean has a
+   * real failure mode here (100 solves ground out at 800 early on would keep averaging down to
+   * ~800-ish even after someone's moved on to solving 1700-1800s), and weighting by rating pulls
+   * the number toward what someone can *currently* solve instead. Same formula as
+   * TeamAnalysis.weightedAvgRating (js/cf-team-analysis.js), duplicated for the same reason as
+   * MIN_TOPIC_RATING_SAMPLE above.
+   */
+  weightedAvgRating(ratings) {
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (const r of ratings) {
+      const w = r * r;
+      weightedSum += r * w;
+      weightSum += w;
+    }
+    return weightSum ? weightedSum / weightSum : null;
+  },
+
   // Approximate real Codeforces rating-tier colors, checked high-to-low. Purely cosmetic (ties a
   // bar's color to the difficulty band it represents, same idea as the site's own color-coded
   // handles), not tied to the app's `--accent`/`--secondary` theme tokens on purpose — these are
@@ -95,7 +115,7 @@ const CFAnalysis = {
       </div>
       <div class="cf-analysis-section">
         <h3>Problem ratings</h3>
-        <p class="card-subtitle">How many solved problems fall in each difficulty band, colored like Codeforces' own rating tiers &mdash; optionally filtered to a single tag.</p>
+        <p class="card-subtitle">How many solved problems fall in each difficulty band, colored like Codeforces' own rating tiers &mdash; optionally filtered to a single tag. The avg. rating figure is weighted toward harder solves, not a plain average, so a big pile of old easy solves doesn't keep dragging it down after you've moved on to harder ones.</p>
         <div id="cf-rating-histogram-root"></div>
       </div>
       <div class="cf-analysis-section">
@@ -265,7 +285,9 @@ const CFAnalysis = {
   renderSummary(root) {
     const { solvedLog, cf } = Store.data;
     const ratedSolves = solvedLog.filter((p) => p.rating);
-    const avgRating = ratedSolves.length ? Math.round(ratedSolves.reduce((s, p) => s + p.rating, 0) / ratedSolves.length) : null;
+    // Rating-weighted (see weightedAvgRating below), same formula the "Problem ratings" histogram
+    // uses, so the two numbers agree instead of quietly disagreeing on the same page.
+    const avgRating = ratedSolves.length ? Math.round(this.weightedAvgRating(ratedSolves.map((p) => p.rating))) : null;
     const currentRating = cf.ratingHistory.length ? cf.ratingHistory[cf.ratingHistory.length - 1].newRating : null;
     const rank = this.rankTitle(currentRating);
 
@@ -573,11 +595,12 @@ const CFAnalysis = {
     for (let b = minBucket; b <= maxBucket; b += 100) allBuckets.push(b);
     const maxCount = Math.max(...allBuckets.map((b) => counts[b] || 0));
 
-    // The topic rating: this filtered set's average problem rating — the same "how strong am I
-    // here" number the Team Analyzer computes per tag (see js/cf-team-analysis.js topicRatings),
-    // not just a raw solve count. Flagged as low-confidence under a small sample rather than
-    // hidden outright, so switching to a rarely-touched tag doesn't look broken.
-    const avgRating = Math.round(solved.reduce((s, p) => s + p.rating, 0) / solved.length);
+    // The topic rating: this filtered set's rating-WEIGHTED average problem rating (see
+    // weightedAvgRating above) — the same "how strong am I here" number the Team Analyzer
+    // computes per tag (see js/cf-team-analysis.js topicRatings), not just a raw solve count or
+    // a plain mean. Flagged as low-confidence under a small sample rather than hidden outright,
+    // so switching to a rarely-touched tag doesn't look broken.
+    const avgRating = Math.round(this.weightedAvgRating(solved.map((p) => p.rating)));
     const lowSample = solved.length < this.MIN_TOPIC_RATING_SAMPLE;
     const ratingStatsHtml = `
       <div class="report-windows cf-totals">

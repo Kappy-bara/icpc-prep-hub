@@ -107,7 +107,12 @@ skip that section and the app is 100% local-only and backend-free.
     tag via a dropdown so you can see, say, just your `dp` solves' rating
     spread instead of everything at once. The bucket range trims itself to
     whatever's actually in the (filtered) data, so it never shows a long
-    empty tail for ratings you haven't reached yet.
+    empty tail for ratings you haven't reached yet. The avg. rating figure
+    shown alongside (and the matching one in the top summary stats) is
+    rating-weighted, not a plain mean — see the Team Analyzer's "Tag
+    breakdown" entry below for why a plain average is misleading here; both
+    pages use the identical weighting formula so the numbers never quietly
+    disagree with each other.
   - **Solve activity** — a GitHub-style heatmap of your solving consistency
     over the last year.
   - **Unsolved/attempted** — problems you've tried but not solved, as
@@ -185,8 +190,17 @@ skip that section and the app is 100% local-only and backend-free.
     many of the app's core ICPC tags the team has touched at all) up front,
     then one row per core ICPC tag with all 3 members side by side — a
     range bar (their lowest-to-highest solved rating, marker at the
-    average) plus their rating and solve-share together in one line, sorted
-    by the team's best rating per tag, no added commentary. This used to be
+    weighted average) plus their rating, solve count, and solve-share
+    together in one line, sorted by the team's best rating per tag, no
+    added commentary. The average is rating-weighted (each solve's
+    contribution scaled by the square of its own rating), not a plain
+    mean — a plain mean has a real failure mode: 100 solves ground out at
+    800 early on would keep averaging a tag down to ~1200-1300 even after
+    someone's moved on to solving 1700-1800s in it, since the old volume
+    outnumbers the new. Weighting toward harder solves pulls the number
+    meaningfully toward current skill instead (same formula, and same fix,
+    applied to the Codeforces page's "avg. rating" figures below). This
+    used to be
     two separate sections (a "Tag ratings" list and a "Tag mix comparison"
     list, each iterating the same ~25 tags on its own multi-line-per-person
     rows) — merged into one compact table-style layout since showing the

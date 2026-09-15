@@ -255,32 +255,57 @@ const TeamAnalysis = {
   },
 
   /**
-   * Per-tag STRENGTH, not practice volume: the average Codeforces rating of the problems a
-   * member has solved that carry each tag — the same number space as a player's own rating, so
-   * "Math & Number Theory: ~2800" reads exactly like a rating. This is deliberately NOT a solve-
-   * count ratio (see file header) — a ratio only tells you how much of someone's practice
-   * concentrated on a tag, not how hard a problem in it they can actually solve. Gated by
-   * MIN_TOPIC_RATING_SAMPLE per tag so a tag touched only once or twice doesn't produce a noisy
-   * "rating" off a single data point.
+   * Per-tag STRENGTH, not practice volume: a rating-WEIGHTED average Codeforces rating of the
+   * problems a member has solved that carry each tag — the same number space as a player's own
+   * rating, so "Math & Number Theory: ~2800" reads exactly like a rating. This is deliberately
+   * NOT a solve-count ratio (see file header) — a ratio only tells you how much of someone's
+   * practice concentrated on a tag, not how hard a problem in it they can actually solve. Gated
+   * by MIN_TOPIC_RATING_SAMPLE per tag so a tag touched only once or twice doesn't produce a
+   * noisy "rating" off a single data point.
+   *
+   * Weighted, not a plain mean, because a plain mean has a real failure mode: someone who
+   * ground 100 problems at 800 early on and has since improved to solving 1700-1800s in the same
+   * tag would still average out to ~1200-1300 — nowhere near their actual current level, just
+   * because the old volume outnumbers the new. Weighting each solve's contribution by the SQUARE
+   * of its own rating (so a 1700 counts roughly 4.5x more than an 800, not just ~2x) pulls the
+   * number meaningfully toward what they can *currently* solve, without being as brittle/
+   * outlier-sensitive as an even higher exponent would be — see weightedAvgRating().
    */
   topicRatings(problems) {
     const byTag = {};
     for (const p of problems) {
       if (p.rating == null) continue;
       for (const tag of p.tags || []) {
-        if (!byTag[tag]) byTag[tag] = { sum: 0, count: 0, min: Infinity, max: -Infinity };
-        byTag[tag].sum += p.rating;
-        byTag[tag].count += 1;
+        if (!byTag[tag]) byTag[tag] = { ratings: [], min: Infinity, max: -Infinity };
+        byTag[tag].ratings.push(p.rating);
         byTag[tag].min = Math.min(byTag[tag].min, p.rating);
         byTag[tag].max = Math.max(byTag[tag].max, p.rating);
       }
     }
     const out = {};
     for (const [tag, s] of Object.entries(byTag)) {
-      if (s.count < this.MIN_TOPIC_RATING_SAMPLE) continue;
-      out[tag] = { avgRating: s.sum / s.count, count: s.count, min: s.min, max: s.max };
+      if (s.ratings.length < this.MIN_TOPIC_RATING_SAMPLE) continue;
+      out[tag] = { avgRating: this.weightedAvgRating(s.ratings), count: s.ratings.length, min: s.min, max: s.max };
     }
     return out;
+  },
+
+  /**
+   * Rating-weighted average: each value's contribution is weighted by its own square, so higher-
+   * rated (harder) solves count proportionally more than easier ones instead of every solve
+   * counting equally — see topicRatings() for why a plain mean is misleading here. Also used by
+   * the Codeforces page's "Problem ratings" histogram (js/cf-analysis.js) for the same reason,
+   * on the same duplicated-small-helper basis as this file's other cross-page constants.
+   */
+  weightedAvgRating(ratings) {
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (const r of ratings) {
+      const w = r * r;
+      weightedSum += r * w;
+      weightSum += w;
+    }
+    return weightSum ? weightedSum / weightSum : null;
   },
 
   /** Average topic rating across `tags`, over only the ones this member has enough signal for; null if none. */
@@ -633,9 +658,12 @@ const TeamAnalysis = {
         <h2>Tag breakdown</h2>
         <p class="card-subtitle">
           One compact row per tag &mdash; each bar spans that person's lowest-to-highest solved
-          rating (marker = average), and the number alongside is their rating and their share of
-          solves in that tag. <strong>Hover any point on a bar</strong> to see exactly how many
-          problems at that rating, in that tag, they solved.
+          rating (marker = weighted average), and the number alongside is their rating, how many
+          they've solved in that tag, and their share of solves overall. Ratings are weighted
+          toward harder solves, not a plain average &mdash; otherwise 100 easy solves from early
+          on would keep dragging the number down long after someone's moved on to solving much
+          harder problems in that tag. <strong>Hover any point on a bar</strong> to see exactly
+          how many problems at that rating, in that tag, they solved.
         </p>
         <div id="team-tag-breakdown-root"></div>
       </section>
@@ -738,13 +766,14 @@ const TeamAnalysis = {
    * hold what the shared tooltip needs to answer "how many problems at this rating did they
    * solve," continuously along the whole bar, not just on whichever thin segment you land on.
    */
-  tagMemberCellHtml(member, tag, color, ratingStats, sharePct) {
+  tagMemberCellHtml(member, tag, color, ratingStats, sharePct, rawCount) {
     if (!ratingStats) {
+      const countLabel = rawCount > 0 ? `${rawCount} solved &middot; ` : "";
       return `
         <div class="tag-member-cell">
           <span class="tag-member-dot" style="background:${color}"></span>
           <div class="rating-range-track"><div class="rating-range-segments"></div></div>
-          <span class="tag-member-stats">${sharePct}%</span>
+          <span class="tag-member-stats">${countLabel}${sharePct}%</span>
         </div>`;
     }
     const buckets = this.tagRatingBuckets(member, tag);
@@ -767,7 +796,7 @@ const TeamAnalysis = {
           <div class="rating-range-segments">${segments}</div>
           <div class="rating-range-marker" style="left:${avgPct}%;background:${color}"></div>
         </div>
-        <span class="tag-member-stats">~${Math.round(ratingStats.avgRating)} &middot; ${sharePct}%</span>
+        <span class="tag-member-stats">~${Math.round(ratingStats.avgRating)} (${ratingStats.count}) &middot; ${sharePct}%</span>
       </div>`;
   },
 
@@ -802,7 +831,7 @@ const TeamAnalysis = {
             const cells = members
               .map((m, i) => {
                 const pct = Math.round((m.tagStats.ratios[tag] || 0) * 100);
-                return this.tagMemberCellHtml(m, tag, colors[i], m.topicRatings[tag] || null, pct);
+                return this.tagMemberCellHtml(m, tag, colors[i], m.topicRatings[tag] || null, pct, m.tagStats.counts[tag] || 0);
               })
               .join("");
             return `<div class="tag-row"><div class="tag-row-label">${escapeHtml(tag)}</div><div class="tag-row-members">${cells}</div></div>`;
