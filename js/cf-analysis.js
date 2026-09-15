@@ -67,6 +67,11 @@ const CFAnalysis = {
 
       <div class="cf-analysis-section">
         <h3>Your tag mix vs. the baseline</h3>
+        <p class="card-subtitle">
+          Each percentage is that tag's share of total solves &mdash; e.g. "40% vs 45%" means
+          40% of <em>your</em> solves carry this tag, vs 45% of theirs. It's a mix comparison,
+          not an accuracy or match score.
+        </p>
         <p class="card-subtitle" id="cf-baseline-subtitle"></p>
         <div id="cf-baseline-root"></div>
       </div>
@@ -262,11 +267,12 @@ const CFAnalysis = {
           .map((r) => {
             const color = verdictColor(r);
             const otherCount = useActualCount ? r.theirCount : r.expectedCount.toFixed(1);
+            const pctTitle = `${pct(r.yourRatio)}% of your solves are tagged "${r.tag}", vs ${pct(r.baselineRatio)}% of ${otherLabel}'s.`;
             return `
           <div class="bar-row-compare">
             <div class="bar-row-top">
               <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount} you / ${otherCount} ${escapeHtml(otherLabel)})</span></span>
-              <span class="bar-verdict" style="color:${color}">${r.verdictLabel} &middot; ${pct(r.yourRatio)}% vs ${pct(r.baselineRatio)}%</span>
+              <span class="bar-verdict" style="color:${color}" title="${escapeHtml(pctTitle)}">${r.verdictLabel} &middot; ${pct(r.yourRatio)}% vs ${pct(r.baselineRatio)}% of solves</span>
             </div>
             <div class="bar-track-dual">
               <div class="bar-fill-baseline" style="width:${(r.baselineRatio / maxRatio) * 100}%"></div>
