@@ -17,12 +17,20 @@
     el.className = `sync-status ${kind || ""}`;
   }
 
+  /** "+N pts", or a note explaining why it's stuck at 0 if the handle isn't verified yet. */
+  function ptsLabel(pointsGained) {
+    if (pointsGained === 0 && !Store.data.profile.cfVerified) {
+      return "+0 pts — verify your handle to earn points";
+    }
+    return `+${pointsGained} pts`;
+  }
+
   /**
    * Syncing works for any handle — Codeforces solve history is public data, so there's no
-   * reason to block it. But nothing stops you typing in someone else's handle either, so this
-   * badge makes it obvious whether the configured handle has actually been proven to be yours
-   * (see the Profile card on the Dashboard), instead of silently treating unverified data the
-   * same as verified data.
+   * reason to block *viewing* it (solved log, accuracy, rating chart, etc. all still populate).
+   * But solves only earn points once the configured handle has passed CF verification (see
+   * gamification.js computePoints) — this badge makes that consequence obvious upfront instead
+   * of silently syncing "for free" and leaving you to wonder why the balance didn't move.
    */
   function renderVerifyBadge() {
     const el = $("cf-verify-status-badge");
@@ -32,10 +40,10 @@
       el.textContent = "No Codeforces handle set yet — add one on the Dashboard, then come back here to sync.";
       el.className = "card-subtitle";
     } else if (cfVerified) {
-      el.innerHTML = `<span class="verified-note">&check; Syncing as verified handle <strong>${escapeHtml(cfHandle)}</strong>.</span>`;
+      el.innerHTML = `<span class="verified-note">&check; Syncing as verified handle <strong>${escapeHtml(cfHandle)}</strong> &mdash; solves earn points normally.</span>`;
       el.className = "card-subtitle";
     } else {
-      el.innerHTML = `&#9888; Syncing as <strong>${escapeHtml(cfHandle)}</strong>, which isn't verified yet &mdash; this could be anyone's public solve history, not necessarily yours. <a href="dashboard.html">Verify it on the Dashboard</a>.`;
+      el.innerHTML = `&#9888; Syncing as <strong>${escapeHtml(cfHandle)}</strong>, which isn't verified yet &mdash; solves will sync and show up in your stats, but they'll score <strong>0 points</strong> until you <a href="dashboard.html">verify it on the Dashboard</a>.`;
       el.className = "card-subtitle";
     }
   }
@@ -62,16 +70,16 @@
     }
     const { added, pointsGained } = CFSync.applyProblems(result.problems);
     CFSync.applyAnalysis(result);
-    setSyncStatus(`Synced. ${added} new solve${added === 1 ? "" : "s"} added (+${pointsGained} pts). Fetching rating history…`, "success");
+    setSyncStatus(`Synced. ${added} new solve${added === 1 ? "" : "s"} added (${ptsLabel(pointsGained)}). Fetching rating history…`, "success");
     refreshDynamic();
 
     const ratingResult = await CFSync.fetchRatingHistory(handle);
     if (ratingResult.ok) {
       CFSync.applyRatingHistory(ratingResult.history);
-      setSyncStatus(`Synced. ${added} new solve${added === 1 ? "" : "s"} added (+${pointsGained} pts).`, "success");
+      setSyncStatus(`Synced. ${added} new solve${added === 1 ? "" : "s"} added (${ptsLabel(pointsGained)}).`, "success");
       refreshDynamic();
     } else {
-      setSyncStatus(`Synced (+${pointsGained} pts), but rating history failed: ${ratingResult.error}.`, "success");
+      setSyncStatus(`Synced (${ptsLabel(pointsGained)}), but rating history failed: ${ratingResult.error}.`, "success");
     }
   }
 
@@ -85,7 +93,7 @@
       const result = CFSync.parseManual(text);
       const { added, pointsGained } = CFSync.applyProblems(result.problems);
       CFSync.applyAnalysis(result);
-      setSyncStatus(`Synced from pasted JSON. ${added} new solve${added === 1 ? "" : "s"} added (+${pointsGained} pts).`, "success");
+      setSyncStatus(`Synced from pasted JSON. ${added} new solve${added === 1 ? "" : "s"} added (${ptsLabel(pointsGained)}).`, "success");
       $("manual-json-input").value = "";
       refreshDynamic();
     } catch (e) {
@@ -108,7 +116,7 @@
     }
 
     const { added, pointsGained } = CFSync.logSingle({ contestId, index, name, rating, tags, solvedDate });
-    setSyncStatus(added ? `Logged (+${pointsGained} pts).` : "That problem is already logged.", added ? "success" : "");
+    setSyncStatus(added ? `Logged (${ptsLabel(pointsGained)}).` : "That problem is already logged.", added ? "success" : "");
     evt.target.reset();
     $("log-date").value = todayISODate();
     refreshDynamic();

@@ -21,6 +21,16 @@
       </p>
     </div>
 
+    <section class="card" id="points-locked-card" hidden>
+      <h2>Points are locked</h2>
+      <p class="card-subtitle">
+        Verify your Codeforces handle on the <a href="dashboard.html">Dashboard</a> to start
+        earning and spending points. Your accumulation start date is set automatically the
+        moment verification succeeds, and stays locked from then on &mdash; not something you
+        (or anyone) can backdate to cash in on old solves.
+      </p>
+    </section>
+
     <section class="card" id="points-overview-card">
       <h2>Your points</h2>
       <div id="streak-root"></div>
@@ -42,13 +52,16 @@
         <div class="stat-tile"><div class="stat-value">+10</div><div class="stat-label">max streak bonus, first solve of the day</div></div>
       </div>
       <p class="card-subtitle">
-        Focus tag: <strong id="formula-focus-tags">&mdash;</strong>. Gamification start date:
-        <strong id="formula-start-date">not set</strong> &mdash; solves from that date onward earn points;
-        anything solved before it is logged for stats on the <a href="codeforces.html">Codeforces page</a>
-        but scores 0, so importing your whole history doesn't hand you a windfall. Change either on the
-        <a href="dashboard.html">Dashboard</a>. The first points-earning solve each day also adds a streak
-        bonus equal to your current streak length (capped at 10) &mdash; the longer your streak going in,
-        the bigger the bonus for keeping it alive.
+        Focus tag: <strong id="formula-focus-tags">&mdash;</strong> (change it on the
+        <a href="dashboard.html">Dashboard</a>). Gamification start date:
+        <strong id="formula-start-date">not started &mdash; verify your handle to begin</strong>
+        &mdash; set automatically the moment your Codeforces handle is verified, and not
+        user-editable, so there's no way to backdate it for a windfall; solves from that date
+        onward earn points, anything before it (or before verification at all) is logged for
+        stats on the <a href="codeforces.html">Codeforces page</a> but scores 0. The first
+        points-earning solve each day also adds a streak bonus equal to your current streak
+        length (capped at 10) &mdash; the longer your streak going in, the bigger the bonus for
+        keeping it alive.
       </p>
     </section>
 

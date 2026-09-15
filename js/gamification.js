@@ -6,8 +6,14 @@
  * user's focus-tags list. No artificial minimum — Codeforces' lowest rated-problem rating is
  * 800, so base never goes below 3 for a real problem. Problems solved before the gamification
  * start date always score 0 (logged for stats only).
+ *
+ * Solves ALWAYS score 0 unless the configured handle has passed CF verification (see
+ * cf-verify.js) — syncing an unverified handle still populates solvedLog/accuracy/rating-chart
+ * stats for exploration (nothing here blocks *viewing* another player's public data), it just
+ * can't earn or spend real points until you've proven you actually own that handle.
  */
-function computePoints({ rating, tags, solvedDate }, { focusTags, gamificationStart }) {
+function computePoints({ rating, tags, solvedDate }, { focusTags, gamificationStart, cfVerified }) {
+  if (!cfVerified) return 0;
   if (gamificationStart && solvedDate < gamificationStart) {
     return 0;
   }
@@ -74,7 +80,7 @@ const Gamification = {
   addSolves(problems) {
     const d = Store.data;
     const existingKeys = new Set(d.solvedLog.map((p) => p.key));
-    const { focusTags, gamificationStart } = d.profile;
+    const { focusTags, gamificationStart, cfVerified } = d.profile;
     let added = 0;
     let pointsGained = 0;
 
@@ -94,7 +100,7 @@ const Gamification = {
 
         const base = computePoints(
           { rating: p.rating, tags: p.tags, solvedDate: p.solvedDate },
-          { focusTags, gamificationStart }
+          { focusTags, gamificationStart, cfVerified }
         );
 
         let bonus = 0;

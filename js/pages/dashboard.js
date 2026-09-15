@@ -9,7 +9,6 @@
   function renderProfileForm() {
     const p = Store.data.profile;
     $("cf-handle-input").value = p.cfHandle || "";
-    $("gamification-start-input").value = p.gamificationStart || "";
     $("focus-tags-input").value = (p.focusTags && p.focusTags[0]) || "";
     $("target-date-input").value = p.targetDate || "";
   }
@@ -32,7 +31,9 @@
           verifyState = null;
         }
         d.profile.cfHandle = newHandle;
-        d.profile.gamificationStart = $("gamification-start-input").value || null;
+        // gamificationStart is intentionally not editable here — see markVerified() below. It's
+        // set automatically (and only) the moment CF verification succeeds, so it can't be
+        // backdated to retroactively cash in a windfall from old solves.
         const chosenTag = $("focus-tags-input").value;
         d.profile.focusTags = chosenTag ? [chosenTag] : [];
         d.profile.targetDate = $("target-date-input").value || null;
@@ -90,15 +91,22 @@
       return;
     }
     if (cfVerified) {
-      root.innerHTML = `<p class="verified-note">✓ Verified as <strong>${escapeHtml(cfHandle)}</strong>.</p>`;
+      const startDate = Store.data.profile.gamificationStart;
+      const startLabel = startDate ? new Date(startDate).toLocaleDateString() : "today";
+      root.innerHTML = `
+        <p class="verified-note">✓ Verified as <strong>${escapeHtml(cfHandle)}</strong>.</p>
+        <p class="card-subtitle">Points have been accumulating since <strong>${startLabel}</strong> &mdash;
+        set automatically the moment you verified, and not editable, so there's no way to backdate a windfall
+        from solves before it.</p>
+      `;
       return;
     }
     if (!verifyState) {
       root.innerHTML = `
         <p class="card-subtitle">
-          <strong>${escapeHtml(cfHandle)}</strong> isn't verified yet &mdash; anyone can type in any
-          handle and sync its public solve history, so unverified data isn't necessarily yours.
-          Prove you own it here (works with or without cloud sign-in).
+          <strong>${escapeHtml(cfHandle)}</strong> isn't verified yet &mdash; you can still sync and
+          explore its data, but solves score 0 points and your rewards stay locked (see the
+          Self-rule page) until you verify. Prove you own it here (works with or without cloud sign-in).
         </p>
         <button id="start-verify-btn" type="button" class="btn-secondary">Start verification</button>
       `;

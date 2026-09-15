@@ -4,7 +4,7 @@
  * driven by Store.data.cf.* populated during sync (js/cf-sync.js).
  */
 const CFAnalysis = {
-  _tier: "top500",
+  _tier: "tourist",
   _window: "lastYear",
   _compareHandle: "", // last handle successfully compared against
   _compareProblems: null, // that handle's fetched (unfiltered) solved problems, cached to avoid re-fetching on window toggle

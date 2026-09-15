@@ -123,11 +123,28 @@
     const p = Store.data.profile;
     const tags = p.focusTags && p.focusTags.length ? p.focusTags.join(", ") : "none set";
     $("formula-focus-tags").textContent = tags;
-    $("formula-start-date").textContent = p.gamificationStart ? new Date(p.gamificationStart).toLocaleDateString() : "not set";
+    $("formula-start-date").textContent = p.gamificationStart
+      ? new Date(p.gamificationStart).toLocaleDateString()
+      : "not started — verify your handle to begin";
   }
 
   function renderRewards() {
     RewardsUI.render($("rewards-list"), $("redemption-history"));
+  }
+
+  /**
+   * Points only actually mean anything once the handle earning them is verified (see
+   * gamification.js computePoints) — show a single locked notice instead of the points/activity/
+   * rewards cards until then, rather than displaying a permanently-stuck-at-0 experience.
+   * Returns whether points are unlocked, so callers can skip rendering their content otherwise.
+   */
+  function applyLockState() {
+    const unlocked = Boolean(Store.data.profile.cfVerified);
+    $("points-locked-card").hidden = unlocked;
+    $("points-overview-card").hidden = !unlocked;
+    $("points-activity-card").hidden = !unlocked;
+    $("rewards-card").hidden = !unlocked;
+    return unlocked;
   }
 
   function wireRewardsForm() {
@@ -143,14 +160,18 @@
   }
 
   function refresh() {
+    renderFormula();
+    const unlocked = applyLockState();
+    if (!unlocked) return;
     Gamification.renderStreak($("streak-root"));
     renderOverview();
     renderActivity();
-    renderFormula();
     renderRewards();
   }
 
   function refreshPointsChange() {
+    const unlocked = applyLockState();
+    if (!unlocked) return;
     Gamification.renderStreak($("streak-root"));
     renderOverview();
     renderActivity();

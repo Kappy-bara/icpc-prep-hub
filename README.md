@@ -38,11 +38,20 @@ skip that section and the app is 100% local-only and backend-free.
 - **Gamification** — points for problems you solve (`round(rating / 100) - 5`
   for rated problems — 3 points at Codeforces' lowest rating, 800, 4 at 900,
   and so on — flat 5 for unrated, ×1.5 for one focus tag you pick from
-  Codeforces' own tag list). Problems solved *before* your gamification
-  start date are logged for stats but score 0 points, so importing your
-  whole CF history doesn't hand you a windfall; that start date defaults to
-  the day you verify your Codeforces handle, and a target contest date
-  defaults to a sensible placeholder — both editable on the Dashboard.
+  Codeforces' own tag list), but only once your Codeforces handle has passed
+  verification (see [Known limitations](#growing-the-backend-later) below) — an
+  unverified handle still syncs and populates every other stat on the page,
+  it just scores a hard 0, so there's no way to earn (and then spend)
+  points by claiming someone else's solve history. Problems solved *before*
+  your gamification start date are also logged for stats but score 0
+  points, so importing your whole CF history doesn't hand you a windfall;
+  that start date is set automatically — and only — the moment your handle
+  passes verification, and it's **not user-editable**, so there's no form
+  field to backdate it and retroactively cash in on old solves. (A target
+  contest date, unrelated to any of this, defaults to a sensible placeholder
+  and is freely editable on the Dashboard.) Until verification, the whole
+  Self-rule page (points overview, activity, and rewards) shows a single
+  locked notice instead of a permanently-stuck-at-0 experience.
   - **Streaks** — a day counts if it has at least one points-earning solve
     (so it naturally starts counting from your gamification start date with
     no separate cutoff). Shown on both the Dashboard and Self-rule; if
@@ -232,13 +241,16 @@ editor with no history of what changed."
   needs to move server-side (a Supabase Edge Function) before it can be
   trusted for that purpose.
 - Syncing itself never requires a verified handle — Codeforces solve history
-  is public data, so there's nothing to gate. You can point the app at any
-  handle (including someone else's) and it'll happily sync and score it.
-  Verification only exists so *you* can tell, at a glance, whether the
-  handle currently configured has actually been proven to be yours — a
-  clear badge on both the Dashboard's Profile card and the Codeforces page
-  shows unverified handles rather than silently treating them the same as
-  a verified one.
+  is public data, so there's nothing to gate on *viewing* it. You can point
+  the app at any handle (including someone else's) and it'll sync and
+  populate your solved log, accuracy stats, rating chart, and the rest of
+  the Codeforces Analysis card. What it won't do is award points: every
+  solve scores a hard 0 (see `computePoints` in `js/gamification.js`) unless
+  the configured handle has actually passed CF verification, so there's no
+  way to inflate your spendable balance by claiming someone else's handle.
+  A clear badge on both the Dashboard's Profile card and the Codeforces page
+  shows this status, including a note on the sync result itself when points
+  are stuck at 0 for this reason.
 - Cross-device sync is last-write-wins on the whole data blob, not merged —
   don't actively edit on two devices at the same moment.
 - There's no in-app account deletion flow yet; delete a user from the
