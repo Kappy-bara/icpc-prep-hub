@@ -230,8 +230,13 @@ const CFAnalysis = {
     `;
   },
 
-  /** Legend + the actual bar rows — shared by the cohort-tier comparison and the "compare with someone" tier. */
-  renderComparisonRowsHtml(rows) {
+  /**
+   * Legend + the actual bar rows — shared by the cohort-tier comparison and the "compare with
+   * someone" tier. `otherLabel` names whoever/whatever the "baseline" side actually is (a
+   * specific player's handle for Tourist/Compare, or "avg" for the sampled-cohort tiers) so
+   * the per-row count doesn't call a single named player's numbers an "avg".
+   */
+  renderComparisonRowsHtml(rows, otherLabel) {
     const maxRatio = Math.max(0.01, ...rows.map((r) => Math.max(r.yourRatio, r.baselineRatio)));
     const pct = (r) => Math.round(r * 100);
     const verdictColor = (r) => (r.hue === null ? "var(--text-muted)" : `hsl(${r.hue.toFixed(0)}, 68%, 50%)`);
@@ -250,7 +255,7 @@ const CFAnalysis = {
             return `
           <div class="bar-row-compare">
             <div class="bar-row-top">
-              <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount} you / ${r.expectedCount.toFixed(1)} avg)</span></span>
+              <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount} you / ${r.expectedCount.toFixed(1)} ${escapeHtml(otherLabel)})</span></span>
               <span class="bar-verdict" style="color:${color}">${r.verdictLabel} &middot; ${pct(r.yourRatio)}% vs ${pct(r.baselineRatio)}%</span>
             </div>
             <div class="bar-track-dual">
@@ -284,7 +289,7 @@ const CFAnalysis = {
             <div class="stat-tile"><div class="stat-value">${result.yourTotal}</div><div class="stat-label">you solved (${windowLabel})</div></div>
             <div class="stat-tile"><div class="stat-value">${result.theirTotal}</div><div class="stat-label">${escapeHtml(result.theirHandle)} solved (${windowLabel})</div></div>
           </div>
-          ${this.renderComparisonRowsHtml(result.rows)}
+          ${this.renderComparisonRowsHtml(result.rows, result.theirHandle)}
         `;
       }
     }
@@ -365,13 +370,14 @@ const CFAnalysis = {
 
     const windowLabel = this._window === "lastYear" ? "last year" : "all time";
     const totalsLabel = this._tier === "tourist" ? `Tourist solved (${windowLabel})` : `${result.tierLabel} avg. solved (${windowLabel})`;
+    const otherLabel = this._tier === "tourist" ? "tourist" : "avg";
 
     root.innerHTML = `
       <div class="report-windows cf-totals">
         <div class="stat-tile"><div class="stat-value">${result.yourTotal}</div><div class="stat-label">you solved (${windowLabel})</div></div>
         <div class="stat-tile"><div class="stat-value">${result.avgSolvedCount}</div><div class="stat-label">${totalsLabel}</div></div>
       </div>
-      ${this.renderComparisonRowsHtml(result.rows)}
+      ${this.renderComparisonRowsHtml(result.rows, otherLabel)}
     `;
   },
 
