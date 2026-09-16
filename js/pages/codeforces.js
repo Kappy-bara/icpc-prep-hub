@@ -70,7 +70,7 @@
     }
     const { added, pointsGained } = CFSync.applyProblems(result.problems);
     CFSync.applyAnalysis(result);
-    setSyncStatus(`Synced. ${added} new solve${added === 1 ? "" : "s"} added (${ptsLabel(pointsGained)}). Fetching rating history…`, "success");
+    setSyncStatus(`Synced. ${added} new solve${added === 1 ? "" : "s"} added (${ptsLabel(pointsGained)}). Fetching Codeforces Rating history…`, "success");
     refreshDynamic();
 
     const ratingResult = await CFSync.fetchRatingHistory(handle);
@@ -79,7 +79,7 @@
       setSyncStatus(`Synced. ${added} new solve${added === 1 ? "" : "s"} added (${ptsLabel(pointsGained)}).`, "success");
       refreshDynamic();
     } else {
-      setSyncStatus(`Synced (${ptsLabel(pointsGained)}), but rating history failed: ${ratingResult.error}.`, "success");
+      setSyncStatus(`Synced (${ptsLabel(pointsGained)}), but Codeforces Rating history failed: ${ratingResult.error}.`, "success");
     }
   }
 

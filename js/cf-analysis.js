@@ -4,6 +4,7 @@
  * driven by Store.data.cf.* populated during sync (js/cf-sync.js).
  */
 const CFAnalysis = {
+  _section: "profile", // "profile" | "compare" — which of the two top-level groups is shown
   _tier: "tourist",
   _window: "lastYear",
   _compareHandle: "jiangly", // pre-filled default; overwritten with the last handle successfully compared against
@@ -139,66 +140,81 @@ const CFAnalysis = {
     container.innerHTML = `
       <div id="cf-summary-root"></div>
 
-      <h3 class="cf-group-heading">Profile analysis</h3>
-      <p class="card-subtitle">Your own solve history, on its own &mdash; no baseline or sign-in needed for any of this.</p>
-      <div class="cf-analysis-section">
-        <h3>Accuracy per tag</h3>
-        <p class="card-subtitle">Your accuracy by tag &mdash; the share of submissions on problems you solved that were correct, plus the average wrong attempts before AC (lower is better; needs at least 2 solves in a tag to show).</p>
-        <div id="cf-accuracy-root" class="bar-list"></div>
-      </div>
-      <div class="cf-analysis-section">
-        <h3>Rating trajectory</h3>
-        <div id="cf-rating-chart-root"></div>
-      </div>
-      <div class="cf-analysis-section">
-        <h3>Problem ratings</h3>
-        <p class="card-subtitle">How many solved problems fall in each difficulty band, colored like Codeforces' own rating tiers &mdash; optionally filtered to a single tag. When filtered to one tag, the avg. rating figure is weighted toward harder solves, limited to your most recent ${this.TAG_RATING_RECENT_WINDOW} solves in that tag (so an old pile of easy solves can't drag it down, and a barely-touched tag isn't unfairly inflated just for missing that old volume), AND boosted by clustering &mdash; a solve that's part of a real group of similarly-rated solves counts for more than an equally-hard one-off, so one lucky high solve can't single-handedly pull the number up, but a genuine run of solves at a similar high difficulty will. A &#9888; means that tag's sample is thin (under ${this.TAG_RATING_LOW_CONFIDENCE_SAMPLE} solves) &mdash; solve more of it for a steadier number.</p>
-        <div id="cf-rating-histogram-root"></div>
-      </div>
-      <div class="cf-analysis-section">
-        <h3>Solve activity</h3>
-        <div id="cf-heatmap-root"></div>
-      </div>
-      <div class="cf-analysis-section">
-        <h3>Unsolved / attempted</h3>
-        <p class="card-subtitle">Problems you've tried but haven't solved yet &mdash; ready-made practice targets.</p>
-        <div id="cf-unsolved-root" class="solved-log"></div>
+      <div class="report-toggle" id="cf-section-toggle">
+        <button type="button" data-section="profile" class="${this._section === "profile" ? "active" : ""}">Profile analysis</button>
+        <button type="button" data-section="compare" class="${this._section === "compare" ? "active" : ""}">Comparison</button>
       </div>
 
-      <h3 class="cf-group-heading">Comparison</h3>
-      <p class="card-subtitle">How your tag mix stacks up against a baseline, and what to solve next based on the gap.</p>
-      <div class="report-toggle" id="cf-tier-toggle">
-        ${visibleTiers.map((t) => `<button type="button" data-tier="${t.id}" class="${t.id === this._tier ? "active" : ""}">${t.label}</button>`).join("")}
+      <div id="cf-profile-section" ${this._section === "profile" ? "" : "hidden"}>
+        <h3 class="cf-group-heading">Profile analysis</h3>
+        <p class="card-subtitle">Your own solve history.</p>
+        <div class="cf-analysis-section">
+          <h3>Accuracy per tag</h3>
+          <p class="card-subtitle">Your accuracy by tag &mdash; the share of submissions on problems you solved that were correct, plus the average wrong attempts before AC (lower is better; needs at least 2 solves in a tag to show).</p>
+          <div id="cf-accuracy-root" class="bar-list"></div>
+        </div>
+        <div class="cf-analysis-section">
+          <h3>Problem ratings</h3>
+          <p class="card-subtitle">How many solved problems fall in each difficulty band, colored like Codeforces' own rating tiers &mdash; optionally filtered to a single tag. When filtered to one tag, the Topic Wise Rating figure is weighted toward harder solves, limited to your most recent ${this.TAG_RATING_RECENT_WINDOW} solves in that tag (so an old pile of easy solves can't drag it down, and a barely-touched tag isn't unfairly inflated just for missing that old volume), AND boosted by clustering &mdash; a solve that's part of a real group of similarly-rated solves counts for more than an equally-hard one-off, so one lucky high solve can't single-handedly pull the number up, but a genuine run of solves at a similar high difficulty will. A &#9888; means that tag's sample is thin (under ${this.TAG_RATING_LOW_CONFIDENCE_SAMPLE} solves) &mdash; solve more of it for a steadier number.</p>
+          <div id="cf-rating-histogram-root"></div>
+        </div>
+        <div class="cf-analysis-section">
+          <h3>Codeforces Rating trajectory</h3>
+          <div id="cf-rating-chart-root"></div>
+        </div>
+        <div class="cf-analysis-section">
+          <h3>Solve activity</h3>
+          <div id="cf-heatmap-root"></div>
+        </div>
+        <div class="cf-analysis-section">
+          <h3>Unsolved / attempted</h3>
+          <p class="card-subtitle">Problems you've tried but haven't solved yet &mdash; ready-made practice targets.</p>
+          <div id="cf-unsolved-root" class="solved-log"></div>
+        </div>
       </div>
-      ${
-        canUseCloudTiers
-          ? ""
-          : `<p class="card-subtitle">This deployment doesn't have cloud sync configured, so there's no server anywhere to serve the Tourist / Top 500 / Top 10,000 / Average-user sample data from. "Compare with someone" still works — it's just a live public Codeforces API call, no backend needed.</p>`
-      }
-      <div class="report-toggle" id="cf-window-toggle">
-        ${this.WINDOWS.map((w) => `<button type="button" data-window="${w.id}" class="${w.id === this._window ? "active" : ""}">${w.label}</button>`).join("")}
-      </div>
-      <div class="cf-analysis-section">
-        <h3>Your tag mix vs. the baseline</h3>
-        <p class="card-subtitle">
-          Each percentage is the share of <strong>solved problems that have this tag</strong>
-          &mdash; e.g. "40% vs 45%" means 40% of everything <em>you've</em> solved is tagged this
-          way, vs 45% of theirs. It's a mix comparison, not an accuracy or match score.
-        </p>
-        <p class="card-subtitle" id="cf-baseline-subtitle"></p>
-        <div id="cf-baseline-root"></div>
-      </div>
-      <div class="cf-analysis-section">
-        <h3>Next problem recommendations</h3>
-        <p class="card-subtitle">Unsolved problems in your weak tags (from the comparison above), just above a target rating blended from your current CF rating and what you've actually been solving lately.</p>
-        <button id="cf-recommend-btn" type="button" class="btn-secondary">Get recommendations</button>
-        <span id="cf-recommend-status" class="sync-status"></span>
-        <div id="cf-recommend-root" class="solved-log"></div>
+
+      <div id="cf-compare-section" ${this._section === "compare" ? "" : "hidden"}>
+        <h3 class="cf-group-heading">Comparison</h3>
+        <p class="card-subtitle">How your tag mix stacks up against a baseline, and what to solve next based on the gap.</p>
+        <div class="report-toggle" id="cf-tier-toggle">
+          ${visibleTiers.map((t) => `<button type="button" data-tier="${t.id}" class="${t.id === this._tier ? "active" : ""}">${t.label}</button>`).join("")}
+        </div>
+        ${
+          canUseCloudTiers
+            ? ""
+            : `<p class="card-subtitle">This deployment doesn't have cloud sync configured, so there's no server anywhere to serve the Tourist / Top 500 / Top 10,000 / Average-user sample data from. "Compare with someone" still works — it's just a live public Codeforces API call, no backend needed.</p>`
+        }
+        <div class="report-toggle" id="cf-window-toggle">
+          ${this.WINDOWS.map((w) => `<button type="button" data-window="${w.id}" class="${w.id === this._window ? "active" : ""}">${w.label}</button>`).join("")}
+        </div>
+        <div class="cf-analysis-section">
+          <h3>Your tag mix vs. the baseline</h3>
+          <p class="card-subtitle">
+            Each percentage is the share of <strong>solved problems that have this tag</strong>
+            &mdash; e.g. "40% vs 45%" means 40% of everything <em>you've</em> solved is tagged this
+            way, vs 45% of theirs. It's a mix comparison, not an accuracy or match score.
+          </p>
+          <p class="card-subtitle" id="cf-baseline-subtitle"></p>
+          <div id="cf-baseline-root"></div>
+        </div>
+        <div class="cf-analysis-section">
+          <h3>Next problem recommendations</h3>
+          <p class="card-subtitle">Unsolved problems in your weak tags (from the comparison above), just above a target rating blended from your current Codeforces Rating and what you've actually been solving lately.</p>
+          <button id="cf-recommend-btn" type="button" class="btn-secondary">Get recommendations</button>
+          <span id="cf-recommend-status" class="sync-status"></span>
+          <div id="cf-recommend-root" class="solved-log"></div>
+        </div>
       </div>
     `;
 
     $("cf-recommend-btn").addEventListener("click", () => this.handleRecommend());
 
+    container.querySelectorAll("#cf-section-toggle button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this._section = btn.dataset.section;
+        this.render(container);
+      });
+    });
     container.querySelectorAll("#cf-tier-toggle button").forEach((btn) => {
       btn.addEventListener("click", () => {
         this._tier = btn.dataset.tier;
@@ -334,7 +350,7 @@ const CFAnalysis = {
       <div class="report-windows">
         <div class="stat-tile"><div class="stat-value">${solvedLog.length}</div><div class="stat-label">total solved</div></div>
         <div class="stat-tile"><div class="stat-value">${avgRating ?? "—"}</div><div class="stat-label">avg. solved rating</div></div>
-        <div class="stat-tile"><div class="stat-value">${currentRating ?? "—"}</div><div class="stat-label">${rank || "current rating"}</div></div>
+        <div class="stat-tile"><div class="stat-value">${currentRating ?? "—"}</div><div class="stat-label">${rank ? `Codeforces Rating (${rank})` : "Codeforces Rating"}</div></div>
         <div class="stat-tile"><div class="stat-value">${cf.ratingHistory.length}</div><div class="stat-label">contests synced</div></div>
       </div>
     `;
@@ -472,7 +488,7 @@ const CFAnalysis = {
     if (this._tier === "tourist") cutoffLabel = "a specific named player";
     else if (this._tier === "average") cutoffLabel = `~${result.ratingCutoff} rated`;
     else cutoffLabel = `${result.ratingCutoff}+ rated`;
-    const sampleNote = this._tier === "tourist" ? "" : `, averaged across 1500 real sampled players, updated daily`;
+    const sampleNote = this._tier === "tourist" ? "" : `, averaged across 500 real sampled players, updated daily`;
     subtitleEl.textContent = `${result.tierLabel} (${cutoffLabel}${sampleNote})`;
 
     if (!result.sampleSize) {
@@ -539,21 +555,35 @@ const CFAnalysis = {
       .join("")}</div>`;
   },
 
+  /**
+   * Rating trajectory chart: a polyline over each rated contest, with a right-side rating axis
+   * (gridlines snapped to round numbers, like a real rating graph) and a continuous hover — move
+   * anywhere over the chart and a dashed guide + highlighted dot track the nearest contest, with
+   * its rating shown in a floating tooltip. Continuous cursor tracking rather than a per-point
+   * `title` for the same reason as the Team Analyzer's tag-rating bars (see wireRatingChartHover):
+   * a 3px dot is a thin, easy-to-miss target, and a native title has no way to show a highlighted
+   * point alongside it.
+   */
   renderRatingChart(root) {
     const history = Store.data.cf.ratingHistory;
     if (!history.length) {
-      root.innerHTML = `<p class="empty-note">Sync your Codeforces handle above to see your rating trajectory.</p>`;
+      root.innerHTML = `<p class="empty-note">Sync your Codeforces handle above to see your Codeforces Rating trajectory.</p>`;
       return;
     }
     const width = 640;
     const height = 180;
-    const padding = 30;
+    const paddingLeft = 10;
+    const paddingRight = 46; // room for the right-side rating axis labels
+    const paddingTop = 14;
+    const paddingBottom = 14;
+    const plotWidth = width - paddingLeft - paddingRight;
+    const plotHeight = height - paddingTop - paddingBottom;
     const n = history.length;
     const ratings = history.map((h) => h.newRating);
     const minR = Math.min(...ratings) - 50;
     const maxR = Math.max(...ratings) + 50;
-    const x = (i) => padding + (i / Math.max(1, n - 1)) * (width - 2 * padding);
-    const y = (r) => height - padding - ((r - minR) / (maxR - minR)) * (height - 2 * padding);
+    const x = (i) => paddingLeft + (i / Math.max(1, n - 1)) * plotWidth;
+    const y = (r) => paddingTop + plotHeight - ((r - minR) / (maxR - minR)) * plotHeight;
     const points = history.map((h, i) => `${x(i)},${y(h.newRating)}`).join(" ");
     const last = history[n - 1];
     const percentile = CFBaseline.percentileForRating(last.newRating);
@@ -564,20 +594,99 @@ const CFAnalysis = {
     const peak = history.reduce((m, h) => Math.max(m, h.newRating), -Infinity);
     const peakLabel = peak > last.newRating ? ` · peak ${peak}` : "";
 
+    // Right-side rating marks: ~4 gridlines snapped to a round step (100, 200, 500...) so the
+    // labels read like real rating milestones instead of arbitrary numbers off the exact min/max.
+    const rawStep = (maxR - minR) / 4;
+    const step = Math.max(100, Math.round(rawStep / 100) * 100);
+    const firstTick = Math.ceil(minR / step) * step;
+    const ticks = [];
+    for (let t = firstTick; t <= maxR; t += step) ticks.push(t);
+
     root.innerHTML = `
       <div class="rating-chart-wrap">
-        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Rating over ${n} contest${n === 1 ? "" : "s"}, ending at ${last.newRating}">
-          <polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-          ${history
+        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Codeforces Rating over ${n} contest${n === 1 ? "" : "s"}, ending at ${last.newRating}" id="cf-rating-svg">
+          ${ticks
             .map(
-              (h, i) =>
-                `<circle cx="${x(i)}" cy="${y(h.newRating)}" r="3" fill="var(--accent)"><title>${escapeHtml(h.contestName)}: ${h.oldRating} → ${h.newRating}</title></circle>`
+              (t) => `
+            <line x1="${paddingLeft}" x2="${width - paddingRight}" y1="${y(t)}" y2="${y(t)}" class="rating-chart-gridline" />
+            <text x="${width - paddingRight + 6}" y="${y(t) + 3}" class="rating-chart-axis-label">${t}</text>
+          `
             )
             .join("")}
+          <polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+          ${history.map((h, i) => `<circle cx="${x(i)}" cy="${y(h.newRating)}" r="3" fill="var(--accent)" />`).join("")}
+          <line id="cf-rating-hover-line" x1="0" x2="0" y1="${paddingTop}" y2="${height - paddingBottom}" class="rating-chart-hover-line" hidden />
+          <circle id="cf-rating-hover-dot" r="5" class="rating-chart-hover-dot" hidden />
         </svg>
       </div>
-      <p class="card-subtitle">${n} contest${n === 1 ? "" : "s"} · current rating ${last.newRating}${rankLabel}${peakLabel}${percentileLabel}</p>
+      <p class="card-subtitle">${n} contest${n === 1 ? "" : "s"} · Codeforces Rating ${last.newRating}${rankLabel}${peakLabel}${percentileLabel}</p>
     `;
+    this.wireRatingChartHover(root, history, { x, y, paddingLeft, plotWidth, width });
+  },
+
+  /**
+   * Continuous mousemove over the chart: maps cursor X back to the nearest contest index (not
+   * pixel-hunting for a 3px circle), then moves the dashed guide line + highlighted dot there and
+   * shows a floating tooltip with that contest's name, old→new rating, and date. Mirrors
+   * TeamAnalysis's wireRatingTooltips (js/cf-team-analysis.js) — same continuous-cursor-tracking
+   * approach, applied to a line chart's X axis instead of a bar's rating axis.
+   */
+  wireRatingChartHover(root, history, { x, y, paddingLeft, plotWidth, width }) {
+    const svg = root.querySelector("#cf-rating-svg");
+    const hoverLine = root.querySelector("#cf-rating-hover-line");
+    const hoverDot = root.querySelector("#cf-rating-hover-dot");
+    const n = history.length;
+
+    svg.addEventListener("mousemove", (evt) => {
+      const rect = svg.getBoundingClientRect();
+      const svgX = rect.width ? ((evt.clientX - rect.left) / rect.width) * width : 0;
+      const frac = plotWidth ? Math.max(0, Math.min(1, (svgX - paddingLeft) / plotWidth)) : 0;
+      const i = Math.round(frac * (n - 1));
+      const h = history[i];
+
+      hoverLine.setAttribute("x1", x(i));
+      hoverLine.setAttribute("x2", x(i));
+      hoverLine.hidden = false;
+      hoverDot.setAttribute("cx", x(i));
+      hoverDot.setAttribute("cy", y(h.newRating));
+      hoverDot.hidden = false;
+
+      const date = new Date(h.ratingUpdateTimeSeconds * 1000).toLocaleDateString();
+      this.showFloatingTooltip(evt.clientX, evt.clientY, `${h.contestName} — ${h.oldRating} → ${h.newRating} (${date})`);
+    });
+    svg.addEventListener("mouseleave", () => {
+      hoverLine.hidden = true;
+      hoverDot.hidden = true;
+      this.hideFloatingTooltip();
+    });
+  },
+
+  /** Shared floating tooltip element (see .floating-tooltip in styles.css) — same pattern as TeamAnalysis's. */
+  ensureFloatingTooltipEl() {
+    let el = document.getElementById("cf-floating-tooltip");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "cf-floating-tooltip";
+      el.className = "floating-tooltip";
+      el.hidden = true;
+      document.body.appendChild(el);
+    }
+    return el;
+  },
+
+  showFloatingTooltip(clientX, clientY, text) {
+    const el = this.ensureFloatingTooltipEl();
+    el.textContent = text;
+    el.hidden = false;
+    const left = Math.min(clientX + 14, window.innerWidth - el.offsetWidth - 8);
+    const top = Math.min(clientY + 14, window.innerHeight - el.offsetHeight - 8);
+    el.style.left = `${Math.max(4, left)}px`;
+    el.style.top = `${Math.max(4, top)}px`;
+  },
+
+  hideFloatingTooltip() {
+    const el = document.getElementById("cf-floating-tooltip");
+    if (el) el.hidden = true;
   },
 
   /** Distinct tags across the synced solved log, most-solved first — for the histogram's tag filter. */
@@ -660,7 +769,7 @@ const CFAnalysis = {
     const windowed = solved.length < totalCount;
     const ratingStatsHtml = `
       <div class="report-windows cf-totals">
-        <div class="stat-tile"><div class="stat-value">${avgRating}</div><div class="stat-label">${tagFilter === "all" ? "avg. rating" : `avg. rating in "${escapeHtml(tagFilter)}"`}${lowSample ? " &#9888;" : ""}</div></div>
+        <div class="stat-tile"><div class="stat-value">${avgRating}</div><div class="stat-label">${tagFilter === "all" ? "avg. rating" : `Topic Wise Rating: "${escapeHtml(tagFilter)}"`}${lowSample ? " &#9888;" : ""}</div></div>
         <div class="stat-tile"><div class="stat-value">${solved.length}</div><div class="stat-label">${windowed ? `recent solves (of ${totalCount})` : `rated solve${solved.length === 1 ? "" : "s"}`}</div></div>
       </div>
     `;

@@ -601,14 +601,15 @@ const TeamAnalysis = {
   /** Deterministic, data-grounded summary — not free-form generation, see file header. */
   buildSummaryParagraph(member, roleLabel, domainLabel, domainRating, speedRankLabel) {
     const rank = this.rankTitle(member.currentRating);
-    const ratingPart = member.currentRating != null ? `rated ${member.currentRating}${rank ? ` (${rank})` : ""}` : "unrated";
+    const ratingPart =
+      member.currentRating != null ? `has Codeforces Rating ${member.currentRating}${rank ? ` (${rank})` : ""}` : "is unrated";
     const topTags = this.topTags(member, 2);
     const topTagsPart = topTags.length ? ` Strongest in ${topTags.map((t) => t.tag).join(" and ")}.` : "";
     const acc = member.overallAccuracy;
     const accPart = acc ? ` ${this.accuracyLabel(acc.accuracyPct)} accuracy (${acc.accuracyPct.toFixed(0)}%).` : " Not enough solves yet to measure accuracy.";
     const speedPart = speedRankLabel ? ` ${speedRankLabel}.` : member.speed.insufficientData ? " Not enough live-contest data to rank solving speed." : "";
-    const domainPart = domainRating != null ? `${domainLabel}, ~${Math.round(domainRating)} rated` : domainLabel;
-    return `${member.handle} is ${ratingPart}, ${member.totalSolved} solved.${topTagsPart}${accPart}${speedPart} Suggested role: ${roleLabel} (owns ${domainPart}).`;
+    const domainPart = domainRating != null ? `${domainLabel} (Topic Wise Rating ~${Math.round(domainRating)})` : domainLabel;
+    return `${member.handle} ${ratingPart}, ${member.totalSolved} solved.${topTagsPart}${accPart}${speedPart} Suggested role: ${roleLabel} (owns ${domainPart}).`;
   },
 
   /**
@@ -665,8 +666,8 @@ const TeamAnalysis = {
 
     const statTile = (value, label) => `<div class="stat-tile"><div class="stat-value">${value}</div><div class="stat-label">${label}</div></div>`;
     const teamStatsHtml = [
-      statTile(teamStats.avgRating ?? "—", "avg. team rating"),
-      statTile(teamStats.ratingSpread != null ? teamStats.ratingSpread : "—", "rating spread"),
+      statTile(teamStats.avgRating ?? "—", "avg. team Codeforces Rating"),
+      statTile(teamStats.ratingSpread != null ? teamStats.ratingSpread : "—", "Codeforces Rating spread"),
       statTile(teamStats.combinedAccuracy != null ? teamStats.combinedAccuracy.toFixed(0) + "%" : "—", "combined accuracy"),
       statTile(`${teamStats.tagsCovered}/${teamStats.totalCoreTags}`, "core tags covered"),
     ].join("");
@@ -681,7 +682,7 @@ const TeamAnalysis = {
       .map((m, i) => {
         const domainIdx = domainAssignment[i];
         const rating = rawDomainRatings[domainIdx][i];
-        const ratingLabel = rating != null ? `~${Math.round(rating)} rated` : "not enough data yet";
+        const ratingLabel = rating != null ? `Topic Wise Rating: ~${Math.round(rating)}` : "not enough data yet";
         return `<div class="stat-tile" title="${escapeHtml(ratingLabel)}"><div class="stat-value">${escapeHtml(this.DOMAINS[domainIdx].label)}</div><div class="stat-label">${escapeHtml(m.handle)} &middot; ${escapeHtml(ratingLabel)}</div></div>`;
       })
       .join("");
@@ -720,17 +721,18 @@ const TeamAnalysis = {
         <h2>Tag breakdown</h2>
         <p class="card-subtitle">
           One compact row per tag &mdash; each bar spans that person's lowest-to-highest solved
-          rating in their last ${this.TAG_RATING_RECENT_WINDOW} solves in that tag (marker =
-          weighted average), and the number alongside is that rating, how many of their solves in
-          that tag went into it, and their share of solves overall. Ratings are weighted toward
-          harder solves, limited to those recent ${this.TAG_RATING_RECENT_WINDOW} (an old pile of
-          easy solves can't drag the number down, and a barely-touched tag isn't unfairly inflated
-          just for missing that old volume), AND boosted by clustering &mdash; a solve that's part
-          of a real group of similarly-rated solves counts for more than an equally-hard one-off,
-          so one lucky high solve can't single-handedly pull the number up, but a genuine run of
-          solves at a similar high difficulty will. <strong>&#9888;</strong> next to a number
-          means that tag's sample is thin (under ${this.TAG_RATING_LOW_CONFIDENCE_SAMPLE} solves
-          going into the average) &mdash; solve more of it for a steadier number.
+          problem rating in their last ${this.TAG_RATING_RECENT_WINDOW} solves in that tag (marker
+          = their Topic Wise Rating, a weighted average), and the number alongside is that Topic
+          Wise Rating, how many of their solves in that tag went into it, and their share of
+          solves overall. Topic Wise Ratings are weighted toward harder solves, limited to those
+          recent ${this.TAG_RATING_RECENT_WINDOW} (an old pile of easy solves can't drag the
+          number down, and a barely-touched tag isn't unfairly inflated just for missing that old
+          volume), AND boosted by clustering &mdash; a solve that's part of a real group of
+          similarly-rated solves counts for more than an equally-hard one-off, so one lucky high
+          solve can't single-handedly pull the number up, but a genuine run of solves at a similar
+          high difficulty will. <strong>&#9888;</strong> next to a number means that tag's sample
+          is thin (under ${this.TAG_RATING_LOW_CONFIDENCE_SAMPLE} solves going into the average)
+          &mdash; solve more of it for a steadier number.
           <strong>Hover any point on a bar</strong> to see exactly how many problems at that
           rating, in that tag, they solved.
         </p>
@@ -779,7 +781,7 @@ const TeamAnalysis = {
     if (!el) {
       el = document.createElement("div");
       el.id = "team-rating-tooltip";
-      el.className = "team-rating-tooltip";
+      el.className = "floating-tooltip";
       el.hidden = true;
       document.body.appendChild(el);
     }
@@ -928,14 +930,14 @@ const TeamAnalysis = {
     const implCallout = this.implementationCallout(member);
     const summary = this.buildSummaryParagraph(member, roleLabel, domainLabel, domainRating, speedRankLabel);
     const topTags = this.topTags(member, 4);
-    const domainTitle = domainRating != null ? `~${Math.round(domainRating)} rated in this domain` : "not enough solves here to rate yet";
+    const domainTitle = domainRating != null ? `Topic Wise Rating: ~${Math.round(domainRating)} in this domain` : "not enough solves here to rate yet";
 
     return `
       <div class="card">
         <h3>${escapeHtml(member.handle)} <span class="role-badge">${escapeHtml(roleLabel)}</span><span class="role-badge domain-badge" title="${escapeHtml(domainTitle)}">${escapeHtml(domainLabel)}</span></h3>
         <p class="card-subtitle">${escapeHtml(summary)}</p>
         <div class="report-windows">
-          <div class="stat-tile"><div class="stat-value">${member.currentRating ?? "—"}</div><div class="stat-label">${escapeHtml(rank || "rating")}</div></div>
+          <div class="stat-tile"><div class="stat-value">${member.currentRating ?? "—"}</div><div class="stat-label">${escapeHtml(rank ? `Codeforces Rating (${rank})` : "Codeforces Rating")}</div></div>
           <div class="stat-tile"><div class="stat-value">${member.totalSolved}</div><div class="stat-label">total solved</div></div>
           <div class="stat-tile"><div class="stat-value">${accPct != null ? accPct + "%" : "—"}</div><div class="stat-label">accuracy</div></div>
           <div class="stat-tile"><div class="stat-value">${escapeHtml(speedValue)}</div><div class="stat-label">solve speed (team rank)</div></div>

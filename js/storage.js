@@ -9,7 +9,7 @@ const LOCAL_KEY = "icpc-prep-hub:data:v1";
 
 function defaultData() {
   return {
-    version: 1,
+    version: 2,
     profile: {
       cfHandle: "",
       cfVerified: false,
@@ -73,6 +73,40 @@ function deepMerge(base, incoming) {
   return incoming !== undefined ? incoming : base;
 }
 
+/**
+ * One-time migrations for data saved under an older schema `version`. Needed because deepMerge
+ * only merges plain OBJECTS key-by-key — an array like `rewards` that's already on disk always
+ * wins wholesale over a new default (see deepMerge above), so changing a shipped default value
+ * (e.g. a starter reward's cost) only affects brand-new installs, never browsers that already
+ * saved data under the old default. Each entry is a pure `(data) -> data` step keyed by the
+ * version it upgrades TO; migrate() below runs every step between the stored version and current.
+ */
+const MIGRATIONS = {
+  2: (data) => {
+    // v1 -> v2: starter reward costs were halved (20/30/150 -> 10/15/75) when the points formula
+    // dropped by a flat 5/solve (see gamification.js). Only touches the 3 known starter rewards,
+    // and only when the cost still exactly matches the OLD default, so it can't clobber anything
+    // else — there's no UI to edit a reward's cost today, so an exact match can only mean this
+    // reward was never touched since it was created under the old default.
+    const OLD_COSTS = { "r-youtube": 20, "r-treat": 30, "r-afternoon": 150 };
+    const NEW_COSTS = { "r-youtube": 10, "r-treat": 15, "r-afternoon": 75 };
+    for (const r of data.rewards) {
+      if (r.id in OLD_COSTS && r.cost === OLD_COSTS[r.id]) r.cost = NEW_COSTS[r.id];
+    }
+    return data;
+  },
+};
+
+function migrate(data) {
+  let version = data.version || 1;
+  while (MIGRATIONS[version + 1]) {
+    version += 1;
+    data = MIGRATIONS[version](data) || data;
+  }
+  data.version = version;
+  return data;
+}
+
 const Store = {
   _data: null,
 
@@ -80,7 +114,7 @@ const Store = {
     if (!this._data) {
       try {
         const raw = localStorage.getItem(LOCAL_KEY);
-        this._data = raw ? deepMerge(defaultData(), JSON.parse(raw)) : defaultData();
+        this._data = raw ? migrate(deepMerge(defaultData(), JSON.parse(raw))) : defaultData();
       } catch (e) {
         console.error("Failed to read local data, using defaults.", e);
         this._data = defaultData();
@@ -113,7 +147,7 @@ const Store = {
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new Error("That file doesn't look like an icpc-prep-hub backup (expected a JSON object).");
     }
-    this._data = deepMerge(defaultData(), parsed);
+    this._data = migrate(deepMerge(defaultData(), parsed));
     this.save();
     return this._data;
   },

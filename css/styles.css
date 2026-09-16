@@ -1437,7 +1437,7 @@ details p {
 /* Range bar built from individually-shaded 100-wide rating segments (not one smooth fill), so
    opacity shows where solves concentrate within the tag. Segments live in their own clipped/
    rounded wrapper so the average marker (a sibling, not inside it) can still stick out past the
-   track's edges. Hover feedback is a shared floating tooltip (.team-rating-tooltip, driven by
+   track's edges. Hover feedback is a shared floating tooltip (.floating-tooltip, driven by
    continuous cursor position via wireRatingTooltips in JS) rather than a per-segment `title` —
    segments are too thin to reliably hit, and the clipped wrapper would clip a title anyway. */
 .rating-range-track {
@@ -1471,7 +1471,11 @@ details p {
   pointer-events: none;
 }
 
-.team-rating-tooltip {
+/* Generic floating tooltip, positioned via JS (position:fixed near the cursor) — used wherever a
+   native `title` isn't reliable enough (a hit-target too thin to land on, or a hover that needs
+   to track continuous cursor position rather than one fixed element): the Team Analyzer's tag
+   rating bars, and the Codeforces page's rating trajectory chart. */
+.floating-tooltip {
   position: fixed;
   z-index: 1000;
   background: var(--bg-elevated);
@@ -1484,7 +1488,7 @@ details p {
   pointer-events: none;
   box-shadow: var(--shadow);
 }
-.team-rating-tooltip[hidden] {
+.floating-tooltip[hidden] {
   display: none;
 }
 
@@ -1534,6 +1538,36 @@ details p {
 .rating-chart-wrap svg {
   display: block;
   min-width: 100%;
+  cursor: crosshair;
+}
+
+/* Right-side rating axis: faint gridlines behind the polyline, small labels past the plot area. */
+.rating-chart-gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.rating-chart-axis-label {
+  font-size: 10px;
+  fill: var(--text-muted);
+}
+
+/* Hover feedback — a dashed vertical guide + highlighted dot at the nearest contest, driven by
+   continuous cursor position (see wireRatingChartHover in js/cf-analysis.js) rather than a
+   per-point `title`, since a 3px circle is too thin a target to reliably land on. */
+.rating-chart-hover-line {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3, 3;
+  pointer-events: none;
+}
+
+.rating-chart-hover-dot {
+  fill: var(--accent);
+  stroke: var(--bg);
+  stroke-width: 2;
+  pointer-events: none;
 }
 
 .rating-histogram-row {
