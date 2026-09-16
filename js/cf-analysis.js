@@ -22,15 +22,47 @@ const CFAnalysis = {
    * rating, so harder solves count proportionally more than easier ones — a plain mean has a
    * real failure mode here (100 solves ground out at 800 early on would keep averaging down to
    * ~800-ish even after someone's moved on to solving 1700-1800s), and weighting by rating pulls
-   * the number toward what someone can *currently* solve instead. Same formula as
-   * TeamAnalysis.weightedAvgRating (js/cf-team-analysis.js), duplicated for the same reason as
-   * the constants above.
+   * the number toward what someone can *currently* solve instead. Used only for the profile-wide
+   * "avg. solved rating" stat (all tags, no cluster concept applies) — the tag-filtered histogram
+   * below uses clusterWeightedAvgRating() instead, which builds on this same weighting. Same
+   * formula as TeamAnalysis.weightedAvgRating (js/cf-team-analysis.js), duplicated for the same
+   * reason as the constants above.
    */
   weightedAvgRating(ratings) {
     let weightedSum = 0;
     let weightSum = 0;
     for (const r of ratings) {
       const w = r * r;
+      weightedSum += r * w;
+      weightSum += w;
+    }
+    return weightSum ? weightedSum / weightSum : null;
+  },
+
+  /**
+   * Rating-weighted average, ALSO boosted by how many of the sample's OTHER solves share a
+   * solve's exact rating. Each solve's density = count of solves at that same rating (including
+   * itself); that density multiplies into the existing rating² weight. An earlier version
+   * smoothed "closeness" continuously via a Gaussian kernel (kernel density estimation), to avoid
+   * a hard bucket boundary splitting two very-close ratings apart — but Codeforces problem
+   * ratings only ever land on exact multiples of 100, never in between, so there's no continuous
+   * boundary to smooth over. Tested directly: smoothing only diluted the signal (a real 10-of-30
+   * cluster scored lower the more it blurred nearby-but-different ratings together), so exact-
+   * rating counting — the smoothing's own bandwidth-to-zero limit — measurably won out. Fixes
+   * what plain rating-squared weighting can't: a single high-rated solve amid a pile of much
+   * easier ones still got full credit for its own magnitude there, undiluted by having no
+   * company; here its density stays 1, so it barely outweighs the easier cluster's r²×N, while a
+   * genuine cluster of solves at the same high rating (repeated evidence, not a one-off) pulls
+   * the average solidly toward it. Same formula as TeamAnalysis.clusterWeightedAvgRating
+   * (js/cf-team-analysis.js).
+   */
+  clusterWeightedAvgRating(ratings) {
+    const counts = {};
+    for (const r of ratings) counts[r] = (counts[r] || 0) + 1;
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (const r of ratings) {
+      const w = r * r * counts[r];
       weightedSum += r * w;
       weightSum += w;
     }
@@ -120,7 +152,7 @@ const CFAnalysis = {
       </div>
       <div class="cf-analysis-section">
         <h3>Problem ratings</h3>
-        <p class="card-subtitle">How many solved problems fall in each difficulty band, colored like Codeforces' own rating tiers &mdash; optionally filtered to a single tag. When filtered to one tag, the avg. rating figure is weighted toward harder solves AND limited to your most recent ${this.TAG_RATING_RECENT_WINDOW} solves in that tag &mdash; weighting alone isn't always enough to stop a big pile of old easy solves from dragging the number down long after you've moved on to harder ones, and limiting to recent solves also stops a tag you've barely touched from looking unfairly strong just because it's missing that old volume other tags have. A &#9888; means that tag's sample is thin (under ${this.TAG_RATING_LOW_CONFIDENCE_SAMPLE} solves) &mdash; solve more of it for a steadier number.</p>
+        <p class="card-subtitle">How many solved problems fall in each difficulty band, colored like Codeforces' own rating tiers &mdash; optionally filtered to a single tag. When filtered to one tag, the avg. rating figure is weighted toward harder solves, limited to your most recent ${this.TAG_RATING_RECENT_WINDOW} solves in that tag (so an old pile of easy solves can't drag it down, and a barely-touched tag isn't unfairly inflated just for missing that old volume), AND boosted by clustering &mdash; a solve that's part of a real group of similarly-rated solves counts for more than an equally-hard one-off, so one lucky high solve can't single-handedly pull the number up, but a genuine run of solves at a similar high difficulty will. A &#9888; means that tag's sample is thin (under ${this.TAG_RATING_LOW_CONFIDENCE_SAMPLE} solves) &mdash; solve more of it for a steadier number.</p>
         <div id="cf-rating-histogram-root"></div>
       </div>
       <div class="cf-analysis-section">
@@ -290,8 +322,10 @@ const CFAnalysis = {
   renderSummary(root) {
     const { solvedLog, cf } = Store.data;
     const ratedSolves = solvedLog.filter((p) => p.rating);
-    // Rating-weighted (see weightedAvgRating below), same formula the "Problem ratings" histogram
-    // uses, so the two numbers agree instead of quietly disagreeing on the same page.
+    // Rating-weighted (see weightedAvgRating below) — same formula the "Problem ratings" histogram
+    // uses for its "All tags" view (not its tag-filtered view, which additionally clusters — see
+    // clusterWeightedAvgRating), so this stays in agreement with "All tags" instead of quietly
+    // disagreeing on the same page.
     const avgRating = ratedSolves.length ? Math.round(this.weightedAvgRating(ratedSolves.map((p) => p.rating))) : null;
     const currentRating = cf.ratingHistory.length ? cf.ratingHistory[cf.ratingHistory.length - 1].newRating : null;
     const rank = this.rankTitle(currentRating);
@@ -459,7 +493,7 @@ const CFAnalysis = {
         <div class="stat-tile"><div class="stat-value">${result.yourTotal}</div><div class="stat-label">you solved (${windowLabel})</div></div>
         <div class="stat-tile"><div class="stat-value">${result.avgSolvedCount}</div><div class="stat-label">${totalsLabel}</div></div>
       </div>
-      ${this.renderComparisonRowsHtml(result.rows, otherLabel)}
+      ${this.renderComparisonRowsHtml(result.rows, otherLabel, this._tier === "tourist")}
     `;
   },
 
@@ -613,12 +647,15 @@ const CFAnalysis = {
     for (let b = minBucket; b <= maxBucket; b += 100) allBuckets.push(b);
     const maxCount = Math.max(...allBuckets.map((b) => counts[b] || 0));
 
-    // The topic rating: this filtered set's rating-WEIGHTED average problem rating (see
-    // weightedAvgRating above) — the same "how strong am I here" number the Team Analyzer
-    // computes per tag (see js/cf-team-analysis.js topicRatings), not just a raw solve count or
-    // a plain mean. Flagged as low-confidence under a small sample rather than hidden outright,
-    // so switching to a rarely-touched tag doesn't look broken.
-    const avgRating = Math.round(this.weightedAvgRating(solved.map((p) => p.rating)));
+    // The topic rating: this filtered set's rating-weighted, cluster-boosted average problem
+    // rating (see clusterWeightedAvgRating above) when filtered to one tag — the same "how strong
+    // am I here" number the Team Analyzer computes per tag (see js/cf-team-analysis.js
+    // topicRatings), not just a raw solve count or a plain mean. "All tags" keeps the plain
+    // weightedAvgRating instead, since clustering isn't a meaningful concept across unrelated
+    // tags. Flagged as low-confidence under a small sample rather than hidden outright, so
+    // switching to a rarely-touched tag doesn't look broken.
+    const ratingsForAvg = solved.map((p) => p.rating);
+    const avgRating = Math.round(tagFilter === "all" ? this.weightedAvgRating(ratingsForAvg) : this.clusterWeightedAvgRating(ratingsForAvg));
     const lowSample = solved.length < this.TAG_RATING_LOW_CONFIDENCE_SAMPLE;
     const windowed = solved.length < totalCount;
     const ratingStatsHtml = `

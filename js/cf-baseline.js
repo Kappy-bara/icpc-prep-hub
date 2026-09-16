@@ -157,7 +157,16 @@ const CFBaseline = {
       const expectedCount = baselineRatio * yours.total;
       const { verdict, label, r } = cfBaselineClassify(yourCount, expectedCount);
       const hue = r === null ? null : cfBaselineHue(r);
-      return { tag, yourRatio, yourCount, baselineRatio, expectedCount, verdict, verdictLabel: label, r, hue };
+      // Their own real (whole-number) solved count in this tag, recovered from the stored
+      // ratio times their own total — NOT expectedCount (which is rescaled onto YOUR total, so
+      // it's only meaningful as "what you'd need to match them," and is fractional even for the
+      // Tourist tier, where the "baseline" is one specific real person who can't have solved a
+      // fractional number of problems). Only rendered for the Tourist tier (see cf-analysis.js
+      // renderBaseline) — the sampled cohorts (Top 500/10,000/Average) are real population
+      // averages across ~1500 players, where a fractional "average solved" figure is honest and
+      // expected, so they keep showing expectedCount.
+      const theirCount = Math.round(baselineRatio * baselineWindow.problemCount);
+      return { tag, yourRatio, yourCount, baselineRatio, expectedCount, theirCount, verdict, verdictLabel: label, r, hue };
     });
     rows.sort((a, b) => b.baselineRatio - a.baselineRatio);
 

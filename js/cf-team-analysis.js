@@ -300,7 +300,7 @@ const TeamAnalysis = {
       const recent = [...probs].sort((a, b) => (a.solvedDate < b.solvedDate ? 1 : -1)).slice(0, this.TAG_RATING_RECENT_WINDOW);
       const ratings = recent.map((p) => p.rating);
       out[tag] = {
-        avgRating: this.weightedAvgRating(ratings),
+        avgRating: this.clusterWeightedAvgRating(ratings),
         count: recent.length,
         totalCount: probs.length,
         min: Math.min(...ratings),
@@ -315,15 +315,55 @@ const TeamAnalysis = {
   /**
    * Rating-weighted average: each value's contribution is weighted by its own square, so higher-
    * rated (harder) solves count proportionally more than easier ones instead of every solve
-   * counting equally — see topicRatings() for why a plain mean is misleading here. Also used by
-   * the Codeforces page's "Problem ratings" histogram (js/cf-analysis.js) for the same reason,
-   * on the same duplicated-small-helper basis as this file's other cross-page constants.
+   * counting equally. Used for stats that aren't scoped to one tag (there's no "cluster" concept
+   * across unrelated tags) — topicRatings() below uses clusterWeightedAvgRating() instead, which
+   * builds on this same weighting. Also used by the Codeforces page's profile-wide "avg. solved
+   * rating" stat (js/cf-analysis.js) for the same reason, on the same duplicated-small-helper
+   * basis as this file's other cross-page constants.
    */
   weightedAvgRating(ratings) {
     let weightedSum = 0;
     let weightSum = 0;
     for (const r of ratings) {
       const w = r * r;
+      weightedSum += r * w;
+      weightSum += w;
+    }
+    return weightSum ? weightedSum / weightSum : null;
+  },
+
+  /**
+   * Rating-weighted average, ALSO boosted by how many of the sample's OTHER solves share a
+   * solve's exact rating — how "clustered" it is. Each solve's density = count of solves in the
+   * sample at that same rating (including itself); that density multiplies into the existing
+   * rating² weight (see weightedAvgRating above), not in place of it.
+   *
+   * An earlier version of this smoothed "closeness" continuously (a Gaussian kernel — kernel
+   * density estimation, the standard non-parametric-stats technique for measuring how much "mass"
+   * of data sits near a point), to avoid a hard bucket boundary splitting two very-close ratings
+   * apart. That concern doesn't actually apply here: Codeforces problem ratings only ever land on
+   * exact multiples of 100 (800, 900, 1000, ...), never in between, so there's no continuous
+   * boundary to smooth over — every possible rating already sits exactly on what would be a
+   * bucket's center. Tested against it directly: smoothing only ever diluted the signal (a real
+   * 10-of-30 cluster scored LOWER the more the kernel blurred nearby-but-different ratings
+   * together), so exact-rating counting — the smoothing's own bandwidth-to-zero limit — is both
+   * simpler and measurably better here, not a simplification that costs anything.
+   *
+   * This is what plain rating-squared weighting can't do on its own: it treats every solve's
+   * contribution as a function of its OWN magnitude only, so one lucky high-rated solve among a
+   * pile of much easier ones still gets full credit for its own difficulty, undiluted by having
+   * no company. Multiplying in density fixes that — a single 2200 sitting alone among mostly 800s
+   * now gets weighted like an 800 (density 1, so its r&sup2; weight barely matters against the
+   * 800 cluster's r&sup2;&times;N), while a genuine cluster of solves at the same high rating
+   * (real, repeated evidence of that level, not a one-off) pulls the average solidly toward it.
+   */
+  clusterWeightedAvgRating(ratings) {
+    const counts = {};
+    for (const r of ratings) counts[r] = (counts[r] || 0) + 1;
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (const r of ratings) {
+      const w = r * r * counts[r];
       weightedSum += r * w;
       weightSum += w;
     }
@@ -683,11 +723,12 @@ const TeamAnalysis = {
           rating in their last ${this.TAG_RATING_RECENT_WINDOW} solves in that tag (marker =
           weighted average), and the number alongside is that rating, how many of their solves in
           that tag went into it, and their share of solves overall. Ratings are weighted toward
-          harder solves AND limited to those recent ${this.TAG_RATING_RECENT_WINDOW} &mdash;
-          weighting alone isn't always enough to stop a big pile of old easy solves from dragging a
-          tag's number down long after someone's moved on to harder problems in it, and limiting to
-          recent solves also stops a barely-touched tag from looking unfairly strong just because
-          it's missing that old volume other tags have. <strong>&#9888;</strong> next to a number
+          harder solves, limited to those recent ${this.TAG_RATING_RECENT_WINDOW} (an old pile of
+          easy solves can't drag the number down, and a barely-touched tag isn't unfairly inflated
+          just for missing that old volume), AND boosted by clustering &mdash; a solve that's part
+          of a real group of similarly-rated solves counts for more than an equally-hard one-off,
+          so one lucky high solve can't single-handedly pull the number up, but a genuine run of
+          solves at a similar high difficulty will. <strong>&#9888;</strong> next to a number
           means that tag's sample is thin (under ${this.TAG_RATING_LOW_CONFIDENCE_SAMPLE} solves
           going into the average) &mdash; solve more of it for a steadier number.
           <strong>Hover any point on a bar</strong> to see exactly how many problems at that
