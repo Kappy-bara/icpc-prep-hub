@@ -35,6 +35,18 @@
           // time it's verified, same as a first-time verification.
           d.profile.gamificationStart = null;
           verifyState = null;
+          // Clear the previous handle's synced Codeforces data — solvedLog/ratingHistory/etc. are
+          // fetched facts about THAT handle, not this one, so leaving them in place after a switch
+          // made every page (Recent solves, Codeforces Analysis, Timeline pace) keep showing the
+          // old handle's history until the next manual sync, which reads as "the page didn't
+          // update." Points/rewards/redemptions are NOT cleared here — those are this browser's
+          // own earned currency, not handle-specific facts, so switching handles (e.g. fixing a
+          // typo) doesn't wipe out progress already spent or banked.
+          d.solvedLog = [];
+          d.cf.ratingHistory = [];
+          d.cf.attemptStats = {};
+          d.cf.unsolvedAttempted = [];
+          d.cf.lastRatingSyncAt = null;
         }
         d.profile.cfHandle = newHandle;
         // gamificationStart is intentionally not editable here — see markVerified() below. It's

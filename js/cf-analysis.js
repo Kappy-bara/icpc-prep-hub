@@ -338,7 +338,7 @@ const CFAnalysis = {
           <div class="bar-row-compare">
             <div class="bar-row-top">
               <span class="bar-label">${escapeHtml(r.tag)} <span class="bar-label-count">(${r.yourCount} you / ${otherCount} ${escapeHtml(otherLabel)})</span></span>
-              <span class="bar-verdict" style="color:${color}" title="${escapeHtml(pctTitle)}">${r.verdictLabel} &middot; ${pct(r.yourRatio)}% vs ${pct(r.baselineRatio)}% of solves</span>
+              <span class="bar-verdict" style="color:${color}" title="${escapeHtml(pctTitle)}">${pct(r.yourRatio)}% vs ${pct(r.baselineRatio)}%</span>
             </div>
             <div class="bar-track-dual">
               <div class="bar-fill-baseline" style="width:${(r.baselineRatio / maxRatio) * 100}%"></div>

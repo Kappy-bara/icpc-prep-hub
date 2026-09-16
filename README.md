@@ -31,7 +31,11 @@ section entirely and the app is 100% local-only and backend-free.
   [cses.fi](https://cses.fi), Codeforces EDU, the ICPC World Finals archive).
   The page itself is a two-pane picker — subjects with a progress bar down
   the left, the selected subject's full checklist on the right — instead of
-  one long accordion. Checkbox state persists locally.
+  one long accordion. Checkbox state persists locally. Locked behind
+  Codeforces verification (see Gamification below), same as Self-rule's
+  points/rewards — a locked notice shows instead until you verify, so
+  progress can't be checked off under an unproven handle. The Dashboard's
+  compact roadmap-progress summary stays visible either way; it's read-only.
 - **Smart timeline** — set an optional target contest date and get a
   countdown plus a pacing plan that proportionally allocates remaining time
   across the roadmap's phases, with an ahead/behind indicator based on your
@@ -281,7 +285,7 @@ section entirely and the app is 100% local-only and backend-free.
 | `dashboard.html` | Profile, Codeforces verification, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
 | `codeforces.html` | Sync, your full solved log, Reports, and the Codeforces Analysis card |
 | `team.html` | ICPC Team Analyzer — paste 3 handles, get a role split, tag gaps, and accuracy/speed callouts |
-| `roadmap.html` | The full 99-topic, 8-subject checklist, as a subject picker + detail pane |
+| `roadmap.html` | The full 99-topic, 8-subject checklist, as a subject picker + detail pane (locked until your Codeforces handle is verified) |
 | `self-rule.html` | Points overview & streak, a daily/weekly/monthly activity breakdown, the points-formula explainer, the reward catalog, and redemption history |
 
 A shared header/nav (`js/nav.js`) and a shared bootstrap (`js/shell.js`, which
