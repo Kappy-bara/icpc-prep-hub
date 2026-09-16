@@ -695,6 +695,84 @@ button:disabled:hover {
   font-size: 0.8rem;
 }
 
+/* Topics with curated practice problems replace the old manually-clickable checkbox with a
+   read-only status dot (same 17px box so the list stays visually aligned with meta-skill topics,
+   which still use a real checkbox) — completion is derived from solved history, not user-toggled. */
+.topic-item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.topic-status-dot {
+  margin-top: 0.25rem;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--bg);
+}
+
+.topic-status-dot.done {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.practice-questions-btn {
+  align-self: flex-start;
+  margin-top: 0.3rem;
+}
+
+.practice-questions-panel {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.practice-problem-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.practice-problem-row.solved {
+  border-color: var(--accent);
+}
+
+.practice-problem-name {
+  flex: 1;
+}
+
+.practice-problem-rating {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.practice-problem-status {
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.practice-problem-status.solved {
+  color: var(--accent);
+}
+
+.practice-problem-status.unsolved {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 /* Timeline */
 .timeline-countdown,
 .streak-display {

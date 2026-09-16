@@ -1,6 +1,11 @@
 /**
- * Roadmap rendering + progress calculations. Checkbox state persists in
- * Store.data.roadmapProgress, keyed by topic id.
+ * Roadmap rendering + progress calculations. Topics with a curated practice-problem set (see
+ * js/roadmap-problems-data.js) auto-complete once every one of their problems shows up in the
+ * user's solved log — completion is derived live from solved history, never stored, so it can
+ * never drift out of sync with what's actually been solved. Topics with no practice-problem
+ * entry (currently all of Contest Meta-Skills — process/mindset skills like team coordination or
+ * post-contest review that no problem set can substitute for) fall back to the old manually-
+ * toggled checkbox, stored in Store.data.roadmapProgress.
  */
 const HIT_SCORE_META = {
   5: { label: "Essential", className: "hit-score-5" },
@@ -23,10 +28,36 @@ const Roadmap = {
     return out;
   },
 
+  /** True if this topic has a curated practice-problem set (see js/roadmap-problems-data.js). */
+  hasPracticeProblems(topicId) {
+    const list = ROADMAP_PROBLEMS[topicId];
+    return Array.isArray(list) && list.length > 0;
+  },
+
+  /** Keys of every problem in the user's solved log, for O(1) per-problem lookups below. */
+  solvedKeySet() {
+    return new Set(Store.data.solvedLog.map((p) => p.key));
+  },
+
+  /** { problems: [...each with a .solved flag], solvedCount, total, done } for one practice-problem topic. */
+  practiceStatus(topicId) {
+    const list = ROADMAP_PROBLEMS[topicId] || [];
+    const solvedKeys = this.solvedKeySet();
+    const problems = list.map((p) => ({ ...p, solved: solvedKeys.has(Gamification.problemKey(p.contestId, p.index)) }));
+    const solvedCount = problems.filter((p) => p.solved).length;
+    return { problems, solvedCount, total: problems.length, done: problems.length > 0 && solvedCount === problems.length };
+  },
+
+  /**
+   * A topic with curated practice problems is done once every one of them is solved. A topic
+   * with no practice-problem entry falls back to the old manually-toggled flag — see file header.
+   */
   isDone(topicId) {
+    if (this.hasPracticeProblems(topicId)) return this.practiceStatus(topicId).done;
     return !!Store.data.roadmapProgress[topicId];
   },
 
+  /** Manual toggle — only meaningful, and only exposed in the UI, for topics with no practice-problem entry. */
   setDone(topicId, done) {
     Store.update((d) => {
       if (done) d.roadmapProgress[topicId] = true;
@@ -88,6 +119,9 @@ const Roadmap = {
 
   /** id of the subject currently shown in the detail pane; persists across re-renders within a page view. */
   _selectedSubjectId: null,
+
+  /** ids of topics whose practice-problem panel is currently expanded; persists across re-renders within a page view. */
+  _expandedTopics: new Set(),
 
   render(container) {
     container.innerHTML = "";
@@ -160,63 +194,149 @@ const Roadmap = {
       const list = document.createElement("ul");
       list.className = "topic-list";
       for (const topic of phase.topics) {
-        const li = document.createElement("li");
-        li.className = "topic-item";
-
-        const label = document.createElement("label");
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = this.isDone(topic.id);
-        checkbox.addEventListener("change", () => {
-          this.setDone(topic.id, checkbox.checked);
-          this.render(container);
-          document.dispatchEvent(new CustomEvent("roadmap:changed"));
-        });
-        label.appendChild(checkbox);
-
-        const textWrap = document.createElement("span");
-        textWrap.className = "topic-text";
-        const nameEl = document.createElement("span");
-        nameEl.className = "topic-name";
-        nameEl.textContent = topic.name;
-        const scoreMeta = HIT_SCORE_META[topic.hitScore];
-        if (scoreMeta) {
-          const scoreEl = document.createElement("span");
-          scoreEl.className = `hit-score ${scoreMeta.className}`;
-          scoreEl.textContent = scoreMeta.label;
-          scoreEl.title = "How important this topic is for ICPC, based on how often it's a prerequisite for other topics and how often it appears in regionals/World Finals directly.";
-          nameEl.appendChild(scoreEl);
-        }
-        textWrap.appendChild(nameEl);
-
-        if (topic.what) {
-          const whatEl = document.createElement("span");
-          whatEl.className = "topic-what";
-          whatEl.textContent = topic.what;
-          textWrap.appendChild(whatEl);
-        }
-
-        const whyEl = document.createElement("span");
-        whyEl.className = "topic-why";
-        whyEl.textContent = topic.why;
-        textWrap.appendChild(whyEl);
-
-        if (topic.resource) {
-          const link = document.createElement("a");
-          link.className = "topic-resource";
-          link.href = topic.resource.url;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          link.textContent = `→ ${topic.resource.label}`;
-          textWrap.appendChild(link);
-        }
-
-        label.appendChild(textWrap);
-        li.appendChild(label);
-        list.appendChild(li);
+        list.appendChild(this.renderTopicItem(topic, container));
       }
       phaseEl.appendChild(list);
       detail.appendChild(phaseEl);
     }
+  },
+
+  /** Shared text block (name + hit-score badge + what/why/resource) reused by both topic-item variants below. */
+  buildTopicTextEl(topic) {
+    const textWrap = document.createElement("span");
+    textWrap.className = "topic-text";
+    const nameEl = document.createElement("span");
+    nameEl.className = "topic-name";
+    nameEl.textContent = topic.name;
+    const scoreMeta = HIT_SCORE_META[topic.hitScore];
+    if (scoreMeta) {
+      const scoreEl = document.createElement("span");
+      scoreEl.className = `hit-score ${scoreMeta.className}`;
+      scoreEl.textContent = scoreMeta.label;
+      scoreEl.title = "How important this topic is for ICPC, based on how often it's a prerequisite for other topics and how often it appears in regionals/World Finals directly.";
+      nameEl.appendChild(scoreEl);
+    }
+    textWrap.appendChild(nameEl);
+
+    if (topic.what) {
+      const whatEl = document.createElement("span");
+      whatEl.className = "topic-what";
+      whatEl.textContent = topic.what;
+      textWrap.appendChild(whatEl);
+    }
+
+    const whyEl = document.createElement("span");
+    whyEl.className = "topic-why";
+    whyEl.textContent = topic.why;
+    textWrap.appendChild(whyEl);
+
+    if (topic.resource) {
+      const link = document.createElement("a");
+      link.className = "topic-resource";
+      link.href = topic.resource.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = `→ ${topic.resource.label}`;
+      textWrap.appendChild(link);
+    }
+    return textWrap;
+  },
+
+  /**
+   * One <li> for a topic. Two variants depending on hasPracticeProblems: the original manual
+   * checkbox (meta-skill topics only now), or a read-only status dot + a "Practice questions"
+   * toggle that expands the curated problem list with live solved/unsolved status.
+   */
+  renderTopicItem(topic, container) {
+    const li = document.createElement("li");
+    li.className = "topic-item";
+
+    if (!this.hasPracticeProblems(topic.id)) {
+      const label = document.createElement("label");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = this.isDone(topic.id);
+      checkbox.addEventListener("change", () => {
+        this.setDone(topic.id, checkbox.checked);
+        this.render(container);
+        document.dispatchEvent(new CustomEvent("roadmap:changed"));
+      });
+      label.appendChild(checkbox);
+      label.appendChild(this.buildTopicTextEl(topic));
+      li.appendChild(label);
+      return li;
+    }
+
+    const status = this.practiceStatus(topic.id);
+    const row = document.createElement("div");
+    row.className = "topic-item-row";
+
+    const dot = document.createElement("span");
+    dot.className = "topic-status-dot" + (status.done ? " done" : "");
+    dot.setAttribute("role", "status");
+    dot.setAttribute("aria-label", status.done ? "Completed" : "Not yet completed");
+    dot.textContent = status.done ? "✓" : "";
+    row.appendChild(dot);
+
+    const textWrap = this.buildTopicTextEl(topic);
+
+    const expanded = this._expandedTopics.has(topic.id);
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "btn-icon practice-questions-btn";
+    toggleBtn.textContent = `${expanded ? "Hide" : "Practice questions"} (${status.solvedCount}/${status.total} solved)`;
+    toggleBtn.addEventListener("click", () => {
+      if (this._expandedTopics.has(topic.id)) this._expandedTopics.delete(topic.id);
+      else this._expandedTopics.add(topic.id);
+      this.render(container);
+    });
+    textWrap.appendChild(toggleBtn);
+
+    if (expanded) {
+      textWrap.appendChild(this.buildPracticePanel(status));
+    }
+
+    row.appendChild(textWrap);
+    li.appendChild(row);
+    return li;
+  },
+
+  /** The expanded list of a topic's practice problems, each linking out to Codeforces with a live solved/unsolved badge. */
+  buildPracticePanel(status) {
+    const panel = document.createElement("div");
+    panel.className = "practice-questions-panel";
+
+    if (!Store.data.solvedLog.length) {
+      const note = document.createElement("p");
+      note.className = "card-subtitle";
+      note.textContent = "Sync your Codeforces handle on the Codeforces page to have solved problems reflected here automatically.";
+      panel.appendChild(note);
+    }
+
+    for (const p of status.problems) {
+      const row = document.createElement("div");
+      row.className = "practice-problem-row" + (p.solved ? " solved" : "");
+
+      const link = document.createElement("a");
+      link.className = "practice-problem-name";
+      link.href = `https://codeforces.com/problemset/problem/${p.contestId}/${p.index}`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = `${p.contestId}${p.index} — ${p.name}`;
+      row.appendChild(link);
+
+      const rating = document.createElement("span");
+      rating.className = "practice-problem-rating";
+      rating.textContent = p.rating ? `${p.rating}` : "unrated";
+      row.appendChild(rating);
+
+      const badge = document.createElement("span");
+      badge.className = "practice-problem-status" + (p.solved ? " solved" : " unsolved");
+      badge.textContent = p.solved ? "✓ Solved" : "Not solved yet";
+      row.appendChild(badge);
+
+      panel.appendChild(row);
+    }
+    return panel;
   },
 };
