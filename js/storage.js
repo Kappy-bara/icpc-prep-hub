@@ -14,7 +14,7 @@
 
 function defaultData() {
   return {
-    version: 4,
+    version: 5,
     profile: {
       cfHandle: "",
       cfVerified: false,
@@ -43,11 +43,8 @@ function defaultData() {
       lastRatingSyncAt: null, // ISO timestamp, informational only
     },
     rewards: [
-      // Costs are roughly half the old 20/30/150 — the points formula dropped by a flat 5
-      // per solve (see gamification.js), so the same "how many solves to afford this" feel
-      // needs about half the old price tag at typical solving ratings.
-      { id: "r-youtube", name: "15-minute YouTube break", cost: 10, locked: true },
-      { id: "r-treat", name: "A small treat / snack", cost: 15, locked: true },
+      { id: "r-youtube", name: "15-minute YouTube break", cost: 15, locked: true },
+      { id: "r-treat", name: "A small treat / snack", cost: 20, locked: true },
       { id: "r-afternoon", name: "A guilt-free lazy afternoon", cost: 75, locked: true },
     ],
     redemptions: [
@@ -182,6 +179,18 @@ const MIGRATIONS = {
     // account's app_data starts at `{}` and never had either key.
     delete data.accounts;
     delete data.theme;
+    return data;
+  },
+  5: (data) => {
+    // v4 -> v5: price increase — youtube break 10 -> 15, treat/snack 15 -> 20 (afternoon
+    // unchanged). Same "only if still at the exact old default" guard as the v1->v2 migration,
+    // so a reward someone already redeemed against or otherwise diverged from the default isn't
+    // silently overwritten.
+    const OLD_COSTS = { "r-youtube": 10, "r-treat": 15 };
+    const NEW_COSTS = { "r-youtube": 15, "r-treat": 20 };
+    for (const r of data.rewards) {
+      if (r.id in OLD_COSTS && r.cost === OLD_COSTS[r.id]) r.cost = NEW_COSTS[r.id];
+    }
     return data;
   },
 };

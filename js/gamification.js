@@ -31,7 +31,7 @@ function problemKey(contestId, index) {
 // scaled by how many consecutive prior days already have a points-earning solve. A solve before
 // the gamification start date scores 0 base points and so never counts as a "day" for the streak —
 // the streak inherently starts from that date, with no separate cutoff needed.
-const STREAK_BONUS_CAP = 10;
+const STREAK_BONUS_CAP = 15;
 
 function dayStr(dateLike) {
   return new Date(dateLike).toDateString();

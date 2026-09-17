@@ -150,9 +150,9 @@
    * inside #page-body, which js/shell.js already gates on being signed in. */
   function renderAuthState() {
     const verified = Boolean(Store.data.profile.cfVerified);
+    $("cf-verify-card").hidden = verified;
     $("dashboard-content").hidden = !verified;
     if (verified) {
-      $("cf-verify-start-form").hidden = true;
       $("cf-verify-section").innerHTML = "";
       renderVerifiedView();
       return;
@@ -162,57 +162,100 @@
     renderVerifySection();
   }
 
-  function wireDataCard() {
-    $("export-btn").addEventListener("click", () => {
-      const blob = new Blob([Store.exportJSON()], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `icpc-prep-hub-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
+  function downloadExport() {
+    const blob = new Blob([Store.exportJSON()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `icpc-prep-hub-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 
+  function wireDataCard() {
+    const actionsDefault = $("data-actions-default");
+    const confirmZone = $("data-confirm-zone");
     const fileInput = $("import-file-input");
-    fileInput.addEventListener("change", async () => {
+    const status = $("data-status");
+
+    function closeConfirm() {
+      confirmZone.hidden = true;
+      confirmZone.innerHTML = "";
+      actionsDefault.hidden = false;
+    }
+
+    // Reset wipes everything and Import silently overwrites everything with the picked file's
+    // contents, but previously only Reset had any confirmation (a bare native confirm(), easy to
+    // click through on muscle memory) and Import had none. This renders a warning + an "export a
+    // backup first" escape hatch + a confirm/cancel pair in place of the normal buttons instead.
+    function showConfirm(message, onConfirm) {
+      actionsDefault.hidden = true;
+      confirmZone.hidden = false;
+      confirmZone.innerHTML = `
+        <p>&#9888; ${escapeHtml(message)}</p>
+        <div class="form-actions">
+          <button type="button" id="data-confirm-export-first" class="btn-secondary">Export a backup first</button>
+          <button type="button" id="data-confirm-yes" class="btn-danger">Yes, I'm sure</button>
+          <button type="button" id="data-confirm-cancel" class="btn-icon">Cancel</button>
+        </div>
+      `;
+      $("data-confirm-export-first").addEventListener("click", downloadExport);
+      $("data-confirm-yes").addEventListener("click", async () => {
+        closeConfirm();
+        await onConfirm();
+      });
+      $("data-confirm-cancel").addEventListener("click", () => {
+        closeConfirm();
+        fileInput.value = ""; // no-op if this confirm wasn't triggered by a file pick
+      });
+    }
+
+    $("export-btn").addEventListener("click", downloadExport);
+
+    fileInput.addEventListener("change", () => {
       const file = fileInput.files[0];
       if (!file) return;
-      const text = await file.text();
-      const status = $("data-status");
-      status.textContent = "Importing…";
-      status.className = "sync-status";
-      const result = await Store.importJSON(text);
-      if (result.ok) {
-        status.textContent = "Import successful.";
-        status.className = "sync-status success";
-        renderAuthState();
-        refreshDynamic();
-      } else {
-        status.textContent = `Import failed: ${result.error}`;
-        status.className = "sync-status error";
-      }
-      fileInput.value = "";
+      showConfirm(
+        `This will REPLACE all of your current roadmap progress, points, logs, and rewards with the contents of "${file.name}". Your verified Codeforces handle stays linked either way. This can't be undone.`,
+        async () => {
+          const text = await file.text();
+          status.textContent = "Importing…";
+          status.className = "sync-status";
+          const result = await Store.importJSON(text);
+          if (result.ok) {
+            status.textContent = "Import successful.";
+            status.className = "sync-status success";
+            renderAuthState();
+            refreshDynamic();
+          } else {
+            status.textContent = `Import failed: ${result.error}`;
+            status.className = "sync-status error";
+          }
+          fileInput.value = "";
+        }
+      );
     });
 
-    $("reset-btn").addEventListener("click", async () => {
-      if (!confirm("This clears your roadmap progress, points, logs, and rewards. Your verified Codeforces handle stays linked. This can't be undone unless you've exported a backup. Continue?")) {
-        return;
-      }
-      const status = $("data-status");
-      status.textContent = "Resetting…";
-      status.className = "sync-status";
-      const result = await Store.resetAll();
-      if (result.ok) {
-        renderAuthState();
-        refreshDynamic();
-        status.textContent = "Progress reset.";
-        status.className = "sync-status success";
-      } else {
-        status.textContent = `Reset failed: ${result.error}`;
-        status.className = "sync-status error";
-      }
+    $("reset-btn").addEventListener("click", () => {
+      showConfirm(
+        "This clears your roadmap progress, points, logs, and rewards. Your verified Codeforces handle stays linked. This can't be undone.",
+        async () => {
+          status.textContent = "Resetting…";
+          status.className = "sync-status";
+          const result = await Store.resetAll();
+          if (result.ok) {
+            renderAuthState();
+            refreshDynamic();
+            status.textContent = "Progress reset.";
+            status.className = "sync-status success";
+          } else {
+            status.textContent = `Reset failed: ${result.error}`;
+            status.className = "sync-status error";
+          }
+        }
+      );
     });
   }
 

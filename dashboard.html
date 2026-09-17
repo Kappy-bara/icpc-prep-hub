@@ -118,7 +118,7 @@
         <section class="card" id="data-card">
           <h2>Backup &amp; Restore</h2>
           <p class="card-subtitle">Your data lives on the server, tied to this account. Export a copy for your own records, or restore from one if you ever need to.</p>
-          <div class="data-actions">
+          <div class="data-actions" id="data-actions-default">
             <button id="export-btn" type="button" class="btn-secondary">Export JSON</button>
             <label class="file-input-label">
               Import JSON
@@ -126,6 +126,7 @@
             </label>
             <button id="reset-btn" type="button" class="btn-danger">Reset progress</button>
           </div>
+          <div id="data-confirm-zone" class="danger-zone" hidden></div>
           <span id="data-status" class="sync-status"></span>
         </section>
       </div>
