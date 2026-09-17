@@ -53,6 +53,14 @@
     if (!result.ok) {
       statusEl.textContent = `Couldn't verify (${result.error}).`;
       statusEl.className = "sync-status error";
+      // Re-enable whichever button triggered this (checkLive or the manual-JSON fallback) — a
+      // real, expected failure here (e.g. the handle's already verified on another account, via
+      // the DB uniqueness constraint) shouldn't leave the user stuck with no way to retry short of
+      // cancelling and restarting the whole compile-error-submission flow from scratch.
+      const checkBtn = $("check-verify-btn");
+      const manualBtn = $("verify-manual-btn");
+      if (checkBtn) checkBtn.disabled = false;
+      if (manualBtn) manualBtn.disabled = false;
       return;
     }
     verifyState = null;
@@ -85,12 +93,15 @@
       </details>
     `;
 
-    $("check-verify-btn").addEventListener("click", async () => {
+    $("check-verify-btn").addEventListener("click", async (evt) => {
+      const btn = evt.currentTarget;
       const statusEl = $("verify-status");
+      btn.disabled = true; // guards a rapid double-click firing two checks (and possibly two verifyHandle writes)
       statusEl.textContent = "Checking…";
       statusEl.className = "sync-status";
       const result = await CFVerify.checkLive(handle, problem, verifyState.startedAtMs);
       if (!result.ok) {
+        btn.disabled = false;
         statusEl.textContent = `Live check failed (${result.error}). Use the manual fallback below.`;
         statusEl.className = "sync-status error";
         return;
@@ -100,6 +111,7 @@
         statusEl.className = "sync-status";
         await completeVerify(handle);
       } else {
+        btn.disabled = false;
         statusEl.textContent = "No matching compile-error submission found yet. Submit it, then try again.";
         statusEl.className = "sync-status error";
       }
@@ -110,9 +122,11 @@
       renderAuthState();
     });
 
-    $("verify-manual-btn").addEventListener("click", async () => {
+    $("verify-manual-btn").addEventListener("click", async (evt) => {
+      const btn = evt.currentTarget;
       const text = $("verify-manual-json").value.trim();
       const statusEl = $("verify-status");
+      btn.disabled = true;
       try {
         const ok = CFVerify.checkManual(text, handle, problem, verifyState.startedAtMs);
         if (ok) {
@@ -120,10 +134,12 @@
           statusEl.className = "sync-status";
           await completeVerify(handle);
         } else {
+          btn.disabled = false;
           statusEl.textContent = "No matching compile-error submission found in that JSON.";
           statusEl.className = "sync-status error";
         }
       } catch (e) {
+        btn.disabled = false;
         statusEl.textContent = `Couldn't parse that JSON: ${e.message}`;
         statusEl.className = "sync-status error";
       }

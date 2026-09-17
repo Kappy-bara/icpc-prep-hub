@@ -53,11 +53,14 @@ const AuthUI = {
       evt.preventDefault();
       const email = $("auth-email-input").value.trim();
       if (!email) return;
+      const submitBtn = evt.target.querySelector('button[type="submit"]');
       const statusEl = $("auth-email-status");
+      submitBtn.disabled = true; // guards a rapid double-click sending two magic-link emails
       statusEl.textContent = "Sending…";
       statusEl.className = "sync-status";
       const result = await Auth.signInWithEmail(email);
       if (!result.ok) {
+        submitBtn.disabled = false;
         statusEl.textContent = `Couldn't send the link (${result.error}). Try again.`;
         statusEl.className = "sync-status error";
         return;
@@ -91,11 +94,14 @@ const AuthUI = {
       evt.preventDefault();
       const token = $("auth-code-input").value.trim();
       if (!token) return;
+      const submitBtn = evt.target.querySelector('button[type="submit"]');
       const statusEl = $("auth-code-status");
+      submitBtn.disabled = true; // guards a rapid double-click/double-submit of the same code
       statusEl.textContent = "Checking…";
       statusEl.className = "sync-status";
       const result = await Auth.verifyEmailCode(this._email, token);
       if (!result.ok) {
+        submitBtn.disabled = false;
         statusEl.textContent = `That code didn't work (${result.error}). Check the email and try again.`;
         statusEl.className = "sync-status error";
         return;

@@ -405,7 +405,24 @@ function maybeRefetch() {
   if (Date.now() - Store._lastLoadedAt < 15000) return;
   Store.reload();
 }
+
+/**
+ * The other direction of the same freshness problem: writes are debounced ~400ms (see
+ * _scheduleSave above), so an action immediately followed by closing the tab, navigating to
+ * another page, or switching tabs could lose that last change — the scheduled save just never
+ * gets to fire. This is a genuinely multi-page site (every nav link is a full page load, not an
+ * SPA route), so "the user is about to leave" is common, not an edge case. `visibilitychange` to
+ * "hidden" fires reliably before teardown in every one of those cases (unlike `beforeunload`,
+ * which is increasingly restricted and doesn't fire on a plain tab-switch at all), so flushing
+ * there catches the large majority of this risk for free. Store.flush() is a safe no-op if
+ * nothing was pending.
+ */
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") maybeRefetch();
+  if (document.visibilityState === "visible") {
+    maybeRefetch();
+  } else {
+    Store.flush();
+  }
 });
 window.addEventListener("focus", maybeRefetch);
+window.addEventListener("pagehide", () => Store.flush());

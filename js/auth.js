@@ -79,7 +79,16 @@ const Auth = {
     }
   },
 
+  /**
+   * Flushes any pending debounced Store save BEFORE actually signing out — writes are debounced
+   * ~400ms (see js/storage.js), so making a change and immediately signing out used to lose it
+   * silently: the scheduled save would still fire later, but by then Store.clear() (triggered by
+   * this very sign-out, see js/shell.js) had already dropped the in-memory data it needed to send,
+   * so _writeNow() found nothing to write and quietly no-op'd. Flushing first means the write lands
+   * while the session (and RLS write access) is still valid.
+   */
   async signOut() {
+    await Store.flush();
     try {
       const { error } = await this.client.auth.signOut();
       if (error) return { ok: false, error: error.message };
