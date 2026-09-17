@@ -10,7 +10,7 @@
 
     root.innerHTML = `
       <div class="report-windows">
-        <div class="stat-tile"><div class="stat-value">${points}</div><div class="stat-label">points</div></div>
+        <div class="stat-tile"><div class="stat-value">${escapeHtml(points)}</div><div class="stat-label">points</div></div>
         <div class="stat-tile"><div class="stat-value">${overall.percent}%</div><div class="stat-label">roadmap complete</div></div>
         <div class="stat-tile"><div class="stat-value">${solvedCount}</div><div class="stat-label">problems solved</div></div>
       </div>

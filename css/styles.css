@@ -165,6 +165,23 @@ a:hover {
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
+/*
+ * The nav wraps to 2 lines once the brand + points badge + theme toggle + 6 links can't all fit
+ * one row (phone widths) — that's an intentional, working fallback (site-links can shrink below
+ * its 100% flex-basis), but at the narrowest phone widths the sticky header was eating a lot of
+ * permanent vertical space. Tightening link padding/font here buys back room without needing a
+ * hamburger-menu rebuild.
+ */
+@media (max-width: 480px) {
+  .topbar-inner {
+    padding: 0.6rem 0.85rem;
+  }
+  .site-links a {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.78rem;
+  }
+}
+
 .site-links a:hover {
   background: var(--bg);
   color: var(--text);
@@ -538,6 +555,24 @@ button:disabled:hover {
 .roadmap-summary .progress-label {
   font-size: 0.95rem;
   font-weight: 600;
+}
+
+/*
+ * The practice-problems row's label ("0 / 283 practice problems solved (0%)") is much longer than
+ * the topics row's ("0 / 99 topics (0%)") — on a narrow phone, sharing one row with a nowrap label
+ * that long left the flex-1 bar almost no space, squashing it down to a barely-visible sliver.
+ * Stacking bar-then-label on narrow screens keeps the bar a full, readable width regardless of
+ * label length.
+ */
+@media (max-width: 520px) {
+  .roadmap-summary .progress-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+  .roadmap-summary .progress-label {
+    white-space: normal;
+  }
 }
 
 .roadmap-summary .progress-row + .progress-row {
@@ -1831,10 +1866,68 @@ details p {
   display: inline-block;
 }
 
-@media (max-width: 480px) {
+/*
+ * The full 7-column desktop grid (key/name/rating/tags/date/points/source) doesn't fit below
+ * ~900px — the 5 auto-sized columns' combined natural width can exceed the container on its own,
+ * squeezing the 1fr name column to a few px (or, once it hits 0, forcing the whole row to overflow
+ * and scroll horizontally — confirmed at 500px width, name column literally 0px wide). Regroup
+ * into a compact 3-row grid instead once the same 760px breakpoint used elsewhere on this page
+ * kicks in: key+name+points on top, rating+date+source in the middle, tags spanning the bottom —
+ * 3 lines instead of 1 badly-squeezed one, and it no longer depends on how much room happens to
+ * be left over after 5 other columns claim their content width first.
+ * (A flexbox version of this was tried first using `flex-basis: 100%` to force line breaks before
+ * each new row, but that property doesn't just break the line — it also makes the ITEM ITSELF
+ * render at the full row width, which pushed `.solved-date` onto its own line too even though
+ * "2000 9/16/2026" easily fits on one line. Explicit grid placement has no such trap.)
+ */
+@media (max-width: 760px) {
   .solved-row {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    column-gap: 0.5rem;
+    row-gap: 0.2rem;
+    align-items: baseline;
   }
+  .solved-key {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .solved-name {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .solved-points {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .solved-rating {
+    grid-column: 1;
+    grid-row: 2;
+    font-size: 0.72rem;
+  }
+  .solved-date {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 0.72rem;
+    justify-self: start;
+  }
+  .solved-source {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+  }
+  .solved-tags {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    font-size: 0.72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 480px) {
   .pacing-row {
     grid-template-columns: 1fr;
   }

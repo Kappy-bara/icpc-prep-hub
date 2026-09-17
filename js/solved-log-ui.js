@@ -20,11 +20,11 @@ const SolvedLogUI = {
           <div class="solved-row">
             <span class="solved-key">${escapeHtml(p.contestId && p.index ? `${p.contestId}${p.index}` : p.key)}</span>
             <span class="solved-name">${escapeHtml(p.name)}</span>
-            <span class="solved-rating">${ratingLabel}</span>
+            <span class="solved-rating">${escapeHtml(ratingLabel)}</span>
             <span class="solved-tags">${escapeHtml(tagsLabel)}</span>
             <span class="solved-date">${date}</span>
-            <span class="solved-points">+${p.points}</span>
-            <span class="solved-source badge-${p.source}">${p.source === "cf-sync" ? "CF sync" : "manual"}</span>
+            <span class="solved-points">+${escapeHtml(p.points)}</span>
+            <span class="solved-source badge-${escapeHtml(p.source)}">${p.source === "cf-sync" ? "CF sync" : "manual"}</span>
           </div>`;
       })
       .join("");

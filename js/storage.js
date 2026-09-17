@@ -70,6 +70,70 @@ function snapshotFields(data) {
   return out;
 }
 
+/**
+ * Coerce a value back to a finite number, or `fallback` if it isn't one — used below to close a
+ * real stored-XSS hole. `deepMerge` only checks that an incoming ARRAY is an array and an
+ * incoming OBJECT is an object; it never checks an individual field's type. Several render
+ * functions across the app (Recent Solves, the points-overview stat tiles, the rewards list, …)
+ * interpolate fields like `solvedLog[].rating/points`, `points.balance`, and `rewards[].cost`
+ * directly into `innerHTML` WITHOUT `escapeHtml`, because under every path the app itself writes
+ * through (CF sync, the manual-log form, redeeming a reward) those fields are always genuinely
+ * numbers. A hand-edited or malicious "backup" JSON file loaded via Import JSON breaks that
+ * assumption — nothing stopped `solvedLog[0].rating` from being the *string*
+ * `"<img src=x onerror=alert(1)>"`, which would then render unescaped and execute. Coercing every
+ * known-numeric field back to an actual number right after every deepMerge (both the normal
+ * localStorage load and an explicit import go through this) closes it for every render site at
+ * once, and is a no-op for the 99.9% of data that was already a real number.
+ */
+function coerceNumber(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function sanitizeSolvedLog(list) {
+  if (!Array.isArray(list)) return list;
+  for (const p of list) {
+    if (!p || typeof p !== "object") continue;
+    p.rating = p.rating == null ? null : coerceNumber(p.rating, null);
+    p.points = coerceNumber(p.points, 0);
+    p.bonus = coerceNumber(p.bonus, 0);
+  }
+  return list;
+}
+
+/** Sanitizes one ACCOUNT_FIELDS-shaped bundle in place — the top-level store, or one `accounts[handle]` snapshot. */
+function sanitizeAccountFields(bundle) {
+  if (!bundle || typeof bundle !== "object") return bundle;
+  if (bundle.points) bundle.points.balance = coerceNumber(bundle.points.balance, 0);
+  sanitizeSolvedLog(bundle.solvedLog);
+  if (bundle.cf && Array.isArray(bundle.cf.unsolvedAttempted)) {
+    for (const p of bundle.cf.unsolvedAttempted) {
+      if (!p || typeof p !== "object") continue;
+      p.rating = p.rating == null ? null : coerceNumber(p.rating, null);
+      p.attemptCount = coerceNumber(p.attemptCount, 0);
+    }
+  }
+  if (Array.isArray(bundle.rewards)) {
+    for (const r of bundle.rewards) {
+      if (r && typeof r === "object") r.cost = coerceNumber(r.cost, 1);
+    }
+  }
+  if (Array.isArray(bundle.redemptions)) {
+    for (const r of bundle.redemptions) {
+      if (r && typeof r === "object") r.cost = coerceNumber(r.cost, 0);
+    }
+  }
+  return bundle;
+}
+
+function sanitizeTypes(data) {
+  sanitizeAccountFields(data);
+  if (data.accounts && typeof data.accounts === "object") {
+    for (const snapshot of Object.values(data.accounts)) sanitizeAccountFields(snapshot);
+  }
+  return data;
+}
+
 // Type-checked at every level, not just "does incoming exist": a hand-edited or partially
 // corrupted backup file can have the right keys with the wrong-typed values (e.g. `solvedLog`
 // as a string instead of an array). Blindly trusting incoming's type there used to let a single
@@ -142,7 +206,8 @@ function migrate(data) {
     data = MIGRATIONS[version](data) || data;
   }
   data.version = version;
-  return data;
+  // Runs on every load, not just a version bump — see sanitizeTypes' own comment for why.
+  return sanitizeTypes(data);
 }
 
 const Store = {

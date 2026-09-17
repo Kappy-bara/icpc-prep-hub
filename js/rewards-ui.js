@@ -12,10 +12,10 @@ const RewardsUI = {
         .map(
           (r) => `
           <div class="reward-tile${r.id === this._justRedeemedId ? " reward-tile-redeemed" : ""}">
-            ${isLockedReward(r) ? "" : `<button type="button" class="btn-icon btn-remove-reward" data-reward-id="${r.id}" aria-label="Remove reward">&times;</button>`}
+            ${isLockedReward(r) ? "" : `<button type="button" class="btn-icon btn-remove-reward" data-reward-id="${escapeHtml(r.id)}" aria-label="Remove reward">&times;</button>`}
             <span class="reward-name">${escapeHtml(r.name)}</span>
-            <span class="reward-cost">${r.cost} pts</span>
-            <button type="button" class="btn-secondary btn-redeem" data-reward-id="${r.id}" ${points.balance < r.cost ? "disabled" : ""}>Redeem</button>
+            <span class="reward-cost">${escapeHtml(r.cost)} pts</span>
+            <button type="button" class="btn-secondary btn-redeem" data-reward-id="${escapeHtml(r.id)}" ${points.balance < r.cost ? "disabled" : ""}>Redeem</button>
           </div>`
         )
         .join("");
@@ -45,7 +45,7 @@ const RewardsUI = {
               (r) => `
             <div class="redemption-row">
               <span>${escapeHtml(r.rewardName)}</span>
-              <span>${r.cost} pts</span>
+              <span>${escapeHtml(r.cost)} pts</span>
               <span>${new Date(r.date).toLocaleString()}</span>
             </div>`
             )

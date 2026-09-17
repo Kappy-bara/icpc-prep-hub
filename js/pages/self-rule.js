@@ -46,8 +46,8 @@
           .join("")}
       </div>
       <div class="report-windows">
-        <div class="stat-tile"><div class="stat-value">${earned}</div><div class="stat-label">points earned (${label})</div></div>
-        <div class="stat-tile"><div class="stat-value">${spent}</div><div class="stat-label">points spent (${label})</div></div>
+        <div class="stat-tile"><div class="stat-value">${escapeHtml(earned)}</div><div class="stat-label">points earned (${label})</div></div>
+        <div class="stat-tile"><div class="stat-value">${escapeHtml(spent)}</div><div class="stat-label">points spent (${label})</div></div>
       </div>
       <div class="report-col">
         <h4>Spent by reward (all time)</h4>
@@ -60,7 +60,7 @@
               <div class="bar-row">
                 <div class="bar-row-top">
                   <span class="bar-label">${escapeHtml(name)} <span class="bar-label-count">(${v.count}&times;)</span></span>
-                  <span class="bar-count">${v.cost} pts</span>
+                  <span class="bar-count">${escapeHtml(v.cost)} pts</span>
                 </div>
                 <div class="bar-track"><div class="bar-fill" style="width:${(v.cost / maxSpend) * 100}%"></div></div>
               </div>`
@@ -98,7 +98,7 @@
       nextRewardHtml = `
         <div class="progress-row">
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-          <span class="progress-label">${points.balance} / ${nextReward.cost} pts</span>
+          <span class="progress-label">${escapeHtml(points.balance)} / ${escapeHtml(nextReward.cost)} pts</span>
         </div>
         <p class="card-subtitle">${nextReward.cost - points.balance} points to go for "${escapeHtml(nextReward.name)}".</p>
       `;
@@ -110,10 +110,10 @@
 
     root.innerHTML = `
       <div class="report-windows">
-        <div class="stat-tile"><div class="stat-value">${points.balance}</div><div class="stat-label">current balance</div></div>
-        <div class="stat-tile"><div class="stat-value">${lifetimeEarned}</div><div class="stat-label">lifetime points earned</div></div>
+        <div class="stat-tile"><div class="stat-value">${escapeHtml(points.balance)}</div><div class="stat-label">current balance</div></div>
+        <div class="stat-tile"><div class="stat-value">${escapeHtml(lifetimeEarned)}</div><div class="stat-label">lifetime points earned</div></div>
         <div class="stat-tile"><div class="stat-value">${redemptions.length}</div><div class="stat-label">rewards redeemed</div></div>
-        <div class="stat-tile"><div class="stat-value">${thisWeek}</div><div class="stat-label">points this week</div></div>
+        <div class="stat-tile"><div class="stat-value">${escapeHtml(thisWeek)}</div><div class="stat-label">points this week</div></div>
       </div>
       ${nextRewardHtml}
     `;

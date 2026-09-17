@@ -288,7 +288,7 @@ const CFAnalysis = {
           <div class="solved-row">
             <span class="solved-key"><a href="https://codeforces.com/problemset/problem/${encodeURIComponent(p.contestId)}/${encodeURIComponent(p.index)}" target="_blank" rel="noopener noreferrer">${escapeHtml(`${p.contestId}${p.index}`)}</a></span>
             <span class="solved-name">${escapeHtml(p.name)}</span>
-            <span class="solved-rating">${p.rating}</span>
+            <span class="solved-rating">${escapeHtml(p.rating)}</span>
             <span class="solved-tags">${escapeHtml(tagsLabel)}</span>
           </div>`;
       })
@@ -835,10 +835,10 @@ const CFAnalysis = {
           <div class="solved-row">
             <span class="solved-key">${escapeHtml(p.contestId && p.index ? `${p.contestId}${p.index}` : p.key)}</span>
             <span class="solved-name">${escapeHtml(p.name)}</span>
-            <span class="solved-rating">${ratingLabel}</span>
+            <span class="solved-rating">${escapeHtml(ratingLabel)}</span>
             <span class="solved-tags">${escapeHtml(tagsLabel)}</span>
             <span class="solved-date">${date}</span>
-            <span class="solved-rating">${p.attemptCount} attempt${p.attemptCount === 1 ? "" : "s"}</span>
+            <span class="solved-rating">${escapeHtml(p.attemptCount)} attempt${p.attemptCount === 1 ? "" : "s"}</span>
           </div>`;
       })
       .join("");
