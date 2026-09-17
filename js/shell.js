@@ -26,6 +26,15 @@ const Shell = {
 
   async _boot() {
     await Auth.ready;
+    
+    if (Auth.isConfigured()) {
+      Auth.client.rpc('increment_page_view', { 
+        is_authorized: Auth.isSignedIn()
+      }).then(({ error }) => {
+        if (error) console.error('Failed to track page view:', error);
+      });
+    }
+
     Nav.updateAccountArea();
     const gate = $("auth-gate");
     const body = $("page-body");
