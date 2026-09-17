@@ -202,6 +202,75 @@ a:hover {
   align-items: start;
 }
 
+.login-gate {
+  display: flex;
+  justify-content: center;
+  padding: 3.5rem 1rem;
+}
+
+/*
+ * `[hidden]` and `.login-gate` both have (0,1,0) specificity, and this stylesheet loads after the
+ * UA sheet that defines `[hidden] { display: none }` — so without this override, toggling the
+ * `hidden` property from JS (see js/pages/dashboard.js renderAuthState) silently did nothing: the
+ * class's `display: flex` kept winning the cascade and the login gate stayed visible underneath
+ * the logged-in dashboard. This selector's higher specificity (0,2,0) restores `hidden`'s effect.
+ */
+.login-gate[hidden] {
+  display: none;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2.5rem 2rem;
+  text-align: center;
+}
+
+.login-title {
+  margin: 0 0 0.6rem;
+  font-size: 1.5rem;
+}
+
+.login-subtitle {
+  margin: 0 0 1.75rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: left;
+}
+
+.login-form label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.login-form input {
+  width: 100%;
+}
+
+.login-submit {
+  margin-top: 0.4rem;
+  width: 100%;
+  padding: 0.65rem;
+  font-size: 1rem;
+}
+
+.login-card .sub-panel {
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
 .dashboard-timeline-row {
   display: grid;
   grid-template-columns: 3fr 2fr;

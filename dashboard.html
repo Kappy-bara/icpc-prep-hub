@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard · ICPC Prep Hub</title>
-  <meta name="description" content="Your profile, Codeforces verification, timeline pacing, daily streak, and a roadmap progress overview." />
+  <meta name="description" content="Log in with your Codeforces handle, then track timeline pacing, daily streak, and a roadmap progress overview." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\u{1F3C6}</text></svg>" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -12,30 +12,27 @@
   <header id="site-nav" class="topbar"></header>
 
   <main class="container">
-    <section class="card" id="profile-card">
-      <h2>Profile</h2>
-
-      <div id="logged-out-view">
-        <p class="card-subtitle">
-          Log in with your Codeforces handle to track roadmap progress, sync solves, and earn
-          points. Logging in proves you own the handle (below) &mdash; there's no separate "save,
-          then verify" step, and no way to preview another handle's stats as your own. First login
-          creates your local profile; logging back in later with the same handle restores it
-          exactly as you left it, even if you'd switched to a different handle in between.
+    <div id="login-gate" class="login-gate">
+      <div class="login-card">
+        <h1 class="login-title">Log in with Codeforces</h1>
+        <p class="login-subtitle">
+          Prove you own the handle to track roadmap progress, sync solves, and earn points &mdash;
+          no password, just a quick Codeforces check. First login creates your local profile;
+          logging back in later with the same handle restores it exactly as you left it, even if
+          you'd switched to a different handle in between.
         </p>
-        <form id="login-form" class="form-grid">
-          <label>
-            Codeforces handle
-            <input type="text" id="login-handle-input" placeholder="e.g. tourist" autocomplete="off" />
-          </label>
-          <div class="form-actions">
-            <button type="submit" class="btn-primary">Log in</button>
-          </div>
+        <form id="login-form" class="login-form">
+          <label for="login-handle-input">Codeforces handle</label>
+          <input type="text" id="login-handle-input" placeholder="e.g. tourist" autocomplete="off" />
+          <button type="submit" class="btn-primary login-submit">Log in</button>
         </form>
         <div id="cf-verify-section" class="sub-panel"></div>
       </div>
+    </div>
 
-      <div id="logged-in-view" hidden>
+    <div id="dashboard-content" hidden>
+      <section class="card" id="profile-card">
+        <h2>Profile</h2>
         <p class="verified-note">&check; Logged in as <strong id="logged-in-handle"></strong>.</p>
         <p class="card-subtitle">Points have been accumulating since <strong id="logged-in-start-date"></strong>
         &mdash; set automatically the moment you first logged in, and not editable, so there's no way to
@@ -93,37 +90,37 @@
           </div>
         </form>
         <button id="logout-btn" type="button" class="btn-secondary">Log out</button>
-      </div>
-    </section>
-
-    <div class="dashboard-timeline-row">
-      <section class="card" id="timeline-card">
-        <h2>Timeline</h2>
-        <div id="timeline-root"></div>
       </section>
 
-      <div class="dashboard-side-stack">
-        <section class="card" id="streak-card">
-          <h2>Streak</h2>
-          <div id="streak-root"></div>
+      <div class="dashboard-timeline-row">
+        <section class="card" id="timeline-card">
+          <h2>Timeline</h2>
+          <div id="timeline-root"></div>
         </section>
 
-        <section class="card" id="roadmap-summary-card">
-          <h2>Roadmap progress</h2>
-          <div id="roadmap-summary-root"></div>
-        </section>
+        <div class="dashboard-side-stack">
+          <section class="card" id="streak-card">
+            <h2>Streak</h2>
+            <div id="streak-root"></div>
+          </section>
+
+          <section class="card" id="roadmap-summary-card">
+            <h2>Roadmap progress</h2>
+            <div id="roadmap-summary-root"></div>
+          </section>
+        </div>
       </div>
-    </div>
 
-    <section class="card" id="recent-solves-card">
-      <h2>Recent solves</h2>
-      <div id="solved-log-root" class="solved-log"></div>
-      <p class="card-subtitle"><a href="codeforces.html">View Codeforces page &rarr;</a></p>
-    </section>
+      <section class="card" id="recent-solves-card">
+        <h2>Recent solves</h2>
+        <div id="solved-log-root" class="solved-log"></div>
+        <p class="card-subtitle"><a href="codeforces.html">View Codeforces page &rarr;</a></p>
+      </section>
+    </div>
 
     <section class="card" id="data-card">
       <h2>Backup &amp; Restore</h2>
-      <p class="card-subtitle">Everything is stored only in this browser. Export a backup, or move your data to another device/browser by exporting here and importing there.</p>
+      <p class="card-subtitle">Everything is stored only in this browser, across every handle you've logged in as here. Export a backup, or move your data to another device/browser by exporting here and importing there.</p>
       <div class="data-actions">
         <button id="export-btn" type="button" class="btn-secondary">Export JSON</button>
         <label class="file-input-label">

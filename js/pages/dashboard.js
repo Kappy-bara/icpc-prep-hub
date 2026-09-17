@@ -132,11 +132,11 @@
     });
   }
 
-  /** Top-level toggle between the logged-out (login form + verify steps) and logged-in (prefs + logout) views. */
+  /** Top-level toggle between the login gate (login form + verify steps) and the full dashboard. */
   function renderAuthState() {
     const loggedIn = Boolean(Store.data.profile.cfVerified);
-    $("logged-out-view").hidden = loggedIn;
-    $("logged-in-view").hidden = !loggedIn;
+    $("login-gate").hidden = loggedIn;
+    $("dashboard-content").hidden = !loggedIn;
     if (loggedIn) {
       renderLoggedInView();
       return;
