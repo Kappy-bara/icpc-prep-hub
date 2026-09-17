@@ -74,8 +74,9 @@ section entirely and the app is 100% local-only and backend-free.
     rewards redeemed, and progress toward the cheapest reward you can't
     afford yet, plus a daily/weekly/monthly earned-vs-spent breakdown and a
     cumulative "spent by reward" tally.
-- **Codeforces sync** — enter your handle once and sync your solved
-  problems directly from the CF API. If the live fetch fails (CORS, network,
+- **Codeforces sync** — log in once (see Codeforces handle verification
+  below) and sync your solved problems directly from the CF API. If the live
+  fetch fails (CORS, network,
   rate limiting), there's always a manual fallback: a link to open the same
   API URL yourself, and a textarea to paste the JSON back in. A quick manual
   "log one solve" form covers one-off additions. The same sync also derives
@@ -269,11 +270,17 @@ section entirely and the app is 100% local-only and backend-free.
 - **Backup & restore** — export your entire local dataset as JSON, and
   import it back — on this browser or a different one; that's also how you
   move data to a new device, since nothing syncs automatically.
-- **Codeforces handle verification** — prove you own a handle with a
-  one-time check (submit a compile-error solution to a specific problem
-  within a time window — the standard trick, since Codeforces has no OAuth)
-  before its solves start earning points. This is the only "prove who you
-  are" step in the app; it isn't a login and doesn't create any account.
+- **Codeforces handle verification is how you log in** — prove you own a
+  handle with a one-time check (submit a compile-error solution to a
+  specific problem within a time window — the standard trick, since
+  Codeforces has no OAuth), and that verification *is* the login: there's no
+  separate "save your handle" step first, and no password. A first-time
+  handle gets a fresh local profile (gamification start date set to that
+  moment); a handle you've logged in as before on this browser restores its
+  own saved progress exactly as you left it — switching to a different
+  handle and back never resets it. Everything still lives only in this
+  browser's storage; "account" here means a local save slot keyed by handle,
+  not a server-side account.
 - **Polish** — responsive down to ~400px, respects `prefers-color-scheme`
   with a manual light/dark/auto toggle, and a wide multi-column dashboard
   layout (side-by-side cards, a subject grid, a two-pane picker) rather than

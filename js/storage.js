@@ -9,7 +9,14 @@ const LOCAL_KEY = "icpc-prep-hub:data:v1";
 
 function defaultData() {
   return {
-    version: 2,
+    version: 3,
+    // Every verified handle this browser has ever logged in as, keyed by lowercased handle —
+    // { [handle.toLowerCase()]: { profile, roadmapProgress, points, solvedLog, cf, rewards,
+    // redemptions } }, the exact snapshot shape ACCOUNT_FIELDS below swaps in/out on login/
+    // logout. Lets switching between two handles on the same browser (or logging out and back
+    // in as the same one) restore each handle's own progress exactly as it was left, instead of
+    // wiping to empty — see Store.login/logout.
+    accounts: {},
     profile: {
       cfHandle: "",
       cfVerified: false,
@@ -50,6 +57,17 @@ function defaultData() {
       // { id, rewardId, rewardName, cost, date }
     ],
   };
+}
+
+// The fields that belong to "whoever is logged in" — swapped wholesale into/out of an
+// `accounts[handle]` snapshot on login/logout (see Store.login/logout below). Everything else
+// (accounts itself, theme) stays put across a login switch since it isn't identity-specific.
+const ACCOUNT_FIELDS = ["profile", "roadmapProgress", "points", "solvedLog", "cf", "rewards", "redemptions"];
+
+function snapshotFields(data) {
+  const out = {};
+  for (const f of ACCOUNT_FIELDS) out[f] = data[f];
+  return out;
 }
 
 // Type-checked at every level, not just "does incoming exist": a hand-edited or partially
@@ -95,6 +113,26 @@ const MIGRATIONS = {
     }
     return data;
   },
+  3: (data) => {
+    // v2 -> v3: the profile/verify model changed from "save a handle, then separately verify it"
+    // (a single mutable slot anyone could overwrite, which also meant switching handles and
+    // switching back reset gamificationStart to today on re-verification) to "log in BY
+    // verifying," with each verified handle's progress preserved in its own `accounts[handle]`
+    // slot. Migrate whatever was already active into that shape: an already-verified handle
+    // becomes that handle's first account entry (same gamificationStart, same everything — no
+    // re-verification needed), so this upgrade doesn't cost anyone their accumulated progress.
+    // An unverified handle from the old model isn't a real login under the new one, so it's
+    // dropped back to a logged-out state instead of being promoted into an account.
+    data.accounts = data.accounts || {};
+    if (data.profile.cfVerified && data.profile.cfHandle) {
+      const key = data.profile.cfHandle.trim().toLowerCase();
+      data.accounts[key] = snapshotFields(data);
+    } else {
+      const fresh = defaultData();
+      for (const f of ACCOUNT_FIELDS) data[f] = fresh[f];
+    }
+    return data;
+  },
 };
 
 function migrate(data) {
@@ -126,6 +164,59 @@ const Store = {
   update(mutator) {
     const d = this.data;
     mutator(d);
+    this.save();
+    return d;
+  },
+
+  /**
+   * Log in as `handle`, having already verified ownership (see js/cf-verify.js CFVerify) — call
+   * this only after a successful check, never speculatively; it unconditionally marks the result
+   * verified. A returning handle (one already in `accounts`) restores its saved snapshot exactly
+   * as it was left — same gamificationStart, same solvedLog, same points — so logging in as a
+   * handle you've already verified before never resets progress or the accumulation start date,
+   * even if you'd switched away to a different handle in between. A brand-new handle gets a
+   * fresh account with gamificationStart set to today (the existing "start counting from first
+   * verification" rule, just moved here from the old markVerified()). Whatever was active before
+   * this call (if anything) is saved into its own slot first, so logging in as a second handle
+   * never loses the first one's in-progress session.
+   */
+  login(handle) {
+    const d = this.data;
+    d.accounts = d.accounts || {};
+    const cleanHandle = handle.trim();
+    const prevKey = (d.profile.cfHandle || "").trim().toLowerCase();
+    if (prevKey) d.accounts[prevKey] = snapshotFields(d);
+
+    const key = cleanHandle.toLowerCase();
+    const existing = d.accounts[key];
+    if (existing) {
+      for (const f of ACCOUNT_FIELDS) d[f] = existing[f];
+      d.profile.cfHandle = cleanHandle; // this login's casing, not whatever was saved before
+    } else {
+      const fresh = defaultData();
+      for (const f of ACCOUNT_FIELDS) d[f] = fresh[f];
+      d.profile.cfHandle = cleanHandle;
+      d.profile.gamificationStart = new Date().toISOString().slice(0, 10);
+    }
+    d.profile.cfVerified = true;
+    d.accounts[key] = snapshotFields(d);
+
+    this.save();
+    return d;
+  },
+
+  /**
+   * Log out: save the active session into its own account slot first (nothing is lost — logging
+   * back in as the same handle later restores it), then clear the active slots to an anonymous,
+   * logged-out state.
+   */
+  logout() {
+    const d = this.data;
+    d.accounts = d.accounts || {};
+    const prevKey = (d.profile.cfHandle || "").trim().toLowerCase();
+    if (prevKey) d.accounts[prevKey] = snapshotFields(d);
+    const fresh = defaultData();
+    for (const f of ACCOUNT_FIELDS) d[f] = fresh[f];
     this.save();
     return d;
   },

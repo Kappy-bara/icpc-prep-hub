@@ -1,17 +1,6 @@
-/** Dashboard page: profile, Codeforces verification, timeline, roadmap summary, recent solves, backup. */
+/** Dashboard page: login (by Codeforces verification), preferences, timeline, roadmap summary, recent solves, backup. */
 (function () {
-  let verifyState = null; // { problem, startedAtMs } while a CF verification is in progress
-
-  function todayISODate() {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  function renderProfileForm() {
-    const p = Store.data.profile;
-    $("cf-handle-input").value = p.cfHandle || "";
-    $("focus-tags-input").value = (p.focusTags && p.focusTags[0]) || "";
-    $("target-date-input").value = p.targetDate || "";
-  }
+  let verifyState = null; // { handle, problem, startedAtMs } while a login verification is in progress
 
   function refreshDynamic() {
     Nav.updatePointsBadge();
@@ -21,101 +10,74 @@
     SolvedLogUI.render($("solved-log-root"), { limit: 5 });
   }
 
-  function wireProfileForm() {
-    $("profile-form").addEventListener("submit", (evt) => {
+  // --- Logged-in view: preferences + logout ---
+
+  function renderLoggedInView() {
+    const p = Store.data.profile;
+    $("logged-in-handle").textContent = p.cfHandle;
+    $("logged-in-start-date").textContent = p.gamificationStart ? new Date(p.gamificationStart).toLocaleDateString() : "today";
+    $("focus-tags-input").value = (p.focusTags && p.focusTags[0]) || "";
+    $("target-date-input").value = p.targetDate || "";
+  }
+
+  function wirePrefsForm() {
+    $("prefs-form").addEventListener("submit", (evt) => {
       evt.preventDefault();
-      const newHandle = $("cf-handle-input").value.trim();
       Store.update((d) => {
-        if (d.profile.cfHandle !== newHandle) {
-          d.profile.cfVerified = false; // handle changed — needs (re-)verification
-          // Also reset the start date, not just the verified flag — otherwise switching to a
-          // different (already-owned or newly-forged) handle keeps the OLD start date, and that
-          // handle's entire back-catalog of solves between the old date and now would suddenly
-          // count for points on the next sync. A new handle gets a fresh start date the next
-          // time it's verified, same as a first-time verification.
-          d.profile.gamificationStart = null;
-          verifyState = null;
-          // Clear the previous handle's synced Codeforces data — solvedLog/ratingHistory/etc. are
-          // fetched facts about THAT handle, not this one, so leaving them in place after a switch
-          // made every page (Recent solves, Codeforces Analysis, Timeline pace) keep showing the
-          // old handle's history until the next manual sync, which reads as "the page didn't
-          // update." Points/rewards/redemptions are NOT cleared here — those are this browser's
-          // own earned currency, not handle-specific facts, so switching handles (e.g. fixing a
-          // typo) doesn't wipe out progress already spent or banked.
-          d.solvedLog = [];
-          d.cf.ratingHistory = [];
-          d.cf.attemptStats = {};
-          d.cf.unsolvedAttempted = [];
-          d.cf.lastRatingSyncAt = null;
-        }
-        d.profile.cfHandle = newHandle;
-        // gamificationStart is intentionally not editable here — see markVerified() below. It's
-        // set automatically (and only) the moment CF verification succeeds, so it can't be
-        // backdated to retroactively cash in a windfall from old solves.
         const chosenTag = $("focus-tags-input").value;
         d.profile.focusTags = chosenTag ? [chosenTag] : [];
         d.profile.targetDate = $("target-date-input").value || null;
       });
-      const note = $("profile-saved-note");
+      const note = $("prefs-saved-note");
       note.hidden = false;
       setTimeout(() => (note.hidden = true), 1800);
-      renderCFVerifySection();
+      refreshDynamic();
+    });
+
+    $("logout-btn").addEventListener("click", () => {
+      // Logging out saves the current session into its own account slot first (see Store.logout)
+      // — nothing here is lost, logging back in as the same handle restores it exactly.
+      Store.logout();
+      verifyState = null;
+      renderAuthState();
       refreshDynamic();
     });
   }
 
-  // --- Codeforces handle verification ---
+  // --- Logged-out view: login (== Codeforces handle verification) ---
 
-  function markVerified() {
-    Store.update((d) => {
-      d.profile.cfVerified = true;
-      if (!d.profile.gamificationStart) d.profile.gamificationStart = todayISODate();
+  function wireLoginForm() {
+    $("login-form").addEventListener("submit", (evt) => {
+      evt.preventDefault();
+      const handle = $("login-handle-input").value.trim();
+      if (!handle) return;
+      verifyState = { handle, problem: CFVerify.pickProblem(), startedAtMs: Date.now() };
+      renderAuthState();
     });
-    verifyState = null;
-    renderProfileForm();
-    renderCFVerifySection();
   }
 
-  function renderCFVerifySection() {
+  function completeLogin(handle) {
+    // Restores this handle's own saved progress if it's a returning login, or starts a fresh
+    // account (with today as the gamification start date) if it's brand new — see Store.login.
+    // Either way, this is the only place cfVerified ever becomes true.
+    Store.login(handle);
+    verifyState = null;
+    renderAuthState();
+    refreshDynamic();
+  }
+
+  function renderVerifySection() {
     const root = $("cf-verify-section");
     if (!root) return;
-    const { cfHandle, cfVerified } = Store.data.profile;
-
-    if (!cfHandle) {
-      root.innerHTML = `<p class="card-subtitle">Enter a Codeforces handle in the Profile card above, then come back here to verify it.</p>`;
-      return;
-    }
-    if (cfVerified) {
-      const startDate = Store.data.profile.gamificationStart;
-      const startLabel = startDate ? new Date(startDate).toLocaleDateString() : "today";
-      root.innerHTML = `
-        <p class="verified-note">✓ Verified as <strong>${escapeHtml(cfHandle)}</strong>.</p>
-        <p class="card-subtitle">Points have been accumulating since <strong>${startLabel}</strong> &mdash;
-        set automatically the moment you verified, and not editable, so there's no way to backdate a windfall
-        from solves before it.</p>
-      `;
-      return;
-    }
     if (!verifyState) {
-      root.innerHTML = `
-        <p class="card-subtitle">
-          <strong>${escapeHtml(cfHandle)}</strong> isn't verified yet &mdash; sync and your own
-          stats on the Codeforces page stay locked, and points/rewards (see the Self-rule page)
-          stay locked too, until you verify. Prove you own it here.
-        </p>
-        <button id="start-verify-btn" type="button" class="btn-secondary">Start verification</button>
-      `;
-      $("start-verify-btn").addEventListener("click", () => {
-        verifyState = { problem: CFVerify.pickProblem(), startedAtMs: Date.now() };
-        renderCFVerifySection();
-      });
+      root.innerHTML = "";
       return;
     }
 
-    const { problem } = verifyState;
+    const { handle, problem } = verifyState;
     root.innerHTML = `
       <p>1. Open the <a href="${CFVerify.problemUrl(problem)}" target="_blank" rel="noopener noreferrer">submit page for ${escapeHtml(problem.name)} (${problem.contestId}${problem.index})</a> — it pre-selects the problem, no searching needed.</p>
-      <p>2. Submit ANY code that fails to compile (e.g. delete a semicolon) as <strong>${escapeHtml(cfHandle)}</strong>, within the next ${CFVerify.WINDOW_MINUTES} minutes.</p>
+      <p>2. Submit ANY code that fails to compile (e.g. delete a semicolon) as <strong>${escapeHtml(handle)}</strong>, within the next ${CFVerify.WINDOW_MINUTES} minutes.</p>
       <div class="form-actions">
         <button id="check-verify-btn" type="button" class="btn-primary">I submitted it — check now</button>
         <button id="cancel-verify-btn" type="button" class="btn-icon">Cancel</button>
@@ -123,7 +85,7 @@
       <span id="verify-status" class="sync-status"></span>
       <details>
         <summary>Manual fallback (paste JSON)</summary>
-        <p><a href="${CFSync.apiUrl(cfHandle)}" target="_blank" rel="noopener noreferrer">Open Codeforces API URL →</a></p>
+        <p><a href="${CFSync.apiUrl(handle)}" target="_blank" rel="noopener noreferrer">Open Codeforces API URL →</a></p>
         <textarea id="verify-manual-json" rows="5" placeholder="Paste the JSON response here"></textarea>
         <button id="verify-manual-btn" type="button" class="btn-secondary">Check pasted JSON</button>
       </details>
@@ -133,14 +95,14 @@
       const statusEl = $("verify-status");
       statusEl.textContent = "Checking…";
       statusEl.className = "sync-status";
-      const result = await CFVerify.checkLive(cfHandle, problem, verifyState.startedAtMs);
+      const result = await CFVerify.checkLive(handle, problem, verifyState.startedAtMs);
       if (!result.ok) {
         statusEl.textContent = `Live check failed (${result.error}). Use the manual fallback below.`;
         statusEl.className = "sync-status error";
         return;
       }
       if (result.verified) {
-        markVerified();
+        completeLogin(handle);
       } else {
         statusEl.textContent = "No matching compile-error submission found yet. Submit it, then try again.";
         statusEl.className = "sync-status error";
@@ -149,16 +111,16 @@
 
     $("cancel-verify-btn").addEventListener("click", () => {
       verifyState = null;
-      renderCFVerifySection();
+      renderAuthState();
     });
 
     $("verify-manual-btn").addEventListener("click", () => {
       const text = $("verify-manual-json").value.trim();
       const statusEl = $("verify-status");
       try {
-        const ok = CFVerify.checkManual(text, cfHandle, problem, verifyState.startedAtMs);
+        const ok = CFVerify.checkManual(text, handle, problem, verifyState.startedAtMs);
         if (ok) {
-          markVerified();
+          completeLogin(handle);
         } else {
           statusEl.textContent = "No matching compile-error submission found in that JSON.";
           statusEl.className = "sync-status error";
@@ -170,13 +132,27 @@
     });
   }
 
+  /** Top-level toggle between the logged-out (login form + verify steps) and logged-in (prefs + logout) views. */
+  function renderAuthState() {
+    const loggedIn = Boolean(Store.data.profile.cfVerified);
+    $("logged-out-view").hidden = loggedIn;
+    $("logged-in-view").hidden = !loggedIn;
+    if (loggedIn) {
+      renderLoggedInView();
+      return;
+    }
+    $("login-form").hidden = Boolean(verifyState);
+    if (!verifyState) $("login-handle-input").value = "";
+    renderVerifySection();
+  }
+
   function wireDataCard() {
     $("export-btn").addEventListener("click", () => {
       const blob = new Blob([Store.exportJSON()], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `icpc-prep-hub-backup-${todayISODate()}.json`;
+      a.download = `icpc-prep-hub-backup-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -193,8 +169,8 @@
         Store.importJSON(text);
         status.textContent = "Import successful.";
         status.className = "sync-status success";
-        renderProfileForm();
-        renderCFVerifySection();
+        verifyState = null;
+        renderAuthState();
         refreshDynamic();
         Theme.apply();
       } catch (e) {
@@ -205,12 +181,12 @@
     });
 
     $("reset-btn").addEventListener("click", () => {
-      if (!confirm("This clears all ICPC Prep Hub data (roadmap progress, points, logs, rewards) on this browser. This can't be undone unless you've exported a backup. Continue?")) {
+      if (!confirm("This clears all ICPC Prep Hub data (every logged-in handle's roadmap progress, points, logs, rewards) on this browser. This can't be undone unless you've exported a backup. Continue?")) {
         return;
       }
       Store.resetAll();
-      renderProfileForm();
-      renderCFVerifySection();
+      verifyState = null;
+      renderAuthState();
       refreshDynamic();
       Theme.apply();
       $("data-status").textContent = "All data reset.";
@@ -219,9 +195,9 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    renderProfileForm();
-    wireProfileForm();
-    renderCFVerifySection();
+    wireLoginForm();
+    wirePrefsForm();
+    renderAuthState();
     wireDataCard();
     refreshDynamic();
   });

@@ -14,64 +14,86 @@
   <main class="container">
     <section class="card" id="profile-card">
       <h2>Profile</h2>
-      <form id="profile-form" class="form-grid">
-        <label>
-          Codeforces handle
-          <input type="text" id="cf-handle-input" placeholder="e.g. tourist" autocomplete="off" />
-        </label>
-        <label>
-          Focus tag (earn &times;1.5 points)
-          <select id="focus-tags-input">
-            <option value="">None</option>
-            <option value="2-sat">2-sat</option>
-            <option value="binary search">binary search</option>
-            <option value="bitmasks">bitmasks</option>
-            <option value="brute force">brute force</option>
-            <option value="chinese remainder theorem">chinese remainder theorem</option>
-            <option value="combinatorics">combinatorics</option>
-            <option value="constructive algorithms">constructive algorithms</option>
-            <option value="data structures">data structures</option>
-            <option value="dfs and similar">dfs and similar</option>
-            <option value="divide and conquer">divide and conquer</option>
-            <option value="dp">dp</option>
-            <option value="dsu">dsu</option>
-            <option value="expression parsing">expression parsing</option>
-            <option value="fft">fft</option>
-            <option value="flows">flows</option>
-            <option value="games">games</option>
-            <option value="geometry">geometry</option>
-            <option value="graph matchings">graph matchings</option>
-            <option value="graphs">graphs</option>
-            <option value="greedy">greedy</option>
-            <option value="hashing">hashing</option>
-            <option value="implementation">implementation</option>
-            <option value="interactive">interactive</option>
-            <option value="math">math</option>
-            <option value="matrices">matrices</option>
-            <option value="meet-in-the-middle">meet-in-the-middle</option>
-            <option value="number theory">number theory</option>
-            <option value="probabilities">probabilities</option>
-            <option value="schedules">schedules</option>
-            <option value="shortest paths">shortest paths</option>
-            <option value="sortings">sortings</option>
-            <option value="string suffix structures">string suffix structures</option>
-            <option value="strings">strings</option>
-            <option value="ternary search">ternary search</option>
-            <option value="trees">trees</option>
-            <option value="two pointers">two pointers</option>
-          </select>
-        </label>
-        <label>
-          Target contest date <span class="optional">(optional)</span>
-          <input type="date" id="target-date-input" />
-        </label>
-        <div class="form-actions">
-          <button type="submit" class="btn-primary">Save profile</button>
-          <span id="profile-saved-note" class="saved-note" hidden>Saved.</span>
-        </div>
-      </form>
 
-      <div id="cf-verify-section" class="sub-panel"></div>
+      <div id="logged-out-view">
+        <p class="card-subtitle">
+          Log in with your Codeforces handle to track roadmap progress, sync solves, and earn
+          points. Logging in proves you own the handle (below) &mdash; there's no separate "save,
+          then verify" step, and no way to preview another handle's stats as your own. First login
+          creates your local profile; logging back in later with the same handle restores it
+          exactly as you left it, even if you'd switched to a different handle in between.
+        </p>
+        <form id="login-form" class="form-grid">
+          <label>
+            Codeforces handle
+            <input type="text" id="login-handle-input" placeholder="e.g. tourist" autocomplete="off" />
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Log in</button>
+          </div>
+        </form>
+        <div id="cf-verify-section" class="sub-panel"></div>
+      </div>
+
+      <div id="logged-in-view" hidden>
+        <p class="verified-note">&check; Logged in as <strong id="logged-in-handle"></strong>.</p>
+        <p class="card-subtitle">Points have been accumulating since <strong id="logged-in-start-date"></strong>
+        &mdash; set automatically the moment you first logged in, and not editable, so there's no way to
+        backdate a windfall from solves before it.</p>
+        <form id="prefs-form" class="form-grid">
+          <label>
+            Focus tag (earn &times;1.5 points)
+            <select id="focus-tags-input">
+              <option value="">None</option>
+              <option value="2-sat">2-sat</option>
+              <option value="binary search">binary search</option>
+              <option value="bitmasks">bitmasks</option>
+              <option value="brute force">brute force</option>
+              <option value="chinese remainder theorem">chinese remainder theorem</option>
+              <option value="combinatorics">combinatorics</option>
+              <option value="constructive algorithms">constructive algorithms</option>
+              <option value="data structures">data structures</option>
+              <option value="dfs and similar">dfs and similar</option>
+              <option value="divide and conquer">divide and conquer</option>
+              <option value="dp">dp</option>
+              <option value="dsu">dsu</option>
+              <option value="expression parsing">expression parsing</option>
+              <option value="fft">fft</option>
+              <option value="flows">flows</option>
+              <option value="games">games</option>
+              <option value="geometry">geometry</option>
+              <option value="graph matchings">graph matchings</option>
+              <option value="graphs">graphs</option>
+              <option value="greedy">greedy</option>
+              <option value="hashing">hashing</option>
+              <option value="implementation">implementation</option>
+              <option value="interactive">interactive</option>
+              <option value="math">math</option>
+              <option value="matrices">matrices</option>
+              <option value="meet-in-the-middle">meet-in-the-middle</option>
+              <option value="number theory">number theory</option>
+              <option value="probabilities">probabilities</option>
+              <option value="schedules">schedules</option>
+              <option value="shortest paths">shortest paths</option>
+              <option value="sortings">sortings</option>
+              <option value="string suffix structures">string suffix structures</option>
+              <option value="strings">strings</option>
+              <option value="ternary search">ternary search</option>
+              <option value="trees">trees</option>
+              <option value="two pointers">two pointers</option>
+            </select>
+          </label>
+          <label>
+            Target contest date <span class="optional">(optional)</span>
+            <input type="date" id="target-date-input" />
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Save preferences</button>
+            <span id="prefs-saved-note" class="saved-note" hidden>Saved.</span>
+          </div>
+        </form>
+        <button id="logout-btn" type="button" class="btn-secondary">Log out</button>
+      </div>
     </section>
 
     <div class="dashboard-timeline-row">
