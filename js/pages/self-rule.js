@@ -160,6 +160,7 @@
   }
 
   function refresh() {
+    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
     renderFormula();
     const unlocked = applyLockState();
     if (!unlocked) return;
@@ -170,6 +171,7 @@
   }
 
   function refreshPointsChange() {
+    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
     const unlocked = applyLockState();
     if (!unlocked) return;
     Gamification.renderStreak($("streak-root"));
@@ -177,9 +179,28 @@
     renderActivity();
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  // #add-reward-form is static markup wired once and never re-created — must run exactly once,
+  // whether "ready" first becomes true on the initial DOMContentLoaded or later via
+  // icpc:external-data-change (sign in happens after page load, through AuthUI).
+  let wired = false;
+  function wireOnce() {
+    if (wired) return;
+    wired = true;
     wireRewardsForm();
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    await Shell.ready;
+    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
+    wireOnce();
     refresh();
   });
   document.addEventListener("icpc:points-changed", refreshPointsChange);
+
+  // Sign-in/out, another device syncing, a focus-triggered refetch — see storage.js/shell.js.
+  document.addEventListener("icpc:external-data-change", () => {
+    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
+    wireOnce();
+    refresh();
+  });
 })();

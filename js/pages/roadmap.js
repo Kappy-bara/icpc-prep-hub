@@ -14,8 +14,15 @@
   }
 
   function render() {
+    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
     if (!applyLockState()) return;
     Roadmap.render($("roadmap-root"));
   }
-  document.addEventListener("DOMContentLoaded", render);
+  document.addEventListener("DOMContentLoaded", async () => {
+    await Shell.ready;
+    render();
+  });
+
+  // Sign-in/out, another device syncing, a focus-triggered refetch — see storage.js/shell.js.
+  document.addEventListener("icpc:external-data-change", render);
 })();

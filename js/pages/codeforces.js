@@ -140,8 +140,29 @@
     $("manual-api-link").href = Store.data.profile.cfHandle ? CFSync.apiUrl(Store.data.profile.cfHandle) : "#";
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  // wireSyncCard() attaches listeners to static markup that's only ever parsed once — must run
+  // exactly once, whether "ready" first becomes true on the initial DOMContentLoaded (already
+  // signed in when the page loads) or later via icpc:external-data-change (sign in happens after
+  // page load, through AuthUI). This flag makes it safe to call from both places.
+  let wired = false;
+  function wireOnce() {
+    if (wired) return;
+    wired = true;
     wireSyncCard();
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    await Shell.ready;
+    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
+    wireOnce();
+    refreshDynamic();
+  });
+
+  // Sign-in/out, another device syncing, a focus-triggered refetch — see storage.js/shell.js.
+  document.addEventListener("icpc:external-data-change", () => {
+    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
+    wireOnce();
+    $("manual-api-link").href = Store.data.profile.cfHandle ? CFSync.apiUrl(Store.data.profile.cfHandle) : "#";
     refreshDynamic();
   });
 })();

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ICPC Prep Hub</title>
-  <meta name="description" content="A free companion for ICPC prep: a 99-topic roadmap, a smart timeline, Codeforces-powered gamification with streaks and analysis against real players, and progress reports. Works fully offline, local-only, with no account required." />
+  <meta name="description" content="A free companion for ICPC prep: a 99-topic roadmap, a smart timeline, Codeforces-powered gamification with streaks and analysis against real players, and progress reports. Sign in free to track your progress across every device." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\u{1F3C6}</text></svg>" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -15,8 +15,9 @@
     <div class="hero">
       <h1>ICPC Prep Hub</h1>
       <p class="intro">
-        An open-source companion for ICPC prep &mdash; regionals through World Finals. Works entirely offline
-        and local-only &mdash; everything is stored in this browser, no account needed.
+        An open-source companion for ICPC prep &mdash; regionals through World Finals. Sign in with
+        just an email (no password) and verify your Codeforces handle once &mdash; your progress
+        follows you to every device from then on.
       </p>
     </div>
 
@@ -52,9 +53,14 @@
     </p>
   </footer>
 
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/supabase-client.js"></script>
   <script defer src="js/storage.js"></script>
   <script defer src="js/dom-utils.js"></script>
   <script defer src="js/theme.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="js/auth-ui.js"></script>
   <script defer src="js/nav.js"></script>
   <script defer src="js/shell.js"></script>
   <script defer src="js/gamification.js"></script>

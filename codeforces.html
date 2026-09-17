@@ -12,6 +12,9 @@
   <header id="site-nav" class="topbar"></header>
 
   <main class="container">
+    <div id="auth-gate" hidden></div>
+
+    <div id="page-body" hidden>
     <section class="card" id="cf-locked-card" hidden>
       <h2>Sync is locked</h2>
       <p class="card-subtitle">
@@ -72,6 +75,7 @@
       <h2>Codeforces Analysis</h2>
       <div id="cf-analysis-root"></div>
     </section>
+    </div>
   </main>
 
   <footer class="site-footer">
@@ -87,6 +91,8 @@
   <script defer src="js/storage.js"></script>
   <script defer src="js/dom-utils.js"></script>
   <script defer src="js/theme.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="js/auth-ui.js"></script>
   <script defer src="js/nav.js"></script>
   <script defer src="js/shell.js"></script>
   <script defer src="js/gamification.js"></script>

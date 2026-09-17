@@ -1,22 +1,20 @@
 /**
- * Local-only data store. Everything lives in this browser's localStorage — no accounts, no
- * server, no cross-device sync. (An earlier version of this app had an optional Supabase-backed
- * cloud-sync mode with email/magic-link sign-in; removed by request in favor of keeping the app
- * fully local and backend-free, with Codeforces handle verification — see js/cf-verify.js — as
- * the only "prove who you are" step, gating points/rewards without needing any account system.)
+ * Server-backed data store. Everything about you (roadmap progress, points, solved log, rewards,
+ * redemptions) lives in this account's `profiles` row in Supabase (see
+ * supabase/migrations/20260915023419_initial_schema.sql), one JSONB blob (`app_data`) per signed-in
+ * user, RLS-scoped so you can only ever read/write your own row. Nothing about your progress is
+ * kept in this browser at rest — js/shell.js awaits Store.load() before any page renders, and every
+ * write here goes to the server (see save()/verifyHandle() below), not to localStorage.
+ *
+ * (Theme is the one deliberate exception — see js/theme.js — a per-device cosmetic preference with
+ * no sync/privacy stakes, and syncing it here would create a real chicken-and-egg problem: it needs
+ * to apply before any network round-trip, to avoid a flash of the wrong theme on load, including
+ * while signed out and before there's any account to attach a preference to.)
  */
-const LOCAL_KEY = "icpc-prep-hub:data:v1";
 
 function defaultData() {
   return {
-    version: 3,
-    // Every verified handle this browser has ever logged in as, keyed by lowercased handle —
-    // { [handle.toLowerCase()]: { profile, roadmapProgress, points, solvedLog, cf, rewards,
-    // redemptions } }, the exact snapshot shape ACCOUNT_FIELDS below swaps in/out on login/
-    // logout. Lets switching between two handles on the same browser (or logging out and back
-    // in as the same one) restore each handle's own progress exactly as it was left, instead of
-    // wiping to empty — see Store.login/logout.
-    accounts: {},
+    version: 4,
     profile: {
       cfHandle: "",
       cfVerified: false,
@@ -24,7 +22,6 @@ function defaultData() {
       focusTags: [], // at most one tag, chosen from the dropdown
       targetDate: "2026-10-03", // ISO date string, editable
     },
-    theme: "system", // "system" | "light" | "dark"
     roadmapProgress: {}, // { [topicId]: true }
     points: {
       balance: 0,
@@ -59,31 +56,21 @@ function defaultData() {
   };
 }
 
-// The fields that belong to "whoever is logged in" — swapped wholesale into/out of an
-// `accounts[handle]` snapshot on login/logout (see Store.login/logout below). Everything else
-// (accounts itself, theme) stays put across a login switch since it isn't identity-specific.
-const ACCOUNT_FIELDS = ["profile", "roadmapProgress", "points", "solvedLog", "cf", "rewards", "redemptions"];
-
-function snapshotFields(data) {
-  const out = {};
-  for (const f of ACCOUNT_FIELDS) out[f] = data[f];
-  return out;
-}
-
 /**
- * Coerce a value back to a finite number, or `fallback` if it isn't one — used below to close a
- * real stored-XSS hole. `deepMerge` only checks that an incoming ARRAY is an array and an
- * incoming OBJECT is an object; it never checks an individual field's type. Several render
- * functions across the app (Recent Solves, the points-overview stat tiles, the rewards list, …)
- * interpolate fields like `solvedLog[].rating/points`, `points.balance`, and `rewards[].cost`
- * directly into `innerHTML` WITHOUT `escapeHtml`, because under every path the app itself writes
- * through (CF sync, the manual-log form, redeeming a reward) those fields are always genuinely
- * numbers. A hand-edited or malicious "backup" JSON file loaded via Import JSON breaks that
- * assumption — nothing stopped `solvedLog[0].rating` from being the *string*
- * `"<img src=x onerror=alert(1)>"`, which would then render unescaped and execute. Coercing every
- * known-numeric field back to an actual number right after every deepMerge (both the normal
- * localStorage load and an explicit import go through this) closes it for every render site at
- * once, and is a no-op for the 99.9% of data that was already a real number.
+ * Coerce a value back to a finite number, or `fallback` if it isn't one — closes a real stored-XSS
+ * hole. `deepMerge` only checks that an incoming ARRAY is an array and an incoming OBJECT is an
+ * object; it never checks an individual field's type. Several render functions across the app
+ * (Recent Solves, the points-overview stat tiles, the rewards list, …) interpolate fields like
+ * `solvedLog[].rating/points`, `points.balance`, and `rewards[].cost` directly into `innerHTML`
+ * without `escapeHtml`, because under every path the app itself writes through (CF sync, the
+ * manual-log form, redeeming a reward) those fields are always genuinely numbers. A hand-edited or
+ * malicious "backup" JSON file loaded via Import JSON breaks that assumption — nothing stopped
+ * `solvedLog[0].rating` from being the *string* `"<img src=x onerror=alert(1)>"`, which would then
+ * render unescaped and execute. Coercing every known-numeric field back to an actual number right
+ * after every deepMerge (both a normal server load and an explicit import go through this) closes
+ * it for every render site at once. RLS protects confidentiality between accounts, not the type-
+ * safety of what's already inside your own JSON blob — and a bad value now round-trips to every
+ * device you sign into instead of staying trapped in one browser, so this still matters here.
  */
 function coerceNumber(value, fallback) {
   const n = Number(value);
@@ -101,35 +88,25 @@ function sanitizeSolvedLog(list) {
   return list;
 }
 
-/** Sanitizes one ACCOUNT_FIELDS-shaped bundle in place — the top-level store, or one `accounts[handle]` snapshot. */
-function sanitizeAccountFields(bundle) {
-  if (!bundle || typeof bundle !== "object") return bundle;
-  if (bundle.points) bundle.points.balance = coerceNumber(bundle.points.balance, 0);
-  sanitizeSolvedLog(bundle.solvedLog);
-  if (bundle.cf && Array.isArray(bundle.cf.unsolvedAttempted)) {
-    for (const p of bundle.cf.unsolvedAttempted) {
+function sanitizeTypes(data) {
+  if (data.points) data.points.balance = coerceNumber(data.points.balance, 0);
+  sanitizeSolvedLog(data.solvedLog);
+  if (data.cf && Array.isArray(data.cf.unsolvedAttempted)) {
+    for (const p of data.cf.unsolvedAttempted) {
       if (!p || typeof p !== "object") continue;
       p.rating = p.rating == null ? null : coerceNumber(p.rating, null);
       p.attemptCount = coerceNumber(p.attemptCount, 0);
     }
   }
-  if (Array.isArray(bundle.rewards)) {
-    for (const r of bundle.rewards) {
+  if (Array.isArray(data.rewards)) {
+    for (const r of data.rewards) {
       if (r && typeof r === "object") r.cost = coerceNumber(r.cost, 1);
     }
   }
-  if (Array.isArray(bundle.redemptions)) {
-    for (const r of bundle.redemptions) {
+  if (Array.isArray(data.redemptions)) {
+    for (const r of data.redemptions) {
       if (r && typeof r === "object") r.cost = coerceNumber(r.cost, 0);
     }
-  }
-  return bundle;
-}
-
-function sanitizeTypes(data) {
-  sanitizeAccountFields(data);
-  if (data.accounts && typeof data.accounts === "object") {
-    for (const snapshot of Object.values(data.accounts)) sanitizeAccountFields(snapshot);
   }
   return data;
 }
@@ -137,9 +114,8 @@ function sanitizeTypes(data) {
 // Type-checked at every level, not just "does incoming exist": a hand-edited or partially
 // corrupted backup file can have the right keys with the wrong-typed values (e.g. `solvedLog`
 // as a string instead of an array). Blindly trusting incoming's type there used to let a single
-// bad import corrupt the store into a shape every array-iterating page throws on — and since
-// save() persists before anything downstream can catch that, the corruption survived past the
-// "Import failed" message. Now a type mismatch at any level just keeps base's value instead.
+// bad import corrupt the store into a shape every array-iterating page throws on. Now a type
+// mismatch at any level just keeps base's value instead.
 function deepMerge(base, incoming) {
   if (Array.isArray(base)) {
     return Array.isArray(incoming) ? incoming : base;
@@ -157,11 +133,13 @@ function deepMerge(base, incoming) {
 
 /**
  * One-time migrations for data saved under an older schema `version`. Needed because deepMerge
- * only merges plain OBJECTS key-by-key — an array like `rewards` that's already on disk always
- * wins wholesale over a new default (see deepMerge above), so changing a shipped default value
- * (e.g. a starter reward's cost) only affects brand-new installs, never browsers that already
- * saved data under the old default. Each entry is a pure `(data) -> data` step keyed by the
- * version it upgrades TO; migrate() below runs every step between the stored version and current.
+ * only merges plain OBJECTS key-by-key — an array like `rewards` that's already saved always wins
+ * wholesale over a new default (see deepMerge above), so changing a shipped default value only
+ * affects brand-new accounts, never ones that already saved data under the old default. Each entry
+ * is a pure `(data) -> data` step keyed by the version it upgrades TO; migrate() runs every step
+ * between the stored version and current. In practice this now mostly matters for someone
+ * re-importing an OLD exported backup file — a fresh signup's app_data starts at `{}` and has
+ * nothing to migrate.
  */
 const MIGRATIONS = {
   2: (data) => {
@@ -178,23 +156,32 @@ const MIGRATIONS = {
     return data;
   },
   3: (data) => {
-    // v2 -> v3: the profile/verify model changed from "save a handle, then separately verify it"
-    // (a single mutable slot anyone could overwrite, which also meant switching handles and
-    // switching back reset gamificationStart to today on re-verification) to "log in BY
-    // verifying," with each verified handle's progress preserved in its own `accounts[handle]`
-    // slot. Migrate whatever was already active into that shape: an already-verified handle
-    // becomes that handle's first account entry (same gamificationStart, same everything — no
-    // re-verification needed), so this upgrade doesn't cost anyone their accumulated progress.
-    // An unverified handle from the old model isn't a real login under the new one, so it's
-    // dropped back to a logged-out state instead of being promoted into an account.
-    data.accounts = data.accounts || {};
-    if (data.profile.cfVerified && data.profile.cfHandle) {
-      const key = data.profile.cfHandle.trim().toLowerCase();
-      data.accounts[key] = snapshotFields(data);
-    } else {
+    // v2 -> v3: an earlier local-only version had a "save a handle, then separately verify it"
+    // profile model with no accounts map at all. If it was already verified, keep it verified
+    // (still resolves cleanly into v4 below); if not, that was never a real login in any later
+    // model, so it's dropped back to unverified/blank instead of being trusted as-is.
+    if (!(data.profile && data.profile.cfVerified && data.profile.cfHandle)) {
       const fresh = defaultData();
-      for (const f of ACCOUNT_FIELDS) data[f] = fresh[f];
+      data.profile = fresh.profile;
+      data.roadmapProgress = fresh.roadmapProgress;
+      data.points = fresh.points;
+      data.solvedLog = fresh.solvedLog;
+      data.cf = fresh.cf;
+      data.rewards = fresh.rewards;
+      data.redemptions = fresh.redemptions;
     }
+    return data;
+  },
+  4: (data) => {
+    // v3 -> v4: moved from local-only storage (with a local per-browser multi-handle `accounts`
+    // map for switching between several verified handles on one browser — see git history) to
+    // real server-backed accounts: one row per signed-in user, one Codeforces handle per account,
+    // forever (see Store.verifyHandle). `accounts` no longer means anything under that model, and
+    // `theme` moved out to its own always-local key (see js/theme.js) — neither belongs in the
+    // server-synced blob. Only matters when importing an old exported backup file; a fresh
+    // account's app_data starts at `{}` and never had either key.
+    delete data.accounts;
+    delete data.theme;
     return data;
   },
 };
@@ -212,85 +199,148 @@ function migrate(data) {
 
 const Store = {
   _data: null,
+  _loaded: false,
+  _lastLoadedAt: 0,
+  _saveTimer: null,
+  _saveChain: Promise.resolve(),
 
+  /** Synchronous, same shape/calling-convention every existing render function already expects.
+   * Never throws, never blocks — returns fresh defaults until load() has actually resolved (pages
+   * guard their own rendering on Store.isLoaded(), see js/shell.js, so this is a safety net, not
+   * the real gate). */
   get data() {
-    if (!this._data) {
-      try {
-        const raw = localStorage.getItem(LOCAL_KEY);
-        this._data = raw ? migrate(deepMerge(defaultData(), JSON.parse(raw))) : defaultData();
-      } catch (e) {
-        console.error("Failed to read local data, using defaults.", e);
-        this._data = defaultData();
-      }
-    }
-    return this._data;
+    return this._data || defaultData();
   },
 
+  isLoaded() {
+    return this._loaded;
+  },
+
+  /** Fetches the signed-in account's row. Call once per page load, before any render logic runs. */
+  async load() {
+    if (!Auth.isSignedIn()) return { ok: false, error: "Not signed in" };
+    try {
+      const { data: row, error } = await supabaseClient
+        .from("profiles")
+        .select("cf_handle, cf_verified, app_data")
+        .eq("id", Auth.user.id)
+        .maybeSingle();
+      if (error) return { ok: false, error: error.message };
+      const merged = migrate(deepMerge(defaultData(), (row && row.app_data) || {}));
+      if (row) {
+        // cf_handle/cf_verified are the source of truth for identity (they're what the DB
+        // uniqueness constraint actually protects) — mirror them in, in case app_data ever
+        // drifted from the two real columns.
+        merged.profile.cfHandle = row.cf_handle || merged.profile.cfHandle;
+        merged.profile.cfVerified = Boolean(row.cf_verified);
+      }
+      this._data = merged;
+      this._loaded = true;
+      this._lastLoadedAt = Date.now();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message || "Network error" };
+    }
+  },
+
+  /** Same as load(), but also tells every page to re-render — used for the focus-refetch below. */
+  async reload() {
+    const result = await this.load();
+    if (result.ok) document.dispatchEvent(new CustomEvent("icpc:external-data-change"));
+    return result;
+  },
+
+  /** Drops the cached row — called on sign-out, so the next sign-in never briefly shows stale data. */
+  clear() {
+    this._data = null;
+    this._loaded = false;
+  },
+
+  /**
+   * Same signature as the old local-only version: mutates the in-memory blob synchronously and
+   * returns immediately — every existing call site (js/gamification.js, js/cf-sync.js, etc.) needs
+   * no changes. What's different: this also schedules a debounced, serialized background save to
+   * the server instead of an instant localStorage write. Routine writes stay optimistic (the UI
+   * never waits on the network) — only Store.verifyHandle below is awaited by its caller.
+   */
   update(mutator) {
     const d = this.data;
+    if (!this._data) this._data = d;
     mutator(d);
-    this.save();
+    this._scheduleSave();
     return d;
   },
 
-  /**
-   * Log in as `handle`, having already verified ownership (see js/cf-verify.js CFVerify) — call
-   * this only after a successful check, never speculatively; it unconditionally marks the result
-   * verified. A returning handle (one already in `accounts`) restores its saved snapshot exactly
-   * as it was left — same gamificationStart, same solvedLog, same points — so logging in as a
-   * handle you've already verified before never resets progress or the accumulation start date,
-   * even if you'd switched away to a different handle in between. A brand-new handle gets a
-   * fresh account with gamificationStart set to today (the existing "start counting from first
-   * verification" rule, just moved here from the old markVerified()). Whatever was active before
-   * this call (if anything) is saved into its own slot first, so logging in as a second handle
-   * never loses the first one's in-progress session.
-   */
-  login(handle) {
-    const d = this.data;
-    d.accounts = d.accounts || {};
-    const cleanHandle = handle.trim();
-    const prevKey = (d.profile.cfHandle || "").trim().toLowerCase();
-    if (prevKey) d.accounts[prevKey] = snapshotFields(d);
-
-    const key = cleanHandle.toLowerCase();
-    const existing = d.accounts[key];
-    if (existing) {
-      for (const f of ACCOUNT_FIELDS) d[f] = existing[f];
-      d.profile.cfHandle = cleanHandle; // this login's casing, not whatever was saved before
-    } else {
-      const fresh = defaultData();
-      for (const f of ACCOUNT_FIELDS) d[f] = fresh[f];
-      d.profile.cfHandle = cleanHandle;
-      d.profile.gamificationStart = new Date().toISOString().slice(0, 10);
-    }
-    d.profile.cfVerified = true;
-    d.accounts[key] = snapshotFields(d);
-
-    this.save();
-    return d;
+  _scheduleSave() {
+    if (this._saveTimer) clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => {
+      this._saveTimer = null;
+      this._saveChain = this._saveChain.then(() => this._writeNow());
+    }, 400);
   },
 
-  /**
-   * Log out: save the active session into its own account slot first (nothing is lost — logging
-   * back in as the same handle later restores it), then clear the active slots to an anonymous,
-   * logged-out state.
-   */
-  logout() {
-    const d = this.data;
-    d.accounts = d.accounts || {};
-    const prevKey = (d.profile.cfHandle || "").trim().toLowerCase();
-    if (prevKey) d.accounts[prevKey] = snapshotFields(d);
-    const fresh = defaultData();
-    for (const f of ACCOUNT_FIELDS) d[f] = fresh[f];
-    this.save();
-    return d;
-  },
-
-  save() {
+  async _writeNow() {
+    if (!Auth.isSignedIn() || !this._data) return { ok: false, error: "Not signed in" };
     try {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(this._data));
+      const { error } = await supabaseClient.from("profiles").update({ app_data: this._data }).eq("id", Auth.user.id);
+      if (error) {
+        console.error("Failed to save.", error);
+        return { ok: false, error: error.message };
+      }
+      return { ok: true };
     } catch (e) {
-      console.error("Failed to write local data.", e);
+      console.error("Failed to save.", e);
+      return { ok: false, error: e.message || "Network error" };
+    }
+  },
+
+  /** Waits for any pending debounced/queued save to actually land, returning its result. */
+  async flush() {
+    if (this._saveTimer) {
+      clearTimeout(this._saveTimer);
+      this._saveTimer = null;
+      this._saveChain = this._saveChain.then(() => this._writeNow());
+    }
+    return this._saveChain;
+  },
+
+  /**
+   * Links `handle` to the signed-in account, having already verified ownership (see
+   * js/cf-verify.js CFVerify — call this only after its check succeeds, never speculatively).
+   * Unlike every other write, this is AWAITED by its caller and NOT optimistic: it can legitimately
+   * fail — a DB uniqueness constraint (supabase/migrations/20260917000000_cf_handle_uniqueness.sql)
+   * rejects it if another account already verified this exact handle — and the caller needs to know
+   * that before treating the account as verified. A returning account (gamificationStart already
+   * set) keeps it; a first-time verification sets it to today.
+   */
+  async verifyHandle(handle) {
+    if (!Auth.isSignedIn()) return { ok: false, error: "Not signed in" };
+    const cleanHandle = handle.trim();
+    const current = this.data;
+    const nextData = {
+      ...current,
+      profile: {
+        ...current.profile,
+        cfHandle: cleanHandle,
+        cfVerified: true,
+        gamificationStart: current.profile.gamificationStart || new Date().toISOString().slice(0, 10),
+      },
+    };
+    try {
+      const { error } = await supabaseClient
+        .from("profiles")
+        .update({ cf_handle: cleanHandle, cf_verified: true, app_data: nextData })
+        .eq("id", Auth.user.id);
+      if (error) {
+        const isDuplicate = error.code === "23505";
+        return { ok: false, error: isDuplicate ? "That handle is already linked to another account." : error.message };
+      }
+      this._data = nextData;
+      this._loaded = true;
+      this._lastLoadedAt = Date.now();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message || "Network error" };
     }
   },
 
@@ -298,19 +348,64 @@ const Store = {
     return JSON.stringify(this.data, null, 2);
   },
 
-  importJSON(jsonString) {
-    const parsed = JSON.parse(jsonString);
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error("That file doesn't look like an icpc-prep-hub backup (expected a JSON object).");
+  /**
+   * Overwrites the signed-in account's data with `jsonString`'s contents. profile.cfHandle/
+   * cfVerified/gamificationStart are deliberately forced back to whatever the server already has —
+   * discarding anything the file itself claims for those three fields — before saving. Without
+   * this, Import would be a trivial way to "verify" any unclaimed handle by typing it into a JSON
+   * file, completely bypassing CFVerify's actual proof-of-ownership check. Every other field
+   * imports as given, still passed through migrate()/sanitizeTypes() as always.
+   */
+  async importJSON(jsonString) {
+    if (!Auth.isSignedIn()) return { ok: false, error: "Not signed in" };
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonString);
+    } catch (e) {
+      return { ok: false, error: `Couldn't parse that JSON: ${e.message}` };
     }
-    this._data = migrate(deepMerge(defaultData(), parsed));
-    this.save();
-    return this._data;
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { ok: false, error: "That file doesn't look like an icpc-prep-hub backup (expected a JSON object)." };
+    }
+    const current = this.data;
+    const merged = migrate(deepMerge(defaultData(), parsed));
+    merged.profile.cfHandle = current.profile.cfHandle;
+    merged.profile.cfVerified = current.profile.cfVerified;
+    merged.profile.gamificationStart = current.profile.gamificationStart;
+    this._data = merged;
+    this._loaded = true;
+    return this._writeNow();
   },
 
-  resetAll() {
-    this._data = defaultData();
-    this.save();
-    return this._data;
+  /** Wipes roadmap/points/solves/rewards back to defaults — keeps this account's identity intact
+   * (cfHandle/cfVerified/gamificationStart), matching the button's own copy: it clears progress,
+   * not your verified account. */
+  async resetAll() {
+    if (!Auth.isSignedIn()) return { ok: false, error: "Not signed in" };
+    const current = this.data;
+    const fresh = defaultData();
+    fresh.profile.cfHandle = current.profile.cfHandle;
+    fresh.profile.cfVerified = current.profile.cfVerified;
+    fresh.profile.gamificationStart = current.profile.gamificationStart;
+    this._data = fresh;
+    this._loaded = true;
+    return this._writeNow();
   },
 };
+
+/**
+ * Multi-device freshness: refetch when this tab regains focus/visibility, rather than a live
+ * Realtime subscription. The problem this exists for is a device-SWITCH scenario (phone vs.
+ * desktop), not two tabs open side by side needing sub-second sync, so a persistent WebSocket per
+ * tab (with its own reconnect handling, replication setup) isn't worth the added complexity here.
+ * 15s debounce so rapid tab-switching doesn't refetch on every single glance back at the page.
+ */
+function maybeRefetch() {
+  if (!Auth.isSignedIn()) return;
+  if (Date.now() - Store._lastLoadedAt < 15000) return;
+  Store.reload();
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") maybeRefetch();
+});
+window.addEventListener("focus", maybeRefetch);

@@ -7,6 +7,7 @@
   }
 
   function prefillOwnHandle() {
+    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
     const handle = Store.data.profile.cfHandle;
     const input = $("team-handle-1");
     if (handle && !input.value) input.value = handle;
@@ -33,8 +34,13 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    prefillOwnHandle();
+  document.addEventListener("DOMContentLoaded", async () => {
     wireForm();
+    await Shell.ready;
+    prefillOwnHandle();
   });
+
+  // Sign-in happens after page load — this page doesn't hard-gate, so re-attempt the prefill
+  // rather than needing to reload.
+  document.addEventListener("icpc:external-data-change", prefillOwnHandle);
 })();

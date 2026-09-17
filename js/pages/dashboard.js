@@ -1,6 +1,6 @@
-/** Dashboard page: login (by Codeforces verification), preferences, timeline, roadmap summary, recent solves, backup. */
+/** Dashboard page: verify your Codeforces handle, preferences, timeline, roadmap summary, recent solves, backup. */
 (function () {
-  let verifyState = null; // { handle, problem, startedAtMs } while a login verification is in progress
+  let verifyState = null; // { handle, problem, startedAtMs } while a verification is in progress
 
   function refreshDynamic() {
     Nav.updatePointsBadge();
@@ -10,12 +10,12 @@
     SolvedLogUI.render($("solved-log-root"), { limit: 5 });
   }
 
-  // --- Logged-in view: preferences + logout ---
+  // --- Verified view: preferences ---
 
-  function renderLoggedInView() {
+  function renderVerifiedView() {
     const p = Store.data.profile;
-    $("logged-in-handle").textContent = p.cfHandle;
-    $("logged-in-start-date").textContent = p.gamificationStart ? new Date(p.gamificationStart).toLocaleDateString() : "today";
+    $("verified-handle").textContent = p.cfHandle;
+    $("gamification-start-date").textContent = p.gamificationStart ? new Date(p.gamificationStart).toLocaleDateString() : "today";
     $("focus-tags-input").value = (p.focusTags && p.focusTags[0]) || "";
     $("target-date-input").value = p.targetDate || "";
   }
@@ -33,34 +33,28 @@
       setTimeout(() => (note.hidden = true), 1800);
       refreshDynamic();
     });
-
-    $("logout-btn").addEventListener("click", () => {
-      // Logging out saves the current session into its own account slot first (see Store.logout)
-      // — nothing here is lost, logging back in as the same handle restores it exactly.
-      Store.logout();
-      verifyState = null;
-      renderAuthState();
-      refreshDynamic();
-    });
   }
 
-  // --- Logged-out view: login (== Codeforces handle verification) ---
+  // --- Unverified view: verify your Codeforces handle ---
 
-  function wireLoginForm() {
-    $("login-form").addEventListener("submit", (evt) => {
+  function wireVerifyStartForm() {
+    $("cf-verify-start-form").addEventListener("submit", (evt) => {
       evt.preventDefault();
-      const handle = $("login-handle-input").value.trim();
+      const handle = $("cf-handle-input").value.trim();
       if (!handle) return;
       verifyState = { handle, problem: CFVerify.pickProblem(), startedAtMs: Date.now() };
       renderAuthState();
     });
   }
 
-  function completeLogin(handle) {
-    // Restores this handle's own saved progress if it's a returning login, or starts a fresh
-    // account (with today as the gamification start date) if it's brand new — see Store.login.
-    // Either way, this is the only place cfVerified ever becomes true.
-    Store.login(handle);
+  async function completeVerify(handle) {
+    const statusEl = $("verify-status");
+    const result = await Store.verifyHandle(handle);
+    if (!result.ok) {
+      statusEl.textContent = `Couldn't verify (${result.error}).`;
+      statusEl.className = "sync-status error";
+      return;
+    }
     verifyState = null;
     renderAuthState();
     refreshDynamic();
@@ -102,7 +96,9 @@
         return;
       }
       if (result.verified) {
-        completeLogin(handle);
+        statusEl.textContent = "Verified! Linking your account…";
+        statusEl.className = "sync-status";
+        await completeVerify(handle);
       } else {
         statusEl.textContent = "No matching compile-error submission found yet. Submit it, then try again.";
         statusEl.className = "sync-status error";
@@ -114,13 +110,15 @@
       renderAuthState();
     });
 
-    $("verify-manual-btn").addEventListener("click", () => {
+    $("verify-manual-btn").addEventListener("click", async () => {
       const text = $("verify-manual-json").value.trim();
       const statusEl = $("verify-status");
       try {
         const ok = CFVerify.checkManual(text, handle, problem, verifyState.startedAtMs);
         if (ok) {
-          completeLogin(handle);
+          statusEl.textContent = "Verified! Linking your account…";
+          statusEl.className = "sync-status";
+          await completeVerify(handle);
         } else {
           statusEl.textContent = "No matching compile-error submission found in that JSON.";
           statusEl.className = "sync-status error";
@@ -132,17 +130,19 @@
     });
   }
 
-  /** Top-level toggle between the login gate (login form + verify steps) and the full dashboard. */
+  /** Toggle between the "verify your handle" card and the full dashboard content — both live
+   * inside #page-body, which js/shell.js already gates on being signed in. */
   function renderAuthState() {
-    const loggedIn = Boolean(Store.data.profile.cfVerified);
-    $("login-gate").hidden = loggedIn;
-    $("dashboard-content").hidden = !loggedIn;
-    if (loggedIn) {
-      renderLoggedInView();
+    const verified = Boolean(Store.data.profile.cfVerified);
+    $("dashboard-content").hidden = !verified;
+    if (verified) {
+      $("cf-verify-start-form").hidden = true;
+      $("cf-verify-section").innerHTML = "";
+      renderVerifiedView();
       return;
     }
-    $("login-form").hidden = Boolean(verifyState);
-    if (!verifyState) $("login-handle-input").value = "";
+    $("cf-verify-start-form").hidden = Boolean(verifyState);
+    if (!verifyState) $("cf-handle-input").value = "";
     renderVerifySection();
   }
 
@@ -165,45 +165,81 @@
       if (!file) return;
       const text = await file.text();
       const status = $("data-status");
-      try {
-        Store.importJSON(text);
+      status.textContent = "Importing…";
+      status.className = "sync-status";
+      const result = await Store.importJSON(text);
+      if (result.ok) {
         status.textContent = "Import successful.";
         status.className = "sync-status success";
-        verifyState = null;
         renderAuthState();
         refreshDynamic();
-        Theme.apply();
-      } catch (e) {
-        status.textContent = `Import failed: ${e.message}`;
+      } else {
+        status.textContent = `Import failed: ${result.error}`;
         status.className = "sync-status error";
       }
       fileInput.value = "";
     });
 
-    $("reset-btn").addEventListener("click", () => {
-      if (!confirm("This clears all ICPC Prep Hub data (every logged-in handle's roadmap progress, points, logs, rewards) on this browser. This can't be undone unless you've exported a backup. Continue?")) {
+    $("reset-btn").addEventListener("click", async () => {
+      if (!confirm("This clears your roadmap progress, points, logs, and rewards. Your verified Codeforces handle stays linked. This can't be undone unless you've exported a backup. Continue?")) {
         return;
       }
-      Store.resetAll();
-      verifyState = null;
-      renderAuthState();
-      refreshDynamic();
-      Theme.apply();
-      $("data-status").textContent = "All data reset.";
-      $("data-status").className = "sync-status success";
+      const status = $("data-status");
+      status.textContent = "Resetting…";
+      status.className = "sync-status";
+      const result = await Store.resetAll();
+      if (result.ok) {
+        renderAuthState();
+        refreshDynamic();
+        status.textContent = "Progress reset.";
+        status.className = "sync-status success";
+      } else {
+        status.textContent = `Reset failed: ${result.error}`;
+        status.className = "sync-status error";
+      }
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    wireLoginForm();
+  function isReady() {
+    return Auth.isSignedIn() && Store.isLoaded();
+  }
+
+  // #page-body's forms are static markup wired once and never re-created — but "ready" can first
+  // become true either on the initial DOMContentLoaded (the common case: already signed in when
+  // the page loads) OR later, on icpc:external-data-change (sign in happens *after* page load, via
+  // AuthUI mounted in the separate #auth-gate area). This flag makes wiring idempotent across
+  // either path, so the forms get attached exactly once whichever one fires first.
+  let wired = false;
+  function wireOnce() {
+    if (wired) return;
+    wired = true;
+    wireVerifyStartForm();
     wirePrefsForm();
-    renderAuthState();
     wireDataCard();
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    await Shell.ready;
+    if (!isReady()) return;
+    wireOnce();
+    renderAuthState();
     refreshDynamic();
   });
 
   document.addEventListener("icpc:points-changed", () => {
+    if (!isReady()) return;
     Nav.updatePointsBadge();
     Gamification.renderStreak($("streak-root"));
+  });
+
+  // Sign-in/out elsewhere, another tab/device syncing, a focus-triggered refetch — see storage.js
+  // and shell.js. wireOnce() is a no-op if DOMContentLoaded already wired the forms (the common
+  // case); it's what actually wires them the first time if sign-in happens after page load.
+  document.addEventListener("icpc:external-data-change", () => {
+    if (!isReady()) return;
+    wireOnce();
+    verifyState = null;
+    renderAuthState();
+    refreshDynamic();
   });
 })();

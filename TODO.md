@@ -28,17 +28,19 @@ over-built now:
 
 ## Other ideas
 
-- There's no account system in this app (removed the earlier email/magic-link
-  version in favor of pure local-only storage — simpler, and closed off a
-  real account-takeover shape where typing in a public Codeforces handle
-  would otherwise have acted like a login). Codeforces-handle verification is
-  enforced client-side only, which is fine as long as every feature only ever
-  shows a user their own data — if a future feature ever shows one user's
-  claimed/*verified* handle to another (e.g. a leaderboard), that check would
-  need to move server-side (a Supabase Edge Function) first. (The Team
-  Analyzer's 3-handle comparison doesn't trigger this — it only shows public
-  Codeforces data fetched live, the same as Compare with someone, never this
-  app's own verification/points state.)
+- Real accounts shipped: magic-link email sign-in (Supabase Auth) + one
+  verified Codeforces handle per account, server-stored, synced across every
+  device you sign into (see README's "Account setup"). Codeforces-handle
+  *verification itself* (the compile-error check) is still judged
+  client-side, but a DB-level uniqueness constraint now guarantees the same
+  handle can never be verified on two accounts — see README's "Known
+  limitations" for the honest remaining gap and what closing it fully would
+  take (an Edge Function re-checking the proof server-side). Worth doing if
+  a future feature ever shows one user's claimed/verified handle to another
+  (e.g. a leaderboard) — nothing today does. (The Team Analyzer's 3-handle
+  comparison doesn't trigger this either — it only shows public Codeforces
+  data fetched live, the same as Compare with someone, never this app's own
+  verification/points state.)
 - Map raw Codeforces tags (`dp`, `binary search`, `number theory`, etc.) to
   the 99 roadmap topics, so weak-tag call-outs (Codeforces Analysis, the
   Team Analyzer's team-gap list) can link straight to "practice this roadmap

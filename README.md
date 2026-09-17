@@ -1,21 +1,22 @@
 # ICPC Prep Hub
 
 A free, open-source companion for ICPC prep — regionals through World Finals.
-No build step, works fully offline in local-only mode, and deploys to GitHub
-Pages for free. Clone it, open `index.html`, and it just works.
+No build step, and deploys to GitHub Pages for free. Clone it, point
+`js/config.js` at your own Supabase project (see [Account
+setup](#account-setup-required) below), and it just works.
 
 The site is a handful of plain static pages behind a shared nav — Home,
 Dashboard, Codeforces, Team, Roadmap, and Self-rule — not a single long
 scroll. See [Pages](#pages) below.
 
-Everything you enter — roadmap progress, points, solved log, rewards — is
-stored only in your browser's `localStorage`, on that one device; there's no
-account system and nothing is ever synced across devices. The only network
-calls the app makes are the Codeforces sync/verification requests you
-trigger yourself, plus (optionally) reading a public, pre-computed baseline
-dataset for the Codeforces Analysis page's cohort comparisons — see
-[Codeforces baseline data](#codeforces-baseline-data) below. Skip that
-section entirely and the app is 100% local-only and backend-free.
+Sign in with just an email (a passwordless magic link — no password to set or
+leak) and verify your one Codeforces handle, once, on the Dashboard. From
+then on everything you do — roadmap progress, points, solved log, rewards —
+is stored server-side (Supabase), tied to that account, and follows you to
+every device you sign into. See [Account setup](#account-setup) below for
+the one-time project configuration this needs. The app also (optionally)
+reads a public, pre-computed baseline dataset for the Codeforces Analysis
+page's cohort comparisons — see [Codeforces baseline data](#codeforces-baseline-data).
 
 ## Features
 
@@ -31,7 +32,7 @@ section entirely and the app is 100% local-only and backend-free.
   [cses.fi](https://cses.fi), Codeforces EDU, the ICPC World Finals archive).
   The page itself is a two-pane picker — subjects with a progress bar down
   the left, the selected subject's full checklist on the right — instead of
-  one long accordion. Checkbox state persists locally. Locked behind
+  one long accordion. Checkbox state syncs to your account. Locked behind
   Codeforces verification (see Gamification below), same as Self-rule's
   points/rewards — a locked notice shows instead until you verify, so
   progress can't be checked off under an unproven handle. The Dashboard's
@@ -86,11 +87,11 @@ section entirely and the app is 100% local-only and backend-free.
 - **Codeforces Analysis** — split into two clearly-labeled groups below the
   summary stats, since it used to be one flat run of sections with no
   distinction between "facts about you" and "you vs. a baseline":
-  - **Profile analysis** — your own solve history, standalone, no baseline
-    or sign-in needed: Accuracy per tag, Rating trajectory, Problem
-    ratings, Solve activity, Unsolved/attempted (see below). Locked behind
-    Codeforces verification, same as sync itself (see Gamification above)
-    — until then this tab is hidden and Comparison is the only one shown.
+  - **Profile analysis** — your own solve history: Accuracy per tag, Rating
+    trajectory, Problem ratings, Solve activity, Unsolved/attempted (see
+    below). Locked behind Codeforces verification, same as sync itself (see
+    Gamification above) — until then this tab is hidden and Comparison is
+    the only one shown.
   - **Comparison** — how your tag mix stacks up against a baseline, and
     what to practice next based on the gap (see below).
 
@@ -109,9 +110,8 @@ section entirely and the app is 100% local-only and backend-free.
   **Compare with someone**, lets you paste any public Codeforces handle and
   get the same tag-mix comparison against that one specific player instead
   of a sampled cohort — their data is fetched fresh on demand and never
-  stored, and it's the one tier that works even in a fully local-only
-  deployment with no Supabase project at all (it's just a live public
-  Codeforces API call). Also on this page:
+  stored (it's just a live public Codeforces API call, no account needed on
+  either side). Also on this page:
   - **Accuracy per tag** — average wrong attempts before AC, by tag.
   - **Rating trajectory** — a chart of your rating across contests, plus
     your live percentile among active rated Codeforces users.
@@ -267,20 +267,24 @@ section entirely and the app is 100% local-only and backend-free.
   date" (active, scoring) vs. "before it" (historical, imported, non-scoring)
   — never blended. Today/last-7-days summaries, plus a rating-bucket and
   top-tags breakdown for whichever period you're looking at.
-- **Backup & restore** — export your entire local dataset as JSON, and
-  import it back — on this browser or a different one; that's also how you
-  move data to a new device, since nothing syncs automatically.
-- **Codeforces handle verification is how you log in** — prove you own a
-  handle with a one-time check (submit a compile-error solution to a
-  specific problem within a time window — the standard trick, since
-  Codeforces has no OAuth), and that verification *is* the login: there's no
-  separate "save your handle" step first, and no password. A first-time
-  handle gets a fresh local profile (gamification start date set to that
-  moment); a handle you've logged in as before on this browser restores its
-  own saved progress exactly as you left it — switching to a different
-  handle and back never resets it. Everything still lives only in this
-  browser's storage; "account" here means a local save slot keyed by handle,
-  not a server-side account.
+- **Backup & restore** — export your account's data as JSON (your own copy,
+  for archiving or peace of mind), and import a JSON file back to overwrite
+  it. Not needed to move between devices — signing in with the same email
+  anywhere already gives you the same data — this is for local backups and
+  disaster recovery.
+- **Sign in (magic-link email) + Codeforces handle verification** — two
+  separate steps. Sign in with just an email — Supabase emails you a one-
+  time link (and, in the same email, a 6-digit code you can paste in
+  instead, for when clicking through isn't convenient) — no password, ever.
+  Then, once, verify you own a Codeforces handle (submit a compile-error
+  solution to a specific problem within a time window — the standard trick,
+  since Codeforces has no OAuth); that handle is linked to your account for
+  good — a database-level uniqueness constraint means the same handle can
+  never be claimed by a second account. First-time verification sets your
+  gamification start date to that moment; sign in again later, from any
+  device, and everything — progress, points, solved log, rewards — is
+  exactly as you left it, because it's stored server-side against your
+  account, not this one browser.
 - **Polish** — responsive down to ~400px, respects `prefers-color-scheme`
   with a manual light/dark/auto toggle, and a wide multi-column dashboard
   layout (side-by-side cards, a subject grid, a two-pane picker) rather than
@@ -291,7 +295,7 @@ section entirely and the app is 100% local-only and backend-free.
 | Page | What's there |
 |---|---|
 | `index.html` (Home) | A small progress teaser and links into the rest of the app |
-| `dashboard.html` | Profile, Codeforces verification, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
+| `dashboard.html` | Codeforces handle verification, preferences, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
 | `codeforces.html` | Sync, your full solved log, Reports, and the Codeforces Analysis card |
 | `team.html` | ICPC Team Analyzer — paste 3 handles, get a role split, tag gaps, and accuracy/speed callouts |
 | `roadmap.html` | The full 99-topic, 8-subject checklist, as a subject picker + detail pane (locked until your Codeforces handle is verified) |
@@ -332,45 +336,54 @@ Prefer plain branch-based Pages instead? Delete the workflow file, set
 **Settings → Pages → Source** to **Deploy from a branch**, and pick `main` /
 `(root)`. There's no build step either way — it's static files.
 
-## Codeforces baseline setup (optional)
+## Account setup (required)
 
-The app is fully usable with zero setup here — local-only mode covers the
-roadmap, points, verification, and every per-person Codeforces stat. The one
-thing this unlocks is the **Comparison** tiers on the Codeforces page
-(Tourist / Top 500 / Top 10,000 / Average user) — see [Codeforces baseline
-data](#codeforces-baseline-data) below for what those are and why they need
-this. To enable them:
+Sign-in and every account's data (roadmap progress, points, solved log,
+rewards) need a real Supabase project — there's no local-only fallback mode.
 
 1. Create a free project at [supabase.com](https://supabase.com).
-2. Apply the schema in [`supabase/migrations/`](supabase/migrations) — this
-   creates `cf_baseline_data`, `cf_percentiles`, and
-   `cf_baseline_sync_state` (all public-read, write-only via the service
-   role), plus a `profiles` table left over from an earlier account-sync
-   feature that the app no longer uses (see Known limitations below). Two
-   ways to apply it — pick one:
-   - **Supabase CLI (recommended, especially if you'll add more tables/functions
-     later):**
+2. Apply every migration in [`supabase/migrations/`](supabase/migrations), in
+   filename (timestamp) order — this creates `profiles` (one row per signed-in
+   user, RLS-scoped so you can only ever read/write your own row) and a
+   uniqueness constraint that stops the same Codeforces handle from being
+   verified on two accounts. (The same migrations folder also has the
+   separate, optional Codeforces-baseline tables — see below.) Two ways to
+   apply it — pick one:
+   - **Supabase CLI (recommended):**
      ```bash
      npx supabase login
      npx supabase link --project-ref <your-project-ref>   # found in your project's URL/Settings
      npx supabase db push
      ```
-     From then on, every future schema change is just a new file in
-     `supabase/migrations/` plus `npx supabase db push` again — no CLI
-     install needed, `npx` fetches it on demand.
-   - **Manual:** open the SQL editor (left sidebar) and paste/run the
-     contents of the migration file(s) in `supabase/migrations/`.
+   - **Manual:** open the SQL editor (left sidebar) and paste/run each
+     migration file's contents, oldest first.
 3. In **Project Settings → API**, copy the **Project URL** and **anon
-   public** key into [`js/config.js`](js/config.js).
-4. Deploy and schedule the baseline-sync job — see [Deploying
-   it](#deploying-it) below. Until that job has run at least once, the
-   Comparison tiers show "not configured"/empty rather than fabricating
-   numbers.
+   public** key into [`js/config.js`](js/config.js). (Not a secret — see the
+   comment in that file for why it's safe to commit.)
+4. **Authentication → Providers**: confirm **Email** is enabled (it is by
+   default on a new project).
+5. **Authentication → URL Configuration**: add every URL you'll actually sign
+   in from to **Redirect URLs** — your local dev server (e.g.
+   `http://localhost:8000/*`) and your real deployed URL (e.g.
+   `https://<you>.github.io/icpc-prep-hub/*`). Skipping this makes the magic-
+   link *click-through* fail after sending — the 6-digit code the same email
+   also contains still works regardless, since it doesn't depend on a
+   redirect at all.
 
-The `anon` key is Supabase's public client key, meant to be shipped in
-frontend code — it's not a secret, and it's safe to commit. The baseline
-tables' protection comes from their row-level security policies (public
-read, service-role-only write), not from keeping this key hidden.
+That's the whole required setup. Everything below this is optional.
+
+## Codeforces baseline setup (optional)
+
+Builds on the same Supabase project from Account setup above — nothing extra
+to create. This unlocks the **Comparison** tiers on the Codeforces page
+(Tourist / Top 500 / Top 10,000 / Average user) — see [Codeforces baseline
+data](#codeforces-baseline-data) below for what those are and why they need
+this.
+
+The only step specific to this feature: deploy and schedule the baseline-
+sync job — see [Deploying it](#deploying-it) below. Until that job has run
+at least once, the Comparison tiers show "not configured"/empty rather than
+fabricating numbers.
 
 ### Growing the backend later
 
@@ -403,35 +416,27 @@ editor with no history of what changed."
 
 **Known limitations**, honestly stated rather than hidden:
 
-- Codeforces-handle verification is enforced client-side (there's no server
-  function double-checking it), because this app has no multi-user-visible
-  features (no leaderboards, no public profiles) — verifying against
-  yourself only, the stakes of bypassing your own app's UX gate are nil. If
-  a future feature ever shows one user's data to another, that verification
-  needs to move server-side (a Supabase Edge Function) before it can be
-  trusted for that purpose.
-- Syncing requires a verified handle (see Gamification above) — this used to
-  be optional (Codeforces solve history is public data, so viewing it was
-  never gated), but that let you point the app at *any* handle, including
-  someone else's, and have its solve history render as "yours." Switching to
-  your real handle afterward didn't retroactively unmix whatever had already
-  synced in under the old one either — real accounts could genuinely end up
-  with an inflated, mixed solved-log total. Sync (and everything derived from
-  it: solved log, Reports, "Profile analysis" on the Codeforces page) is now
-  fully locked behind verification instead, matching the Roadmap/Self-rule
-  pattern. Looking up a handle without claiming it as yours still works, via
-  Comparison &rarr; Compare with someone, which was always fetched fresh and
-  never stored.
-- The `profiles` table/RLS policy/trigger defined in
-  [`supabase/migrations/`](supabase/migrations) are leftovers from an earlier
-  version of this app that had email sign-in and cross-device sync. That
-  feature was removed in favor of local-only-only storage (simpler, no
-  account-takeover surface from someone typing in a public Codeforces
-  handle), but the migration wasn't rewritten to drop the table, since doing
-  that against a project that already applied it would delete real rows
-  without asking. If you've already deployed this schema and don't need
-  `profiles`, it's safe to drop manually; a fresh deploy can skip applying
-  that part of the migration entirely.
+- Codeforces-handle *verification* itself (the compile-error-submission
+  check) is judged client-side — there's no server function independently
+  re-checking that specific proof. What IS enforced server-side, and matters
+  more: a database-level uniqueness constraint
+  (`supabase/migrations/20260917000000_cf_handle_uniqueness.sql`) guarantees
+  the same handle can never end up verified on two different accounts, and
+  every write to your own data is RLS-scoped so no account can read or write
+  another's row. The remaining gap is narrow — a determined user could in
+  principle call the Supabase REST API directly and mark their own account
+  "verified" for a handle without ever completing the real compile-error
+  check — but they'd only be fooling their own account's data, not gaining
+  access to anyone else's or spoofing a handle someone else already holds.
+  Moving the verification check itself server-side (a Supabase Edge
+  Function, so the client can't skip it) would close that fully, and is a
+  reasonable next step if this ever needs to be airtight rather than honest.
+- No compare-and-swap concurrency control on writes — if you somehow edit
+  from two devices within the same ~15-second window (see the focus-refetch
+  behavior in `js/storage.js`), the later write wins and the earlier one's
+  changes are lost. Fine for a single-user personal tracker; not worth the
+  complexity of real conflict resolution for how unlikely simultaneous
+  multi-device edits actually are here.
 
 ## Codeforces baseline data
 
@@ -448,18 +453,15 @@ history fetched and averaged — both the overall solved count and the tag
 mix. Tourist is the same technique with a sample size of exactly one, by
 name.
 
-**The four cohort tiers require this deployment to have Supabase configured**
-(see [Codeforces baseline setup](#codeforces-baseline-setup-optional) above)
-— there's no local-only fallback for those specifically, since that data
-genuinely can't be computed client-side. Once configured, they're available
-to every visitor with no sign-in of any kind — `cf_baseline_data`/
-`cf_percentiles` are public-read tables. The fifth tier, Compare with
-someone, is the exception: it's just a live client-side fetch of one
-handle's public data, so it works even in a fully local-only deployment with
-no Supabase project at all. Every other feature on the
-Codeforces page (accuracy per tag, rating trajectory, solve activity,
-unsolved list, next-problem recommendations) also still works fully in
-local-only mode.
+**The four cohort tiers additionally require the baseline-sync job to have
+actually run at least once** (see [Codeforces baseline
+setup](#codeforces-baseline-setup-optional) above) — until then they show
+"not configured"/empty. Once populated, they're readable by every signed-in
+account with no *extra* permission needed beyond being signed in at all —
+`cf_baseline_data`/`cf_percentiles` are public-read tables, same RLS
+treatment regardless of which account is asking. The fifth tier, Compare
+with someone, doesn't depend on that job at all: it's a live client-side
+fetch of one handle's public data, fetched fresh and never stored.
 
 ### How it's computed: a daily background job, not a one-off script
 
