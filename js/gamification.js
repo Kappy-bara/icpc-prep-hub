@@ -9,9 +9,9 @@
  * the gamification start date always score 0 (logged for stats only).
  *
  * Solves ALWAYS score 0 unless the configured handle has passed CF verification (see
- * cf-verify.js) — syncing an unverified handle still populates solvedLog/accuracy/rating-chart
- * stats for exploration (nothing here blocks *viewing* another player's public data), it just
- * can't earn or spend real points until you've proven you actually own that handle.
+ * cf-verify.js) — syncing itself is also locked behind verification (js/pages/codeforces.js
+ * applyLockState), so this guard is now belt-and-suspenders rather than the only thing standing
+ * between an unproven handle and a real point balance.
  */
 function computePoints({ rating, tags, solvedDate }, { focusTags, gamificationStart, cfVerified }) {
   if (!cfVerified) return 0;

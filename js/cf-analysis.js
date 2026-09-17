@@ -137,15 +137,21 @@ const CFAnalysis = {
     const canUseCloudTiers = CLOUD_ENABLED;
     const visibleTiers = canUseCloudTiers ? this.TIERS : this.TIERS.filter((t) => t.id === "compare");
     if (!canUseCloudTiers) this._tier = "compare";
+    // Profile analysis reflects Store.data.solvedLog, which now only ever populates via a verified
+    // sync (see js/pages/codeforces.js applyLockState) — an unverified profile's solvedLog is
+    // always empty, so there's nothing real to show there yet. Force Comparison instead of letting
+    // someone tab into an all-zeros "Profile analysis" with no explanation why.
+    const verified = Boolean(Store.data.profile.cfVerified);
+    if (!verified) this._section = "compare";
     container.innerHTML = `
       <div id="cf-summary-root"></div>
 
       <div class="report-toggle" id="cf-section-toggle">
-        <button type="button" data-section="profile" class="${this._section === "profile" ? "active" : ""}">Profile analysis</button>
+        ${verified ? `<button type="button" data-section="profile" class="${this._section === "profile" ? "active" : ""}">Profile analysis</button>` : ""}
         <button type="button" data-section="compare" class="${this._section === "compare" ? "active" : ""}">Comparison</button>
       </div>
 
-      <div id="cf-profile-section" ${this._section === "profile" ? "" : "hidden"}>
+      <div id="cf-profile-section" ${verified && this._section === "profile" ? "" : "hidden"}>
         <h3 class="cf-group-heading">Profile analysis</h3>
         <p class="card-subtitle">Your own solve history.</p>
         <div class="cf-analysis-section">

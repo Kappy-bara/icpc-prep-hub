@@ -45,10 +45,10 @@ section entirely and the app is 100% local-only and backend-free.
   for rated problems — 3 points at Codeforces' lowest rating, 800, 4 at 900,
   and so on — flat 5 for unrated, ×1.5 for one focus tag you pick from
   Codeforces' own tag list), but only once your Codeforces handle has passed
-  verification (see [Known limitations](#growing-the-backend-later) below) — an
-  unverified handle still syncs and populates every other stat on the page,
-  it just scores a hard 0, so there's no way to earn (and then spend)
-  points by claiming someone else's solve history. Problems solved *before*
+  verification (see [Known limitations](#growing-the-backend-later) below) — sync
+  itself is locked until then, so an unverified (or someone else's) handle can't
+  populate your stats at all, let alone earn points by claiming someone else's
+  solve history. Problems solved *before*
   your gamification start date are also logged for stats but score 0
   points, so importing your whole CF history doesn't hand you a windfall;
   that start date is set automatically — and only — the moment your handle
@@ -87,7 +87,9 @@ section entirely and the app is 100% local-only and backend-free.
   distinction between "facts about you" and "you vs. a baseline":
   - **Profile analysis** — your own solve history, standalone, no baseline
     or sign-in needed: Accuracy per tag, Rating trajectory, Problem
-    ratings, Solve activity, Unsolved/attempted (see below).
+    ratings, Solve activity, Unsolved/attempted (see below). Locked behind
+    Codeforces verification, same as sync itself (see Gamification above)
+    — until then this tab is hidden and Comparison is the only one shown.
   - **Comparison** — how your tag mix stacks up against a baseline, and
     what to practice next based on the gap (see below).
 
@@ -401,17 +403,18 @@ editor with no history of what changed."
   a future feature ever shows one user's data to another, that verification
   needs to move server-side (a Supabase Edge Function) before it can be
   trusted for that purpose.
-- Syncing itself never requires a verified handle — Codeforces solve history
-  is public data, so there's nothing to gate on *viewing* it. You can point
-  the app at any handle (including someone else's) and it'll sync and
-  populate your solved log, accuracy stats, rating chart, and the rest of
-  the Codeforces Analysis card. What it won't do is award points: every
-  solve scores a hard 0 (see `computePoints` in `js/gamification.js`) unless
-  the configured handle has actually passed CF verification, so there's no
-  way to inflate your spendable balance by claiming someone else's handle.
-  A clear badge on both the Dashboard's Profile card and the Codeforces page
-  shows this status, including a note on the sync result itself when points
-  are stuck at 0 for this reason.
+- Syncing requires a verified handle (see Gamification above) — this used to
+  be optional (Codeforces solve history is public data, so viewing it was
+  never gated), but that let you point the app at *any* handle, including
+  someone else's, and have its solve history render as "yours." Switching to
+  your real handle afterward didn't retroactively unmix whatever had already
+  synced in under the old one either — real accounts could genuinely end up
+  with an inflated, mixed solved-log total. Sync (and everything derived from
+  it: solved log, Reports, "Profile analysis" on the Codeforces page) is now
+  fully locked behind verification instead, matching the Roadmap/Self-rule
+  pattern. Looking up a handle without claiming it as yours still works, via
+  Comparison &rarr; Compare with someone, which was always fetched fresh and
+  never stored.
 - The `profiles` table/RLS policy/trigger defined in
   [`supabase/migrations/`](supabase/migrations) are leftovers from an earlier
   version of this app that had email sign-in and cross-device sync. That

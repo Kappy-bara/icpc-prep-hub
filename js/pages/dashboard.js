@@ -99,9 +99,9 @@
     if (!verifyState) {
       root.innerHTML = `
         <p class="card-subtitle">
-          <strong>${escapeHtml(cfHandle)}</strong> isn't verified yet &mdash; you can still sync and
-          explore its data, but solves score 0 points and your rewards stay locked (see the
-          Self-rule page) until you verify. Prove you own it here.
+          <strong>${escapeHtml(cfHandle)}</strong> isn't verified yet &mdash; sync and your own
+          stats on the Codeforces page stay locked, and points/rewards (see the Self-rule page)
+          stay locked too, until you verify. Prove you own it here.
         </p>
         <button id="start-verify-btn" type="button" class="btn-secondary">Start verification</button>
       `;

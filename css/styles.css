@@ -471,6 +471,10 @@ button:disabled:hover {
   font-weight: 600;
 }
 
+.roadmap-summary .progress-row + .progress-row {
+  margin-top: 0.6rem;
+}
+
 .progress-row {
   display: flex;
   align-items: center;
@@ -491,6 +495,10 @@ button:disabled:hover {
   background: var(--accent);
   border-radius: 999px;
   transition: width 0.25s ease;
+}
+
+.progress-fill-secondary {
+  background: var(--secondary);
 }
 
 .progress-label {

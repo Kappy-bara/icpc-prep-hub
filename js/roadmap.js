@@ -77,6 +77,18 @@ const Roadmap = {
     return { done, total: topics.length, percent: topics.length ? Math.round((done / topics.length) * 100) : 0 };
   },
 
+  /** Total curated practice problems solved across every topic that has a practice-problem set (Contest Meta-Skills excluded). */
+  totalPracticeProgress() {
+    const solvedKeys = this.solvedKeySet();
+    let solved = 0;
+    let total = 0;
+    for (const list of Object.values(ROADMAP_PROBLEMS)) {
+      total += list.length;
+      solved += list.filter((p) => solvedKeys.has(Gamification.problemKey(p.contestId, p.index))).length;
+    }
+    return { solved, total, percent: total ? Math.round((solved / total) * 100) : 0 };
+  },
+
   /** Group all topics (across every subject) by phase name, in Foundations -> Core -> Advanced order. */
   phaseBuckets() {
     const order = ["Foundations", "Core", "Advanced"];
@@ -96,11 +108,16 @@ const Roadmap = {
   renderSummary(container) {
     if (!container) return;
     const overall = this.overallProgress();
+    const practice = this.totalPracticeProgress();
     const buckets = this.phaseBuckets();
     container.innerHTML = `
       <div class="progress-row">
         <div class="progress-bar"><div class="progress-fill" style="width:${overall.percent}%"></div></div>
         <span class="progress-label">${overall.done} / ${overall.total} topics (${overall.percent}%)</span>
+      </div>
+      <div class="progress-row">
+        <div class="progress-bar"><div class="progress-fill progress-fill-secondary" style="width:${practice.percent}%"></div></div>
+        <span class="progress-label">${practice.solved} / ${practice.total} practice problems solved (${practice.percent}%)</span>
       </div>
       <div class="report-windows">
         ${buckets
@@ -127,12 +144,17 @@ const Roadmap = {
     container.innerHTML = "";
 
     const overall = this.overallProgress();
+    const practice = this.totalPracticeProgress();
     const summary = document.createElement("div");
     summary.className = "roadmap-summary";
     summary.innerHTML = `
       <div class="progress-row">
         <div class="progress-bar"><div class="progress-fill" style="width:${overall.percent}%"></div></div>
         <span class="progress-label">${overall.done} / ${overall.total} topics (${overall.percent}%)</span>
+      </div>
+      <div class="progress-row">
+        <div class="progress-bar"><div class="progress-fill progress-fill-secondary" style="width:${practice.percent}%"></div></div>
+        <span class="progress-label">${practice.solved} / ${practice.total} practice problems solved (${practice.percent}%)</span>
       </div>
     `;
     container.appendChild(summary);

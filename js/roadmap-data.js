@@ -263,7 +263,7 @@ const ROADMAP = [
             what: "Each update creates new nodes only along the path that changed, so every past version of the structure stays queryable — the standard way to answer ‘k-th smallest in this range, as of this point in time’.",
             hitScore: 2,
             why: "Lets you query every historical version of an array — the standard trick for \"k-th smallest in a range, using only values up to some bound over time\".",
-            resource: { label: "USACO Guide: Persistent Data Structures", url: "https://usaco.guide/plat/persistent" },
+            resource: { label: "USACO Guide: Persistent Data Structures", url: "https://usaco.guide/adv/persistent" },
           },
           {
             id: "ds.segtree-beats",
@@ -542,7 +542,7 @@ const ROADMAP = [
             what: "DP over the digits of a number (most significant first), tracking whether you're still bounded by N's digits so far, to count how many numbers up to N satisfy some digit-based property.",
             hitScore: 3,
             why: "Counts how many numbers up to N satisfy a digit-wise property, without enumerating every number.",
-            resource: { label: "USACO Guide: Digit DP", url: "https://usaco.guide/plat/digit-dp" },
+            resource: { label: "USACO Guide: Digit DP", url: "https://usaco.guide/gold/digit-dp" },
           },
           {
             id: "dp.tree-dp",
@@ -550,7 +550,7 @@ const ROADMAP = [
             what: "DP where each node's answer is computed by combining the already-computed answers of its children, in a single post-order DFS pass over the tree.",
             hitScore: 4,
             why: "Nearly every \"optimize something over a tree\" problem reduces to combining DP values from a node's children.",
-            resource: { label: "USACO Guide: Tree DP", url: "https://usaco.guide/gold/tree-dp" },
+            resource: { label: "USACO Guide: Tree DP", url: "https://usaco.guide/gold/dp-trees" },
           },
           {
             id: "dp.dp-ds-optimization",
@@ -558,7 +558,7 @@ const ROADMAP = [
             what: "When a DP transition is really a range max/min/sum query over previous states, storing those states in a segment tree or Fenwick tree turns an O(n) transition into O(log n).",
             hitScore: 3,
             why: "Speeds up an O(n²) transition to O(n log n) whenever the transition itself is a range max/min/sum query.",
-            resource: { label: "USACO Guide: More Dynamic Programming", url: "https://usaco.guide/plat/dp-more" },
+            resource: { label: "USACO Guide: Point Update Range Sum", url: "https://usaco.guide/gold/PURS" },
           },
         ],
       },
@@ -652,7 +652,7 @@ const ROADMAP = [
             what: "A tree where each edge is a character and each root-to-node path spells a prefix, letting you insert/search strings (or, over binary digits, find max-XOR pairs) in time proportional to string length.",
             hitScore: 4,
             why: "Prefix queries and XOR-trie tricks over a set of strings or numbers.",
-            resource: { label: "USACO Guide: Trie", url: "https://usaco.guide/gold/trie" },
+            resource: { label: "Topcoder: Using Tries", url: "https://www.topcoder.com/thrive/articles/Using%20Tries" },
           },
           {
             id: "strings.manacher",

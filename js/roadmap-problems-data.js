@@ -1,25 +1,27 @@
 /**
  * Curated practice problems per roadmap topic: real, verified Codeforces problems used to
  * auto-grade topic completion (see js/roadmap.js isDone/practiceStatus). Sourced by targeted
- * research per topic — for each topic, real candidates were pulled from the live Codeforces API
- * (tag + rating filtered), cross-referenced against the topic's own reference article for
+ * research per topic - for each topic, real candidates were pulled from the live Codeforces API
+ * (tag + rating filtered), cross-referenced against the topic own reference article for
  * problems it lists, and individually verified by reading the actual problem statement before
- * being accepted — never invented. Per-topic count = max(2, topic.hitScore).
+ * being accepted - never invented. Per-topic count = max(2, topic.hitScore).
  *
- * Topics with NO entry here (currently: Contest Meta-Skills, plus Strings/Greedy & Sorting/
- * Geometry — research in progress) stay on the old manual-checkbox system — see js/roadmap.js
- * isDone(), which only uses this file's data when a topic actually has an entry.
+ * Topics with NO entry here (Contest Meta-Skills only) stay on the old manual-checkbox system -
+ * see js/roadmap.js isDone(), which only uses this file data when a topic actually has an entry.
  *
- * A small number of entries marked confidence:"low" are best-effort fallback picks (the closest
- * reasonable match found within a bounded search) rather than a fully confirmed fit — see each
- * subject's research summary for why. Two known cross-subject overlaps (the same problem
- * independently picked as the best fit for two different topics by separate research passes)
- * haven't been fully resolved yet: CF 117E appears in both ds.link-cut-tree and graphs.hld, and
- * CF 833B appears in both ds.merge-sort-tree (low confidence there) and dp.dc-optimization (high
- * confidence, and the better fit per its real tags). Harmless functionally — the same problem can
- * legitimately count toward two topics — just flagged for a future cleanup pass.
+ * A small number of entries marked confidence:"low" (and a few "medium") are best-effort fallback
+ * picks (the closest reasonable match found within a bounded search) rather than a fully confirmed
+ * fit - see each subject research summary for why.
  *
- * Progress so far: math, ds, graphs, dp subjects complete (4/7). Remaining: strings, greedy, geometry.
+ * Cross-subject duplicate cleanup pass: every problem that had been independently picked as the
+ * best fit by two different topics research passes was resolved to appear in exactly one topic
+ * (the better-fitting one), with a freshly researched and verified replacement problem found for
+ * the topic that lost its slot. Zero duplicate {contestId, index} pairs remain across all 283
+ * problems. Also fixed: 5 dead (404) resource.url links in roadmap-data.js found during and after
+ * research (usaco.guide moved/renamed several pages) - all 99 resource links now verified live.
+ *
+ * All 7 non-meta subjects complete: math, ds, graphs, dp, strings, greedy, geometry.
+ * 90 topics, 283 problems total.
  */
 const ROADMAP_PROBLEMS = {
   "math.modular-arithmetic": [
@@ -376,10 +378,10 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 160,
-      "index": "A",
-      "name": "Twins",
-      "rating": 900,
+      "contestId": 1703,
+      "index": "B",
+      "name": "ICPC Balloons",
+      "rating": 800,
       "confidence": "high"
     },
     {
@@ -420,10 +422,10 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 276,
-      "index": "C",
-      "name": "Little Girl and Maximum Sum",
-      "rating": 1500,
+      "contestId": 816,
+      "index": "B",
+      "name": "Karen and Coffee",
+      "rating": 1400,
       "confidence": "high"
     },
     {
@@ -473,9 +475,9 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 1526,
-      "index": "C1",
-      "name": "Potions (Easy Version)",
+      "contestId": 1106,
+      "index": "D",
+      "name": "Lunar New Year and a Wander",
       "rating": 1500,
       "confidence": "high"
     },
@@ -554,9 +556,9 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 1042,
-      "index": "D",
-      "name": "Petya and Array",
+      "contestId": 220,
+      "index": "B",
+      "name": "Little Elephant and Array",
       "rating": 1800,
       "confidence": "high"
     },
@@ -731,10 +733,10 @@ const ROADMAP_PROBLEMS = {
   ],
   "ds.merge-sort-tree": [
     {
-      "contestId": 833,
-      "index": "B",
-      "name": "The Bakery",
-      "rating": 2200,
+      "contestId": 558,
+      "index": "E",
+      "name": "A Simple Task",
+      "rating": 2300,
       "confidence": "low"
     },
     {
@@ -763,17 +765,17 @@ const ROADMAP_PROBLEMS = {
   ],
   "graphs.bfs-dfs": [
     {
-      "contestId": 217,
-      "index": "A",
-      "name": "Ice Skating",
-      "rating": 1200,
+      "contestId": 862,
+      "index": "B",
+      "name": "Mahmoud and Ehab and the bipartiteness",
+      "rating": 1300,
       "confidence": "high"
     },
     {
-      "contestId": 1829,
-      "index": "E",
-      "name": "The Lakes",
-      "rating": 1100,
+      "contestId": 893,
+      "index": "C",
+      "name": "Rumor",
+      "rating": 1300,
       "confidence": "high"
     },
     {
@@ -1212,11 +1214,11 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 117,
-      "index": "E",
-      "name": "Tree or not Tree",
-      "rating": 2900,
-      "confidence": "high"
+      "contestId": 1017,
+      "index": "G",
+      "name": "The Tree",
+      "rating": 3200,
+      "confidence": "medium"
     }
   ],
   "graphs.centroid-decomposition": [
@@ -1561,6 +1563,625 @@ const ROADMAP_PROBLEMS = {
       "index": "D",
       "name": "Buy Low Sell High",
       "rating": 2400,
+      "confidence": "high"
+    }
+  ],
+  "strings.string-hashing": [
+    {
+      "contestId": 1800,
+      "index": "D",
+      "name": "Remove Two Letters",
+      "rating": 1200,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1045,
+      "index": "I",
+      "name": "Palindrome Pairs",
+      "rating": 1600,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1137,
+      "index": "B",
+      "name": "Camp Schedule",
+      "rating": 1600,
+      "confidence": "high"
+    },
+    {
+      "contestId": 559,
+      "index": "B",
+      "name": "Equivalent Strings",
+      "rating": 1700,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1200,
+      "index": "E",
+      "name": "Compress Words",
+      "rating": 2000,
+      "confidence": "high"
+    }
+  ],
+  "strings.kmp": [
+    {
+      "contestId": 1092,
+      "index": "C",
+      "name": "Prefixes and Suffixes",
+      "rating": 1700,
+      "confidence": "high"
+    },
+    {
+      "contestId": 471,
+      "index": "D",
+      "name": "MUH and Cube Walls",
+      "rating": 1800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 432,
+      "index": "D",
+      "name": "Prefixes and Suffixes",
+      "rating": 2000,
+      "confidence": "high"
+    },
+    {
+      "contestId": 808,
+      "index": "G",
+      "name": "Anthem of Berland",
+      "rating": 2300,
+      "confidence": "high"
+    }
+  ],
+  "strings.z-function": [
+    {
+      "contestId": 126,
+      "index": "B",
+      "name": "Password",
+      "rating": 1700,
+      "confidence": "high"
+    },
+    {
+      "contestId": 535,
+      "index": "D",
+      "name": "Tavas and Malekas",
+      "rating": 1900,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1984,
+      "index": "D",
+      "name": "''a'' String Problem",
+      "rating": 2000,
+      "confidence": "high"
+    }
+  ],
+  "strings.trie": [
+    {
+      "contestId": 706,
+      "index": "D",
+      "name": "Vasiliy's Multiset",
+      "rating": 1800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 923,
+      "index": "C",
+      "name": "Perfect Security",
+      "rating": 1800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1285,
+      "index": "D",
+      "name": "Dr. Evil Underscores",
+      "rating": 1900,
+      "confidence": "high"
+    },
+    {
+      "contestId": 514,
+      "index": "C",
+      "name": "Watto and Mechanism",
+      "rating": 2000,
+      "confidence": "high"
+    }
+  ],
+  "strings.manacher": [
+    {
+      "contestId": 1326,
+      "index": "D2",
+      "name": "Prefix-Suffix Palindrome (Hard version)",
+      "rating": 1800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 7,
+      "index": "D",
+      "name": "Palindrome Degree",
+      "rating": 2200,
+      "confidence": "high"
+    },
+    {
+      "contestId": 245,
+      "index": "H",
+      "name": "Queries for Number of Palindromes",
+      "rating": 1800,
+      "confidence": "low"
+    }
+  ],
+  "strings.aho-corasick": [
+    {
+      "contestId": 710,
+      "index": "F",
+      "name": "String Set Queries",
+      "rating": 2400,
+      "confidence": "high"
+    },
+    {
+      "contestId": 963,
+      "index": "D",
+      "name": "Frequency of String",
+      "rating": 2500,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1400,
+      "index": "F",
+      "name": "x-prime Substrings",
+      "rating": 2800,
+      "confidence": "high"
+    }
+  ],
+  "strings.suffix-array": [
+    {
+      "contestId": 149,
+      "index": "E",
+      "name": "Martian Strings",
+      "rating": 2300,
+      "confidence": "high"
+    },
+    {
+      "contestId": 873,
+      "index": "F",
+      "name": "Forbidden Indices",
+      "rating": 2400,
+      "confidence": "high"
+    }
+  ],
+  "strings.suffix-automaton": [
+    {
+      "contestId": 128,
+      "index": "B",
+      "name": "String",
+      "rating": 2100,
+      "confidence": "high"
+    },
+    {
+      "contestId": 235,
+      "index": "C",
+      "name": "Cyclical Quest",
+      "rating": 2700,
+      "confidence": "high"
+    }
+  ],
+  "strings.palindromic-tree": [
+    {
+      "contestId": 835,
+      "index": "D",
+      "name": "Palindromic characteristics",
+      "rating": 1900,
+      "confidence": "high"
+    },
+    {
+      "contestId": 17,
+      "index": "E",
+      "name": "Palisection",
+      "rating": 2900,
+      "confidence": "low"
+    }
+  ],
+  "greedy.sort-greedy": [
+    {
+      "contestId": 34,
+      "index": "B",
+      "name": "Sale",
+      "rating": 900,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1399,
+      "index": "A",
+      "name": "Remove Smallest",
+      "rating": 800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 230,
+      "index": "A",
+      "name": "Dragons",
+      "rating": 1000,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1360,
+      "index": "B",
+      "name": "Honest Coach",
+      "rating": 800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 160,
+      "index": "A",
+      "name": "Twins",
+      "rating": 900,
+      "confidence": "high"
+    }
+  ],
+  "greedy.binary-search": [
+    {
+      "contestId": 1201,
+      "index": "C",
+      "name": "Maximum Median",
+      "rating": 1400,
+      "confidence": "high"
+    },
+    {
+      "contestId": 706,
+      "index": "B",
+      "name": "Interesting drink",
+      "rating": 1100,
+      "confidence": "high"
+    },
+    {
+      "contestId": 474,
+      "index": "B",
+      "name": "Worms",
+      "rating": 1200,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1352,
+      "index": "C",
+      "name": "K-th Not Divisible by n",
+      "rating": 1200,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1873,
+      "index": "E",
+      "name": "Building an Aquarium",
+      "rating": 1100,
+      "confidence": "high"
+    }
+  ],
+  "greedy.two-pointers": [
+    {
+      "contestId": 2000,
+      "index": "B",
+      "name": "Seating in a Bus",
+      "rating": 800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1873,
+      "index": "D",
+      "name": "1D Eraser",
+      "rating": 800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1840,
+      "index": "C",
+      "name": "Ski Resort",
+      "rating": 1000,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1691,
+      "index": "B",
+      "name": "Shoe Shuffling",
+      "rating": 1000,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1843,
+      "index": "A",
+      "name": "Sasha and Array Coloring",
+      "rating": 800,
+      "confidence": "high"
+    }
+  ],
+  "greedy.coordinate-compression": [
+    {
+      "contestId": 600,
+      "index": "B",
+      "name": "Queries about less or equal elements",
+      "rating": 1300,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1000,
+      "index": "C",
+      "name": "Covered Points Count",
+      "rating": 1700,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1042,
+      "index": "D",
+      "name": "Petya and Array",
+      "rating": 1800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1730,
+      "index": "A",
+      "name": "Planets",
+      "rating": 800,
+      "confidence": "low"
+    }
+  ],
+  "greedy.exchange-argument": [
+    {
+      "contestId": 545,
+      "index": "C",
+      "name": "Woodcutters",
+      "rating": 1500,
+      "confidence": "high"
+    },
+    {
+      "contestId": 276,
+      "index": "C",
+      "name": "Little Girl and Maximum Sum",
+      "rating": 1500,
+      "confidence": "high"
+    },
+    {
+      "contestId": 479,
+      "index": "C",
+      "name": "Exams",
+      "rating": 1400,
+      "confidence": "high"
+    }
+  ],
+  "greedy.pq-greedy": [
+    {
+      "contestId": 1526,
+      "index": "C1",
+      "name": "Potions (Easy Version)",
+      "rating": 1500,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1498,
+      "index": "B",
+      "name": "Box Fitting",
+      "rating": 1300,
+      "confidence": "high"
+    },
+    {
+      "contestId": 85,
+      "index": "B",
+      "name": "Embassy Queue",
+      "rating": 1800,
+      "confidence": "high"
+    }
+  ],
+  "greedy.matroid-greedy": [
+    {
+      "contestId": 1108,
+      "index": "F",
+      "name": "MST Unification",
+      "rating": 2100,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1909,
+      "index": "C",
+      "name": "Heavy Intervals",
+      "rating": 1400,
+      "confidence": "low"
+    }
+  ],
+  "greedy.heuristic-greedy": [
+    {
+      "contestId": 2195,
+      "index": "H",
+      "name": "Codeforces Heuristic Contest 001",
+      "rating": 2400,
+      "confidence": "high"
+    },
+    {
+      "contestId": 2201,
+      "index": "G",
+      "name": "Codeforces Heuristic Contest 1001",
+      "rating": 3500,
+      "confidence": "low"
+    }
+  ],
+  "geometry.vectors-orientation": [
+    {
+      "contestId": 227,
+      "index": "A",
+      "name": "Where do I Turn?",
+      "rating": 1300,
+      "confidence": "high"
+    },
+    {
+      "contestId": 749,
+      "index": "B",
+      "name": "Parallelogram is Back",
+      "rating": 1200,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1642,
+      "index": "A",
+      "name": "Hard Way",
+      "rating": 800,
+      "confidence": "medium"
+    },
+    {
+      "contestId": 1468,
+      "index": "F",
+      "name": "Full Turn",
+      "rating": 1700,
+      "confidence": "medium"
+    }
+  ],
+  "geometry.point-segment": [
+    {
+      "contestId": 1030,
+      "index": "B",
+      "name": "Vasya and Cornfield",
+      "rating": 1100,
+      "confidence": "high"
+    },
+    {
+      "contestId": 593,
+      "index": "B",
+      "name": "Anton and Lines",
+      "rating": 1600,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1028,
+      "index": "C",
+      "name": "Rectangles",
+      "rating": 1600,
+      "confidence": "medium"
+    }
+  ],
+  "geometry.line-sweep": [
+    {
+      "contestId": 612,
+      "index": "D",
+      "name": "The Union of k-Segments",
+      "rating": 1800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 2074,
+      "index": "D",
+      "name": "Counting Points",
+      "rating": 1400,
+      "confidence": "medium"
+    },
+    {
+      "contestId": 1401,
+      "index": "E",
+      "name": "Divide Square",
+      "rating": 2400,
+      "confidence": "high"
+    }
+  ],
+  "geometry.convex-hull": [
+    {
+      "contestId": 2172,
+      "index": "I",
+      "name": "Birthday",
+      "rating": 2000,
+      "confidence": "high"
+    },
+    {
+      "contestId": 166,
+      "index": "B",
+      "name": "Polygons",
+      "rating": 2100,
+      "confidence": "medium"
+    },
+    {
+      "contestId": 70,
+      "index": "D",
+      "name": "Professor's task",
+      "rating": 2700,
+      "confidence": "medium"
+    }
+  ],
+  "geometry.polygon-area-picks": [
+    {
+      "contestId": 1030,
+      "index": "D",
+      "name": "Vasya and Triangle",
+      "rating": 1800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1548,
+      "index": "D1",
+      "name": "Gregor and the Odd Cows (Easy)",
+      "rating": 2300,
+      "confidence": "high"
+    },
+    {
+      "contestId": 340,
+      "index": "B",
+      "name": "Maximal Area Quadrilateral",
+      "rating": 2100,
+      "confidence": "medium"
+    }
+  ],
+  "geometry.closest-pair": [
+    {
+      "contestId": 120,
+      "index": "J",
+      "name": "Minimum Sum",
+      "rating": 1900,
+      "confidence": "high"
+    },
+    {
+      "contestId": 429,
+      "index": "D",
+      "name": "Tricky Function",
+      "rating": 2200,
+      "confidence": "high"
+    }
+  ],
+  "geometry.rotating-calipers": [
+    {
+      "contestId": 55,
+      "index": "E",
+      "name": "Very simple problem",
+      "rating": 2500,
+      "confidence": "high"
+    },
+    {
+      "contestId": 682,
+      "index": "E",
+      "name": "Alyona and Triangles",
+      "rating": 2600,
+      "confidence": "high"
+    }
+  ],
+  "geometry.halfplane-intersection": [
+    {
+      "contestId": 280,
+      "index": "A",
+      "name": "Rectangle Puzzle",
+      "rating": 2000,
+      "confidence": "medium"
+    },
+    {
+      "contestId": 1218,
+      "index": "B",
+      "name": "Guarding warehouses",
+      "rating": 3000,
+      "confidence": "low"
+    }
+  ],
+  "geometry.circle-geometry": [
+    {
+      "contestId": 600,
+      "index": "D",
+      "name": "Area of Two Circles' Intersection",
+      "rating": 2000,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1,
+      "index": "C",
+      "name": "Ancient Berland Circus",
+      "rating": 2100,
       "confidence": "high"
     }
   ]

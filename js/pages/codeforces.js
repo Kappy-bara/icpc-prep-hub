@@ -17,45 +17,53 @@
     el.className = `sync-status ${kind || ""}`;
   }
 
-  /** "+N pts", or a note explaining why it's stuck at 0 if the handle isn't verified yet. */
+  /** "+N pts" (points only sync once verified, so a gate above this already stops the 0-point case). */
   function ptsLabel(pointsGained) {
-    if (pointsGained === 0 && !Store.data.profile.cfVerified) {
-      return "+0 pts — verify your handle to earn points";
-    }
     return `+${pointsGained} pts`;
   }
 
   /**
-   * Syncing works for any handle — Codeforces solve history is public data, so there's no
-   * reason to block *viewing* it (solved log, accuracy, rating chart, etc. all still populate).
-   * But solves only earn points once the configured handle has passed CF verification (see
-   * gamification.js computePoints) — this badge makes that consequence obvious upfront instead
-   * of silently syncing "for free" and leaving you to wonder why the balance didn't move.
+   * Sync is fully locked behind Codeforces verification (see applyLockState below) — an unproven
+   * handle can no longer populate solved-log/rating/accuracy data at all, so there's nothing left
+   * to explain here beyond confirming who you're synced as once verified.
    */
   function renderVerifyBadge() {
     const el = $("cf-verify-status-badge");
     if (!el) return;
-    const { cfHandle, cfVerified } = Store.data.profile;
-    if (!cfHandle) {
-      el.textContent = "No Codeforces handle set yet — add one on the Dashboard, then come back here to sync.";
-      el.className = "card-subtitle";
-    } else if (cfVerified) {
-      el.innerHTML = `<span class="verified-note">&check; Syncing as verified handle <strong>${escapeHtml(cfHandle)}</strong> &mdash; solves earn points normally.</span>`;
-      el.className = "card-subtitle";
-    } else {
-      el.innerHTML = `&#9888; Syncing as <strong>${escapeHtml(cfHandle)}</strong>, which isn't verified yet &mdash; solves will sync and show up in your stats, but they'll score <strong>0 points</strong> until you <a href="dashboard.html">verify it on the Dashboard</a>.`;
-      el.className = "card-subtitle";
-    }
+    const { cfHandle } = Store.data.profile;
+    el.innerHTML = `<span class="verified-note">&check; Syncing as verified handle <strong>${escapeHtml(cfHandle)}</strong>.</span>`;
+    el.className = "card-subtitle";
+  }
+
+  /**
+   * Sync (and everything derived from it — solved log, reports, "Profile analysis" in Codeforces
+   * Analysis) is locked behind verification. Previously an unverified handle could still sync and
+   * populate every stat on this page (just scoring 0 points), which meant typing in ANY public
+   * handle — your own or not — made its solve history render as "yours." Switching to your real
+   * handle afterward didn't retroactively unmix that data from what had already synced in. Since
+   * "Compare with someone" (Codeforces Analysis) already covers looking up any public handle
+   * without claiming it as your own, there's no reason to keep this second, murkier path open.
+   */
+  function applyLockState() {
+    const unlocked = Boolean(Store.data.profile.cfVerified);
+    $("cf-locked-card").hidden = unlocked;
+    $("sync-card").hidden = !unlocked;
+    $("reports-card").hidden = !unlocked;
+    return unlocked;
   }
 
   function refreshDynamic() {
     Nav.updatePointsBadge();
+    const unlocked = applyLockState();
+    CFAnalysis.render($("cf-analysis-root"));
+    if (!unlocked) return;
+    renderVerifyBadge();
     SolvedLogUI.render($("solved-log-root"));
     Reports.render($("reports-root"));
-    CFAnalysis.render($("cf-analysis-root"));
   }
 
   async function handleSyncNow() {
+    if (!Store.data.profile.cfVerified) return; // sync-card is hidden until verified; belt and suspenders
     const handle = Store.data.profile.cfHandle.trim();
     if (!handle) {
       setSyncStatus("Set your Codeforces handle on the Dashboard first.", "error");
@@ -84,6 +92,7 @@
   }
 
   function handleManualSync() {
+    if (!Store.data.profile.cfVerified) return; // sync-card is hidden until verified; belt and suspenders
     const text = $("manual-json-input").value.trim();
     if (!text) {
       setSyncStatus("Paste the JSON response first.", "error");
@@ -103,6 +112,7 @@
 
   function handleManualLog(evt) {
     evt.preventDefault();
+    if (!Store.data.profile.cfVerified) return; // sync-card is hidden until verified; belt and suspenders
     const contestId = $("log-contest-id").value.trim();
     const index = $("log-index").value.trim();
     const name = $("log-name").value.trim();
@@ -132,7 +142,6 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     wireSyncCard();
-    renderVerifyBadge();
     refreshDynamic();
   });
 })();
