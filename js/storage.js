@@ -316,6 +316,11 @@ const Store = {
   /**
    * Links `handle` to the signed-in account, having already verified ownership (see
    * js/cf-verify.js CFVerify — call this only after its check succeeds, never speculatively).
+   *
+   * NOTE: In the current Codeforces-handle sign-in flow, the cf-signin Edge Function handles
+   * handle linking server-side during account creation. This method is kept for programmatic
+   * use (e.g. re-linking a handle) but is no longer called from the normal sign-in UI.
+   *
    * Unlike every other write, this is AWAITED by its caller and NOT optimistic: it can legitimately
    * fail — a DB uniqueness constraint (supabase/migrations/20260917000000_cf_handle_uniqueness.sql)
    * rejects it if another account already verified this exact handle — and the caller needs to know

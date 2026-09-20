@@ -49,8 +49,8 @@ const Nav = {
     el.textContent = `${Store.data.points.balance} pts`;
   },
 
-  /** Signed-in email + a Sign out button in the topbar, or nothing while signed out — the sign-in
-   * gate itself (see js/auth-ui.js) is where "not signed in" gets its own real UI. */
+  /** Signed-in CF handle + a Sign out button in the topbar, or nothing while signed out — the
+   * sign-in gate itself (see js/auth-ui.js) is where "not signed in" gets its own real UI. */
   updateAccountArea() {
     const el = $("account-area");
     if (!el) return;
@@ -58,8 +58,11 @@ const Nav = {
       el.innerHTML = "";
       return;
     }
+    // Show the Codeforces handle if available, otherwise a generic label — anonymous auth users
+    // have no meaningful email, and Store might not be loaded yet at first render.
+    const displayName = (Store.isLoaded() && Store.data.profile.cfHandle) || "Signed in";
     el.innerHTML = `
-      <span class="account-email" title="${escapeHtml(Auth.user.email)}">${escapeHtml(Auth.user.email)}</span>
+      <span class="account-email" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</span>
       <button id="nav-sign-out-btn" type="button" class="btn-icon">Sign out</button>
     `;
     $("nav-sign-out-btn").addEventListener("click", () => Auth.signOut());

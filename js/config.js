@@ -15,11 +15,9 @@
  *      and `supabase link`), or paste each migration file's contents into the SQL editor, in
  *      filename (timestamp) order.
  *   3. In Project Settings -> API, copy the "Project URL" and "anon public" key below.
- *   4. Auth -> Providers: confirm Email is enabled. Auth -> URL Configuration: add this site's
- *      URL(s) (e.g. your local dev server and your real deployed URL) to Redirect URLs, or the
- *      magic-link click-through will fail (the OTP-code fallback in the sign-in form still works
- *      regardless — see README's "Account setup").
- *   5. Optionally deploy and schedule supabase/functions/sync-cf-baseline (see README) for the
+ *   4. Auth -> Settings: enable Anonymous Sign-Ins (required for CF-handle auth).
+ *   5. Deploy the `cf-signin` Edge Function: `npx supabase functions deploy cf-signin`.
+ *   6. Optionally deploy and schedule supabase/functions/sync-cf-baseline (see README) for the
  *      Codeforces baseline comparison tiers — unrelated to sign-in, and the rest of the app works
  *      fully without it.
  *

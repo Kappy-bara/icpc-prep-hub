@@ -1,9 +1,13 @@
 /**
- * Supabase Auth: magic-link (passwordless) email sign-in. Owns only *auth* state (are we signed
- * in, as whom) — never touches app data (roadmap/points/solves/etc.), that's js/storage.js's job
- * once Auth says who's signed in. Uses the same `supabaseClient` js/cf-baseline.js already talks
- * to for the (unrelated) public baseline-comparison feature — one client instance for the whole
- * app, not two.
+ * Supabase Auth: Codeforces-handle sign-in. Owns only *auth* state (are we signed in, as whom)
+ * — never touches app data (roadmap/points/solves/etc.), that's js/storage.js's job once Auth says
+ * who's signed in. Uses the same `supabaseClient` js/cf-baseline.js already talks to for the
+ * (unrelated) public baseline-comparison feature — one client instance for the whole app, not two.
+ *
+ * Sign-in flow: the user verifies their Codeforces handle (compile-error challenge, handled by
+ * js/auth-ui.js + js/cf-verify.js), then we call the `cf-signin` Edge Function which server-side
+ * re-validates the submission, finds or creates their account, and returns a magic-link token that
+ * we redeem here to establish a session. No email is ever required.
  */
 const Auth = {
   client: supabaseClient,
@@ -46,34 +50,36 @@ const Auth = {
   },
 
   /**
-   * Sends a magic-link email. `emailRedirectTo` sends the user back to whatever page they
-   * requested it from (no dedicated callback page needed — supabase-js's default
-   * `detectSessionInUrl: true` parses the token out of the URL hash automatically on load).
+   * Signs in by Codeforces handle. Calls the `cf-signin` Edge Function which server-side validates
+   * the compile-error submission, finds or creates an account for this handle, and returns a
+   * magic-link token. We then redeem that token client-side to establish a session.
+   *
+   * Returns { ok: true, returning: boolean } on success, { ok: false, error, retryable? } on failure.
    */
-  async signInWithEmail(email) {
+  async signInWithHandle(handle, problem, startedAtMs) {
     try {
-      const { error } = await this.client.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: location.href, shouldCreateUser: true },
+      const { data: fnData, error: fnError } = await this.client.functions.invoke("cf-signin", {
+        body: { handle, problem, startedAtMs },
       });
-      if (error) return { ok: false, error: error.message };
-      return { ok: true };
-    } catch (e) {
-      return { ok: false, error: e.message || "Network error" };
-    }
-  },
+      if (fnError) {
+        // Edge Function invocation error (network, 5xx, etc.)
+        return { ok: false, error: fnError.message || "Network error calling sign-in service" };
+      }
+      if (fnData.error) {
+        // Application-level error returned by the function
+        return { ok: false, error: fnData.error, retryable: fnData.retryable || false };
+      }
 
-  /**
-   * Every magic-link email Supabase sends also contains a 6-digit OTP code alongside the link —
-   * this redeems that code directly, without needing to click through. Same "live path + manual
-   * fallback" shape as js/cf-verify.js's checkLive/checkManual, and the fast way to repeat-test
-   * sign-in locally without re-clicking a fresh email link every time.
-   */
-  async verifyEmailCode(email, token) {
-    try {
-      const { error } = await this.client.auth.verifyOtp({ email, token, type: "email" });
-      if (error) return { ok: false, error: error.message };
-      return { ok: true };
+      // Redeem the magic-link token to establish a session
+      const { error: verifyError } = await this.client.auth.verifyOtp({
+        token_hash: fnData.token_hash,
+        type: "magiclink",
+      });
+      if (verifyError) {
+        return { ok: false, error: verifyError.message || "Couldn't establish session" };
+      }
+
+      return { ok: true, returning: fnData.returning };
     } catch (e) {
       return { ok: false, error: e.message || "Network error" };
     }

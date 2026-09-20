@@ -15,21 +15,7 @@
     <div id="auth-gate" hidden></div>
 
     <div id="page-body" hidden>
-      <section class="card" id="cf-verify-card">
-        <h2>Verify your Codeforces handle</h2>
-        <p class="card-subtitle">
-          One handle, once, forever &mdash; prove you own it and it's linked to this account for
-          good. No password, just a quick check.
-        </p>
-        <form id="cf-verify-start-form" class="login-form">
-          <label for="cf-handle-input">Codeforces handle</label>
-          <input type="text" id="cf-handle-input" placeholder="e.g. tourist" autocomplete="off" />
-          <button type="submit" class="btn-primary login-submit">Verify handle</button>
-        </form>
-        <div id="cf-verify-section" class="sub-panel"></div>
-      </section>
-
-      <div id="dashboard-content" hidden>
+      <div id="dashboard-content">
         <section class="card" id="profile-card">
           <h2>Profile</h2>
           <p class="verified-note">&check; Verified as <strong id="verified-handle"></strong>.</p>
@@ -147,11 +133,11 @@
   <script defer src="js/dom-utils.js"></script>
   <script defer src="js/theme.js"></script>
   <script defer src="js/auth.js"></script>
+  <script defer src="js/cf-verify.js"></script>
   <script defer src="js/auth-ui.js"></script>
   <script defer src="js/nav.js"></script>
   <script defer src="js/shell.js"></script>
   <script defer src="js/gamification.js"></script>
-  <script defer src="js/cf-verify.js"></script>
   <script defer src="js/cf-sync.js"></script>
   <script defer src="js/roadmap-data.js"></script>
   <script defer src="js/roadmap-problems-data.js"></script>

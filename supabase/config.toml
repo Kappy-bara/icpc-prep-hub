@@ -174,7 +174,7 @@ refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
-enable_anonymous_sign_ins = false
+enable_anonymous_sign_ins = true
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
@@ -406,6 +406,10 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # Invoked only by our own pg_cron job (see README "Codeforces baseline data"), never by a
 # browser — no user JWT to verify, so disable that check rather than needing to forge one.
 [functions.sync-cf-baseline]
+verify_jwt = false
+
+# Sign-in endpoint — no existing session to verify, this IS where the user gets one.
+[functions.cf-signin]
 verify_jwt = false
 
 # pg-delta is the schema diff engine for db diff / db pull / db remote commit.

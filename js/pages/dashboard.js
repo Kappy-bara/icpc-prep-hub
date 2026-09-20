@@ -1,18 +1,19 @@
-/** Dashboard page: verify your Codeforces handle, preferences, timeline, roadmap summary, recent solves, backup. */
+/** Dashboard page: preferences, timeline, roadmap summary, recent solves, backup.
+ * Handle verification has moved to the sign-in flow (js/auth-ui.js + cf-signin Edge Function),
+ * so by the time a user reaches this page, they're already verified. */
 (function () {
-  let verifyState = null; // { handle, problem, startedAtMs } while a verification is in progress
-
   function refreshDynamic() {
     Nav.updatePointsBadge();
+    Nav.updateAccountArea();
     Timeline.render($("timeline-root"));
     Gamification.renderStreak($("streak-root"));
     Roadmap.renderSummary($("roadmap-summary-root"));
     SolvedLogUI.render($("solved-log-root"), { limit: 5 });
   }
 
-  // --- Verified view: preferences ---
+  // --- Profile & preferences ---
 
-  function renderVerifiedView() {
+  function renderProfile() {
     const p = Store.data.profile;
     $("verified-handle").textContent = p.cfHandle;
     $("gamification-start-date").textContent = p.gamificationStart ? new Date(p.gamificationStart).toLocaleDateString() : "today";
@@ -35,132 +36,7 @@
     });
   }
 
-  // --- Unverified view: verify your Codeforces handle ---
-
-  function wireVerifyStartForm() {
-    $("cf-verify-start-form").addEventListener("submit", (evt) => {
-      evt.preventDefault();
-      const handle = $("cf-handle-input").value.trim();
-      if (!handle) return;
-      verifyState = { handle, problem: CFVerify.pickProblem(), startedAtMs: Date.now() };
-      renderAuthState();
-    });
-  }
-
-  async function completeVerify(handle) {
-    const statusEl = $("verify-status");
-    const result = await Store.verifyHandle(handle);
-    if (!result.ok) {
-      statusEl.textContent = `Couldn't verify (${result.error}).`;
-      statusEl.className = "sync-status error";
-      // Re-enable whichever button triggered this (checkLive or the manual-JSON fallback) — a
-      // real, expected failure here (e.g. the handle's already verified on another account, via
-      // the DB uniqueness constraint) shouldn't leave the user stuck with no way to retry short of
-      // cancelling and restarting the whole compile-error-submission flow from scratch.
-      const checkBtn = $("check-verify-btn");
-      const manualBtn = $("verify-manual-btn");
-      if (checkBtn) checkBtn.disabled = false;
-      if (manualBtn) manualBtn.disabled = false;
-      return;
-    }
-    verifyState = null;
-    renderAuthState();
-    refreshDynamic();
-  }
-
-  function renderVerifySection() {
-    const root = $("cf-verify-section");
-    if (!root) return;
-    if (!verifyState) {
-      root.innerHTML = "";
-      return;
-    }
-
-    const { handle, problem } = verifyState;
-    root.innerHTML = `
-      <p>1. Open the <a href="${CFVerify.problemUrl(problem)}" target="_blank" rel="noopener noreferrer">submit page for ${escapeHtml(problem.name)} (${problem.contestId}${problem.index})</a> — it pre-selects the problem, no searching needed.</p>
-      <p>2. Submit ANY code that fails to compile (e.g. delete a semicolon) as <strong>${escapeHtml(handle)}</strong>, within the next ${CFVerify.WINDOW_MINUTES} minutes.</p>
-      <div class="form-actions">
-        <button id="check-verify-btn" type="button" class="btn-primary">I submitted it — check now</button>
-        <button id="cancel-verify-btn" type="button" class="btn-icon">Cancel</button>
-      </div>
-      <span id="verify-status" class="sync-status"></span>
-      <details>
-        <summary>Manual fallback (paste JSON)</summary>
-        <p><a href="${CFSync.apiUrl(handle)}" target="_blank" rel="noopener noreferrer">Open Codeforces API URL →</a></p>
-        <textarea id="verify-manual-json" rows="5" placeholder="Paste the JSON response here"></textarea>
-        <button id="verify-manual-btn" type="button" class="btn-secondary">Check pasted JSON</button>
-      </details>
-    `;
-
-    $("check-verify-btn").addEventListener("click", async (evt) => {
-      const btn = evt.currentTarget;
-      const statusEl = $("verify-status");
-      btn.disabled = true; // guards a rapid double-click firing two checks (and possibly two verifyHandle writes)
-      statusEl.textContent = "Checking…";
-      statusEl.className = "sync-status";
-      const result = await CFVerify.checkLive(handle, problem, verifyState.startedAtMs);
-      if (!result.ok) {
-        btn.disabled = false;
-        statusEl.textContent = `Live check failed (${result.error}). Use the manual fallback below.`;
-        statusEl.className = "sync-status error";
-        return;
-      }
-      if (result.verified) {
-        statusEl.textContent = "Verified! Linking your account…";
-        statusEl.className = "sync-status";
-        await completeVerify(handle);
-      } else {
-        btn.disabled = false;
-        statusEl.textContent = "No matching compile-error submission found yet. Submit it, then try again.";
-        statusEl.className = "sync-status error";
-      }
-    });
-
-    $("cancel-verify-btn").addEventListener("click", () => {
-      verifyState = null;
-      renderAuthState();
-    });
-
-    $("verify-manual-btn").addEventListener("click", async (evt) => {
-      const btn = evt.currentTarget;
-      const text = $("verify-manual-json").value.trim();
-      const statusEl = $("verify-status");
-      btn.disabled = true;
-      try {
-        const ok = CFVerify.checkManual(text, handle, problem, verifyState.startedAtMs);
-        if (ok) {
-          statusEl.textContent = "Verified! Linking your account…";
-          statusEl.className = "sync-status";
-          await completeVerify(handle);
-        } else {
-          btn.disabled = false;
-          statusEl.textContent = "No matching compile-error submission found in that JSON.";
-          statusEl.className = "sync-status error";
-        }
-      } catch (e) {
-        btn.disabled = false;
-        statusEl.textContent = `Couldn't parse that JSON: ${e.message}`;
-        statusEl.className = "sync-status error";
-      }
-    });
-  }
-
-  /** Toggle between the "verify your handle" card and the full dashboard content — both live
-   * inside #page-body, which js/shell.js already gates on being signed in. */
-  function renderAuthState() {
-    const verified = Boolean(Store.data.profile.cfVerified);
-    $("cf-verify-card").hidden = verified;
-    $("dashboard-content").hidden = !verified;
-    if (verified) {
-      $("cf-verify-section").innerHTML = "";
-      renderVerifiedView();
-      return;
-    }
-    $("cf-verify-start-form").hidden = Boolean(verifyState);
-    if (!verifyState) $("cf-handle-input").value = "";
-    renderVerifySection();
-  }
+  // --- Backup & restore ---
 
   function downloadExport() {
     const blob = new Blob([Store.exportJSON()], { type: "application/json" });
@@ -227,7 +103,7 @@
           if (result.ok) {
             status.textContent = "Import successful.";
             status.className = "sync-status success";
-            renderAuthState();
+            renderProfile();
             refreshDynamic();
           } else {
             status.textContent = `Import failed: ${result.error}`;
@@ -246,7 +122,7 @@
           status.className = "sync-status";
           const result = await Store.resetAll();
           if (result.ok) {
-            renderAuthState();
+            renderProfile();
             refreshDynamic();
             status.textContent = "Progress reset.";
             status.className = "sync-status success";
@@ -272,7 +148,6 @@
   function wireOnce() {
     if (wired) return;
     wired = true;
-    wireVerifyStartForm();
     wirePrefsForm();
     wireDataCard();
   }
@@ -281,7 +156,7 @@
     await Shell.ready;
     if (!isReady()) return;
     wireOnce();
-    renderAuthState();
+    renderProfile();
     refreshDynamic();
   });
 
@@ -297,8 +172,7 @@
   document.addEventListener("icpc:external-data-change", () => {
     if (!isReady()) return;
     wireOnce();
-    verifyState = null;
-    renderAuthState();
+    renderProfile();
     refreshDynamic();
   });
 })();
