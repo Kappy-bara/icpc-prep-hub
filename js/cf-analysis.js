@@ -494,7 +494,7 @@ const CFAnalysis = {
     if (this._tier === "tourist") cutoffLabel = "a specific named player";
     else if (this._tier === "average") cutoffLabel = `~${result.ratingCutoff} rated`;
     else cutoffLabel = `${result.ratingCutoff}+ rated`;
-    const sampleNote = this._tier === "tourist" ? "" : `, averaged across 500 real sampled players, updated daily`;
+    const sampleNote = this._tier === "tourist" ? "" : ` among players active in the last 30 days, averaged across 500 real sampled players, updated daily`;
     subtitleEl.textContent = `${result.tierLabel} (${cutoffLabel}${sampleNote})`;
 
     if (!result.sampleSize) {
