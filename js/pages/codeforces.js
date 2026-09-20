@@ -53,12 +53,60 @@
     if (!unlocked) {
       if (!Auth.isSignedIn()) {
         $("cf-locked-card").innerHTML = `
-          <h2>Sync is locked</h2>
+          <h2>Profile Analysis</h2>
           <p class="card-subtitle">
-            <a href="dashboard.html">Sign in</a> with your Codeforces handle to track your solves, points, and reports here.
-            You can still use <strong>Codeforces Analysis</strong> below to look up any public handle.
+            <a href="dashboard.html">Sign in</a> with your Codeforces handle to track your solves and sync them across devices.
+            Or, enter any public handle below to view its stats temporarily (nothing is saved).
           </p>
+          <div class="sync-actions" style="margin-top: 1rem;">
+            <input type="text" id="cf-anon-handle-input" class="compare-handle-input" placeholder="e.g. tourist" />
+            <button id="cf-anon-fetch-btn" type="button" class="btn-secondary">View stats</button>
+            <span id="cf-anon-status" class="sync-status"></span>
+          </div>
         `;
+        
+        const fetchAnon = async () => {
+          const handle = $("cf-anon-handle-input").value.trim();
+          const statusEl = $("cf-anon-status");
+          if (!handle) return;
+          
+          statusEl.textContent = "Fetching…";
+          statusEl.className = "sync-status";
+          
+          const result = await CFSync.fetchLive(handle);
+          if (!result.ok) {
+            statusEl.textContent = `Failed: ${result.error}`;
+            statusEl.className = "sync-status error";
+            return;
+          }
+          
+          CFSync.applyProblems(result.problems);
+          CFSync.applyAnalysis(result);
+          
+          const ratingResult = await CFSync.fetchRatingHistory(handle);
+          if (ratingResult.ok) {
+            CFSync.applyRatingHistory(ratingResult.history);
+          }
+          
+          Store.data.profile.cfHandle = handle;
+          Store.data.profile.cfVerified = true;
+          
+          statusEl.textContent = `Viewing stats for ${handle}.`;
+          statusEl.className = "sync-status success";
+          
+          $("reports-card").hidden = false;
+          Reports.render($("reports-root"));
+          CFAnalysis.render($("cf-analysis-root"));
+        };
+
+        $("cf-anon-fetch-btn").addEventListener("click", fetchAnon);
+        $("cf-anon-handle-input").addEventListener("keydown", (evt) => {
+          if (evt.key === "Enter") {
+            evt.preventDefault();
+            fetchAnon();
+          }
+        });
+
       } else {
         $("cf-locked-card").innerHTML = `
           <h2>Sync is locked</h2>
