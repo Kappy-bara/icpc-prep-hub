@@ -55,7 +55,7 @@ const Nav = {
     const el = $("account-area");
     if (!el) return;
     if (!Auth.isSignedIn()) {
-      el.innerHTML = "";
+      el.innerHTML = `<a href="dashboard.html" class="btn-primary" style="padding: 0.25rem 0.75rem; text-decoration: none; font-size: var(--fs-sm);">Sign in</a>`;
       return;
     }
     // Show the Codeforces handle if available, otherwise a generic label — anonymous auth users

@@ -19,10 +19,6 @@ const Shell = {
     this.ready = this._boot();
   },
 
-  _isOptionalPage() {
-    const page = Nav.currentPage(location.pathname);
-    return page === "index.html" || page === "team.html" || page === "roadmap.html" || page === "";
-  },
 
   async _boot() {
     await Auth.ready;
@@ -36,26 +32,20 @@ const Shell = {
     }
 
     Nav.updateAccountArea();
-    const gate = $("auth-gate");
-    const body = $("page-body");
-    const optional = this._isOptionalPage();
 
     if (!Auth.isSignedIn()) {
       Store.clear();
-      if (gate && !optional) AuthUI.mount(gate);
-      if (body) body.hidden = !optional; // Hide if not optional, show if optional
+      if ($("page-body")) $("page-body").hidden = false;
       Nav.updatePointsBadge();
       return;
     }
-
-    if (gate) AuthUI.unmount(gate);
 
     const result = await Store.load();
     if (!result.ok) {
       this._showLoadError(result.error);
       return;
     }
-    if (body) body.hidden = false;
+    if ($("page-body")) $("page-body").hidden = false;
     Nav.updatePointsBadge();
   },
 

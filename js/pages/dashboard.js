@@ -11,6 +11,23 @@
     SolvedLogUI.render($("solved-log-root"), { limit: 5 });
   }
 
+  function applyLockState() {
+    const signedIn = Auth.isSignedIn() && Store.isLoaded();
+    const signinContainer = $("dashboard-signin");
+    const contentContainer = $("dashboard-content");
+
+    if (signedIn) {
+      signinContainer.hidden = true;
+      contentContainer.hidden = false;
+      AuthUI.unmount(signinContainer);
+    } else {
+      signinContainer.hidden = false;
+      contentContainer.hidden = true;
+      AuthUI.mount(signinContainer);
+    }
+    return signedIn;
+  }
+
   // --- Profile & preferences ---
 
   function renderProfile() {
@@ -136,7 +153,7 @@
   }
 
   function isReady() {
-    return Auth.isSignedIn() && Store.isLoaded();
+    return applyLockState();
   }
 
   // #page-body's forms are static markup wired once and never re-created — but "ready" can first

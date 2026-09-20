@@ -14,8 +14,11 @@
   <main class="container">
     <div id="auth-gate" hidden></div>
 
-    <div id="page-body" hidden>
-      <div id="dashboard-content">
+    <div id="page-body">
+      <div id="dashboard-signin" hidden>
+        <!-- AuthUI mounts here if not signed in -->
+      </div>
+      <div id="dashboard-content" hidden>
         <section class="card" id="profile-card">
           <h2>Profile</h2>
           <p class="verified-note">&check; Verified as <strong id="verified-handle"></strong>.</p>

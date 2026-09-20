@@ -45,10 +45,32 @@
    * without claiming it as your own, there's no reason to keep this second, murkier path open.
    */
   function applyLockState() {
-    const unlocked = Boolean(Store.data.profile.cfVerified);
+    const unlocked = Auth.isSignedIn() && Store.isLoaded() && Boolean(Store.data.profile.cfVerified);
     $("cf-locked-card").hidden = unlocked;
     $("sync-card").hidden = !unlocked;
     $("reports-card").hidden = !unlocked;
+    
+    if (!unlocked) {
+      if (!Auth.isSignedIn()) {
+        $("cf-locked-card").innerHTML = `
+          <h2>Sync is locked</h2>
+          <p class="card-subtitle">
+            <a href="dashboard.html">Sign in</a> with your Codeforces handle to track your solves, points, and reports here.
+            You can still use <strong>Codeforces Analysis</strong> below to look up any public handle.
+          </p>
+        `;
+      } else {
+        $("cf-locked-card").innerHTML = `
+          <h2>Sync is locked</h2>
+          <p class="card-subtitle">
+            Verify your Codeforces handle on the <a href="dashboard.html">Dashboard</a> to sync and
+            view your own solve stats here. To look up any public handle without claiming it as yours, use
+            <strong>Comparison</strong> in Codeforces Analysis below.
+          </p>
+        `;
+      }
+    }
+    
     return unlocked;
   }
 
@@ -133,6 +155,7 @@
   }
 
   function wireSyncCard() {
+    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
     $("sync-now-btn").addEventListener("click", handleSyncNow);
     $("manual-sync-btn").addEventListener("click", handleManualSync);
     $("manual-log-form").addEventListener("submit", handleManualLog);
@@ -153,16 +176,16 @@
 
   document.addEventListener("DOMContentLoaded", async () => {
     await Shell.ready;
-    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
     wireOnce();
     refreshDynamic();
   });
 
   // Sign-in/out, another device syncing, a focus-triggered refetch — see storage.js/shell.js.
   document.addEventListener("icpc:external-data-change", () => {
-    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
     wireOnce();
-    $("manual-api-link").href = Store.data.profile.cfHandle ? CFSync.apiUrl(Store.data.profile.cfHandle) : "#";
+    if (Auth.isSignedIn() && Store.isLoaded()) {
+      $("manual-api-link").href = Store.data.profile.cfHandle ? CFSync.apiUrl(Store.data.profile.cfHandle) : "#";
+    }
     refreshDynamic();
   });
 })();

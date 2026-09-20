@@ -120,6 +120,11 @@
   }
 
   function renderFormula() {
+    if (!Auth.isSignedIn() || !Store.isLoaded()) {
+      $("formula-focus-tags").textContent = "none set";
+      $("formula-start-date").textContent = "not started — sign in to begin";
+      return;
+    }
     const p = Store.data.profile;
     const tags = p.focusTags && p.focusTags.length ? p.focusTags.join(", ") : "none set";
     $("formula-focus-tags").textContent = tags;
@@ -139,11 +144,33 @@
    * Returns whether points are unlocked, so callers can skip rendering their content otherwise.
    */
   function applyLockState() {
-    const unlocked = Boolean(Store.data.profile.cfVerified);
+    const unlocked = Auth.isSignedIn() && Store.isLoaded() && Boolean(Store.data.profile.cfVerified);
     $("points-locked-card").hidden = unlocked;
     $("points-overview-card").hidden = !unlocked;
     $("points-activity-card").hidden = !unlocked;
     $("rewards-card").hidden = !unlocked;
+    
+    if (!unlocked) {
+      if (!Auth.isSignedIn()) {
+        $("points-locked-card").innerHTML = `
+          <h2>Points are locked</h2>
+          <p class="card-subtitle">
+            <a href="dashboard.html">Sign in</a> with your Codeforces handle to start earning and spending points.
+            Your accumulation start date is set automatically the moment you sign in.
+          </p>
+        `;
+      } else {
+        $("points-locked-card").innerHTML = `
+          <h2>Points are locked</h2>
+          <p class="card-subtitle">
+            Verify your Codeforces handle on the <a href="dashboard.html">Dashboard</a> to start
+            earning and spending points. Your accumulation start date is set automatically the
+            moment verification succeeds, and stays locked from then on &mdash; not something you
+            (or anyone) can backdate to cash in on old solves.
+          </p>
+        `;
+      }
+    }
     return unlocked;
   }
 
@@ -160,7 +187,6 @@
   }
 
   function refresh() {
-    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
     renderFormula();
     const unlocked = applyLockState();
     if (!unlocked) return;
@@ -191,16 +217,15 @@
 
   document.addEventListener("DOMContentLoaded", async () => {
     await Shell.ready;
-    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
     wireOnce();
     refresh();
   });
   document.addEventListener("icpc:points-changed", refreshPointsChange);
 
-  // Sign-in/out, another device syncing, a focus-triggered refetch — see storage.js/shell.js.
   document.addEventListener("icpc:external-data-change", () => {
-    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
-    wireOnce();
+    if (Auth.isSignedIn() && Store.isLoaded()) {
+      wireOnce();
+    }
     refresh();
   });
 })();

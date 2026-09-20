@@ -224,11 +224,13 @@ Deno.serve(async (req) => {
         { status: 200, headers: corsHeaders }
       );
     } else {
-      // --- New user: sign in anonymously and set up profile ---
+      // Assign a deterministic email so we can generate a magic link for sign-in
+      const email = `${userId || crypto.randomUUID()}@cf-auth.local`;
+
       // We create the user via admin API so we control the flow entirely server-side.
       const { data: newUser, error: createError } =
         await supabaseAdmin.auth.admin.createUser({
-          // No email, no password — pure anonymous-style user
+          email,
           email_confirm: true, // auto-confirm since there's nothing to confirm
           user_metadata: { cf_handle: canonicalHandle },
         });
@@ -286,9 +288,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Assign a deterministic email so we can generate a magic link for sign-in
-      const email = `${userId}@cf-auth.local`;
-      await supabaseAdmin.auth.admin.updateUserById(userId, { email });
+      // Email is already assigned during creation, no need to update
 
       // Generate a magic link so the client can establish a session
       const { data: linkData, error: linkError } =
