@@ -36,6 +36,11 @@ over-built now:
   verified on two accounts. The `cf-signin` Edge Function re-checks the
   compile-error proof server-side, so a determined client can't skip it.~~
   **Done** — shipped in the current version.
+- ~~Make sign-in optional instead of a hard gate. Unauthenticated users should be
+  able to freely browse the roadmap topics, compare teams, and view Codeforces 
+  stats for any public handle temporarily, keeping only progress and points 
+  locked behind account verification.~~
+  **Done** — shipped.
 - Map raw Codeforces tags (`dp`, `binary search`, `number theory`, etc.) to
   the 99 roadmap topics, so weak-tag call-outs (Codeforces Analysis, the
   Team Analyzer's team-gap list) can link straight to "practice this roadmap

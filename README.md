@@ -33,10 +33,10 @@ comparisons — see [Codeforces baseline data](#codeforces-baseline-data).
   [cses.fi](https://cses.fi), Codeforces EDU, the ICPC World Finals archive).
   The page itself is a two-pane picker — subjects with a progress bar down
   the left, the selected subject's full checklist on the right — instead of
-  one long accordion. Checkbox state syncs to your account. Locked behind
-  Codeforces verification (see Gamification below), same as Self-rule's
-  points/rewards — a locked notice shows instead until you verify, so
-  progress can't be checked off under an unproven handle. The Dashboard's
+  one long accordion. Checkbox state syncs to your account. The roadmap is freely
+  browsable without an account so anyone can see all topics and resources, but
+  the progress checkboxes are locked behind Codeforces verification (see Gamification
+  below) so progress can't be checked off under an unproven handle. The Dashboard's
   compact roadmap-progress summary stays visible either way; it's read-only.
 - **Smart timeline** — set an optional target contest date and get a
   countdown plus a pacing plan that proportionally allocates remaining time
@@ -90,9 +90,9 @@ comparisons — see [Codeforces baseline data](#codeforces-baseline-data).
   distinction between "facts about you" and "you vs. a baseline":
   - **Profile analysis** — your own solve history: Accuracy per tag, Rating
     trajectory, Problem ratings, Solve activity, Unsolved/attempted (see
-    below). Locked behind Codeforces verification, same as sync itself (see
-    Gamification above) — until then this tab is hidden and Comparison is
-    the only one shown.
+    below). By default, this is tied to your verified Codeforces account and syncs
+    to the server. However, if you are not signed in, you can still type any public
+    Codeforces handle to view its full stats temporarily.
   - **Comparison** — how your tag mix stacks up against a baseline, and
     what to practice next based on the gap (see below).
 
@@ -297,7 +297,7 @@ comparisons — see [Codeforces baseline data](#codeforces-baseline-data).
 | `dashboard.html` | Preferences, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
 | `codeforces.html` | Sync, your full solved log, Reports, and the Codeforces Analysis card |
 | `team.html` | ICPC Team Analyzer — paste 3 handles, get a role split, tag gaps, and accuracy/speed callouts |
-| `roadmap.html` | The full 99-topic, 8-subject checklist, as a subject picker + detail pane (locked until your Codeforces handle is verified) |
+| `roadmap.html` | The full 99-topic, 8-subject checklist, as a subject picker + detail pane (progress tracking is locked until your Codeforces handle is verified, but topics are freely browsable) |
 | `self-rule.html` | Points overview & streak, a daily/weekly/monthly activity breakdown, the points-formula explainer, the reward catalog, and redemption history |
 
 A shared header/nav (`js/nav.js`) and a shared bootstrap (`js/shell.js`, which
@@ -440,8 +440,10 @@ problems is not "the average user solves 1,662 problems"). Every tier's
 numbers now come from real players: a large sample (1,500 by default) of real
 rated users whose *current rating* falls in that band gets its solve
 history fetched and averaged — both the overall solved count and the tag
-mix. Tourist is the same technique with a sample size of exactly one, by
-name.
+mix. Note: The baseline explicitly uses Codeforces' 30-day active user API, 
+so "Top 500" measures players highly active this month, which has lower rating 
+cutoffs than the official 6-month leaderboard. Tourist is the same technique 
+with a sample size of exactly one, by name.
 
 **The four cohort tiers additionally require the baseline-sync job to have
 actually run at least once** (see [Codeforces baseline
