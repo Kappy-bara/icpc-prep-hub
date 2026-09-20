@@ -2184,5 +2184,125 @@ const ROADMAP_PROBLEMS = {
       "rating": 2100,
       "confidence": "high"
     }
+  ],
+  "math.bit-manipulation": [
+    {
+      "contestId": 579,
+      "index": "A",
+      "name": "Raising Bacteria",
+      "rating": 1000,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1567,
+      "index": "B",
+      "name": "MEXor Mixup",
+      "rating": 1000,
+      "confidence": "high"
+    },
+    {
+      "contestId": 467,
+      "index": "B",
+      "name": "Fedor and New Game",
+      "rating": 1100,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1420,
+      "index": "B",
+      "name": "Rock and Lever",
+      "rating": 1200,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1097,
+      "index": "B",
+      "name": "Petr and a Combination Lock",
+      "rating": 1200,
+      "confidence": "high"
+    }
+  ],
+  "greedy.ternary-search": [
+    {
+      "contestId": 1288,
+      "index": "A",
+      "name": "Deadline",
+      "rating": 1100,
+      "confidence": "high"
+    },
+    {
+      "contestId": 439,
+      "index": "D",
+      "name": "Devu and his Brother",
+      "rating": 1700,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1479,
+      "index": "A",
+      "name": "Searching Local Minimum",
+      "rating": 1700,
+      "confidence": "high"
+    }
+  ],
+  "meta.ad-hoc": [
+    {
+      "contestId": 266,
+      "index": "B",
+      "name": "Queue at the School",
+      "rating": 800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1900,
+      "index": "A",
+      "name": "Cover in Water",
+      "rating": 800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1343,
+      "index": "B",
+      "name": "Balanced Array",
+      "rating": 800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1859,
+      "index": "B",
+      "name": "Olya and Game with Arrays",
+      "rating": 1000,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1352,
+      "index": "B",
+      "name": "Same Parity Summands",
+      "rating": 1200,
+      "confidence": "high"
+    }
+  ],
+  "meta.interactive": [
+    {
+      "contestId": 679,
+      "index": "A",
+      "name": "Bear and Prime 100",
+      "rating": 1400,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1167,
+      "index": "B",
+      "name": "Lost Numbers",
+      "rating": 1400,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1999,
+      "index": "G1",
+      "name": "Ruler (easy version)",
+      "rating": 1500,
+      "confidence": "high"
+    }
   ]
 };
