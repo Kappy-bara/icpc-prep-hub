@@ -21,7 +21,7 @@ comparisons — see [Codeforces baseline data](#codeforces-baseline-data).
 
 ## Features
 
-- **Multi-subject roadmap** — 99 topics across 8 subjects (Math & Number
+- **Multi-subject roadmap** — 103 topics across 8 subjects (Math & Number
   Theory, Data Structures, Graphs, Dynamic Programming, Strings, Greedy &
   Sorting, Geometry, and Contest Meta-Skills), each split into
   Foundations → Core → Advanced and curated against established
@@ -297,7 +297,7 @@ comparisons — see [Codeforces baseline data](#codeforces-baseline-data).
 | `dashboard.html` | Preferences, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
 | `codeforces.html` | Sync, your full solved log, Reports, and the Codeforces Analysis card |
 | `team.html` | ICPC Team Analyzer — paste 3 handles, get a role split, tag gaps, and accuracy/speed callouts |
-| `roadmap.html` | The full 99-topic, 8-subject checklist, as a subject picker + detail pane (progress tracking is locked until your Codeforces handle is verified, but topics are freely browsable) |
+| `roadmap.html` | The full 103-topic, 8-subject checklist, as a subject picker + detail pane (progress tracking is locked until your Codeforces handle is verified, but topics are freely browsable) |
 | `self-rule.html` | Points overview & streak, a daily/weekly/monthly activity breakdown, the points-formula explainer, the reward catalog, and redemption history |
 
 A shared header/nav (`js/nav.js`) and a shared bootstrap (`js/shell.js`, which

@@ -42,13 +42,13 @@ over-built now:
   locked behind account verification.~~
   **Done** — shipped.
 - Map raw Codeforces tags (`dp`, `binary search`, `number theory`, etc.) to
-  the 99 roadmap topics, so weak-tag call-outs (Codeforces Analysis, the
+  the 103 roadmap topics, so weak-tag call-outs (Codeforces Analysis, the
   Team Analyzer's team-gap list) can link straight to "practice this roadmap
   topic" instead of just naming the raw tag. Checked this while building the
   Team Analyzer — no such mapping exists today, and topic `id`/`name`
   strings only cleanly match real CF tags in a handful of cases (most are
   compound/differently-phrased, e.g. topic "Bitmask DP" vs. tag `bitmasks`),
-  so it needs real curation across all 99 topics, not a naive string match.
+  so it needs real curation across all 103 topics, not a naive string match.
 - Contest-type breakdown (Div1/Div2/Div3/Educational/Global performance
   shown separately) — some people do well in practice but underperform live,
   or vice versa.

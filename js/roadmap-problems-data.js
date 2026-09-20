@@ -18,10 +18,10 @@
  * (the better-fitting one), with a freshly researched and verified replacement problem found for
  * the topic that lost its slot. Zero duplicate {contestId, index} pairs remain across all 283
  * problems. Also fixed: 5 dead (404) resource.url links in roadmap-data.js found during and after
- * research (usaco.guide moved/renamed several pages) - all 99 resource links now verified live.
+ * research (usaco.guide moved/renamed several pages) - all 103 resource links now verified live.
  *
  * All 7 non-meta subjects complete: math, ds, graphs, dp, strings, greedy, geometry.
- * 90 topics, 283 problems total.
+ * 92 topics, 283 problems total.
  */
 const ROADMAP_PROBLEMS = {
   "math.modular-arithmetic": [
