@@ -43,7 +43,7 @@ const Shell = {
     if (!Auth.isSignedIn()) {
       Store.clear();
       if (gate && !optional) AuthUI.mount(gate);
-      if (body) body.hidden = true;
+      if (body) body.hidden = !optional; // Hide if not optional, show if optional
       Nav.updatePointsBadge();
       return;
     }
