@@ -26,30 +26,9 @@
 const ROADMAP_PROBLEMS = {
   "math.modular-arithmetic": [
     {
-      "contestId": 913,
-      "index": "A",
-      "name": "Modular Exponentiation",
-      "rating": 900,
-      "confidence": "high"
-    },
-    {
-      "contestId": 630,
-      "index": "A",
-      "name": "Again Twenty Five!",
-      "rating": 800,
-      "confidence": "high"
-    },
-    {
       "contestId": 1684,
       "index": "B",
       "name": "Z mod X = C",
-      "rating": 800,
-      "confidence": "high"
-    },
-    {
-      "contestId": 2084,
-      "index": "A",
-      "name": "Max and Mod",
       "rating": 800,
       "confidence": "high"
     },
@@ -58,6 +37,27 @@ const ROADMAP_PROBLEMS = {
       "index": "A",
       "name": "Shohag Loves Mod",
       "rating": 800,
+      "confidence": "high"
+    },
+    {
+      "contestId": 913,
+      "index": "A",
+      "name": "Modular Exponentiation",
+      "rating": 900,
+      "confidence": "high"
+    },
+    {
+      "contestId": 742,
+      "index": "A",
+      "name": "Arpa’s hard exam and Mehrdad’s naive cheat",
+      "rating": 1200,
+      "confidence": "high"
+    },
+    {
+      "contestId": 1294,
+      "index": "C",
+      "name": "Product of Three Numbers",
+      "rating": 1300,
       "confidence": "high"
     }
   ],
@@ -392,10 +392,10 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 71,
-      "index": "A",
-      "name": "Way Too Long Words",
-      "rating": 800,
+      "contestId": 4,
+      "index": "C",
+      "name": "Registration System",
+      "rating": 1300,
       "confidence": "high"
     }
   ],
@@ -468,13 +468,6 @@ const ROADMAP_PROBLEMS = {
   ],
   "ds.priority-queue": [
     {
-      "contestId": 960,
-      "index": "B",
-      "name": "Minimize the error",
-      "rating": 1500,
-      "confidence": "high"
-    },
-    {
       "contestId": 1106,
       "index": "D",
       "name": "Lunar New Year and a Wander",
@@ -482,10 +475,10 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 681,
-      "index": "C",
-      "name": "Heap Operations",
-      "rating": 1600,
+      "contestId": 1353,
+      "index": "D",
+      "name": "Constructing the Array",
+      "rating": 1500,
       "confidence": "high"
     },
     {
@@ -500,6 +493,13 @@ const ROADMAP_PROBLEMS = {
       "index": "D",
       "name": "Merge Equals",
       "rating": 1600,
+      "confidence": "high"
+    },
+    {
+      "contestId": 459,
+      "index": "D",
+      "name": "Pashmak and Parmida's problem",
+      "rating": 1800,
       "confidence": "high"
     }
   ],
@@ -1292,10 +1292,10 @@ const ROADMAP_PROBLEMS = {
   ],
   "dp.dp-basics": [
     {
-      "contestId": 698,
+      "contestId": 327,
       "index": "A",
-      "name": "Vacations",
-      "rating": 1400,
+      "name": "Flipping Game",
+      "rating": 1200,
       "confidence": "high"
     },
     {
@@ -1329,10 +1329,10 @@ const ROADMAP_PROBLEMS = {
   ],
   "dp.interval-dp": [
     {
-      "contestId": 607,
-      "index": "B",
-      "name": "Zuma",
-      "rating": 1900,
+      "contestId": 1114,
+      "index": "D",
+      "name": "Flood Fill",
+      "rating": 1700,
       "confidence": "high"
     },
     {
@@ -1343,9 +1343,9 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 149,
-      "index": "D",
-      "name": "Coloring Brackets",
+      "contestId": 607,
+      "index": "B",
+      "name": "Zuma",
       "rating": 1900,
       "confidence": "high"
     },
@@ -1789,10 +1789,10 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 1399,
+      "contestId": 160,
       "index": "A",
-      "name": "Remove Smallest",
-      "rating": 800,
+      "name": "Twins",
+      "rating": 900,
       "confidence": "high"
     },
     {
@@ -1803,32 +1803,25 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 1360,
+      "contestId": 478,
       "index": "B",
-      "name": "Honest Coach",
-      "rating": 800,
+      "name": "Random Teams",
+      "rating": 1300,
       "confidence": "high"
     },
     {
-      "contestId": 160,
-      "index": "A",
-      "name": "Twins",
-      "rating": 900,
+      "contestId": 1372,
+      "index": "B",
+      "name": "Omkar and Last Class of Math",
+      "rating": 1300,
       "confidence": "high"
     }
   ],
   "greedy.binary-search": [
     {
-      "contestId": 1201,
-      "index": "C",
-      "name": "Maximum Median",
-      "rating": 1400,
-      "confidence": "high"
-    },
-    {
-      "contestId": 706,
-      "index": "B",
-      "name": "Interesting drink",
+      "contestId": 1873,
+      "index": "E",
+      "name": "Building an Aquarium",
       "rating": 1100,
       "confidence": "high"
     },
@@ -1847,25 +1840,25 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 1873,
-      "index": "E",
-      "name": "Building an Aquarium",
-      "rating": 1100,
+      "contestId": 1201,
+      "index": "C",
+      "name": "Maximum Median",
+      "rating": 1400,
+      "confidence": "high"
+    },
+    {
+      "contestId": 371,
+      "index": "C",
+      "name": "Hamburgers",
+      "rating": 1600,
       "confidence": "high"
     }
   ],
   "greedy.two-pointers": [
     {
-      "contestId": 2000,
-      "index": "B",
-      "name": "Seating in a Bus",
-      "rating": 800,
-      "confidence": "high"
-    },
-    {
-      "contestId": 1873,
-      "index": "D",
-      "name": "1D Eraser",
+      "contestId": 1843,
+      "index": "A",
+      "name": "Sasha and Array Coloring",
       "rating": 800,
       "confidence": "high"
     },
@@ -1884,10 +1877,17 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 1843,
-      "index": "A",
-      "name": "Sasha and Array Coloring",
-      "rating": 800,
+      "contestId": 1538,
+      "index": "C",
+      "name": "Number of Pairs",
+      "rating": 1300,
+      "confidence": "high"
+    },
+    {
+      "contestId": 600,
+      "index": "B",
+      "name": "Queries about less or equal elements",
+      "rating": 1300,
       "confidence": "high"
     }
   ],
@@ -2208,17 +2208,17 @@ const ROADMAP_PROBLEMS = {
       "confidence": "high"
     },
     {
-      "contestId": 1420,
+      "contestId": 550,
       "index": "B",
-      "name": "Rock and Lever",
-      "rating": 1200,
+      "name": "Preparing Olympiad",
+      "rating": 1400,
       "confidence": "high"
     },
     {
-      "contestId": 1097,
-      "index": "B",
-      "name": "Petr and a Combination Lock",
-      "rating": 1200,
+      "contestId": 1362,
+      "index": "C",
+      "name": "Johnny and Another Rating Drop",
+      "rating": 1400,
       "confidence": "high"
     }
   ],
