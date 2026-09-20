@@ -7,15 +7,40 @@
  */
 (function () {
   function applyLockState() {
-    const unlocked = Boolean(Store.data.profile.cfVerified);
-    $("roadmap-locked-card").hidden = unlocked;
-    $("roadmap-root").hidden = !unlocked;
-    return unlocked;
+    // Show the "roadmap is locked/sign in" notice if they aren't signed in, OR if they are signed in but haven't verified a handle yet.
+    const canTrack = Auth.isSignedIn() && Store.isLoaded() && Boolean(Store.data.profile.cfVerified);
+    
+    const card = $("roadmap-locked-card");
+    card.hidden = canTrack;
+    
+    if (!canTrack) {
+      if (!Auth.isSignedIn()) {
+        card.innerHTML = `
+          <h2>Sign in to track progress</h2>
+          <p class="card-subtitle">
+            The full roadmap is visible below, but you need to <a href="dashboard.html">sign in</a> with a Codeforces handle to check things off and track your progress.
+          </p>
+        `;
+      } else {
+        card.innerHTML = `
+          <h2>Roadmap is locked</h2>
+          <p class="card-subtitle">
+            Verify your Codeforces handle on the <a href="dashboard.html">Dashboard</a> to track your roadmap progress here.
+          </p>
+        `;
+      }
+    }
+    
+    // The roadmap itself is now always visible, read-only if not signed in/verified
+    $("roadmap-root").hidden = false;
   }
 
   function render() {
-    if (!Auth.isSignedIn() || !Store.isLoaded()) return;
-    if (!applyLockState()) return;
+    applyLockState();
+    // Re-rendering on Auth change but before Store is loaded causes a flash of 0%. 
+    // We only skip rendering if they ARE signed in but Store is NOT loaded yet.
+    // If they aren't signed in at all, we render immediately.
+    if (Auth.isSignedIn() && !Store.isLoaded()) return; 
     Roadmap.render($("roadmap-root"));
   }
   document.addEventListener("DOMContentLoaded", async () => {

@@ -21,7 +21,7 @@ const Shell = {
 
   _isOptionalPage() {
     const page = Nav.currentPage(location.pathname);
-    return page === "index.html" || page === "team.html" || page === "";
+    return page === "index.html" || page === "team.html" || page === "roadmap.html" || page === "";
   },
 
   async _boot() {

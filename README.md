@@ -9,14 +9,15 @@ The site is a handful of plain static pages behind a shared nav — Home,
 Dashboard, Codeforces, Team, Roadmap, and Self-rule — not a single long
 scroll. See [Pages](#pages) below.
 
-Sign in with just an email (a passwordless magic link — no password to set or
-leak) and verify your one Codeforces handle, once, on the Dashboard. From
-then on everything you do — roadmap progress, points, solved log, rewards —
-is stored server-side (Supabase), tied to that account, and follows you to
-every device you sign into. See [Account setup](#account-setup) below for
-the one-time project configuration this needs. The app also (optionally)
-reads a public, pre-computed baseline dataset for the Codeforces Analysis
-page's cohort comparisons — see [Codeforces baseline data](#codeforces-baseline-data).
+Sign in with just your Codeforces handle — prove you own it with a quick
+compile-error submission (the standard trick, since Codeforces has no OAuth),
+and you're in. No email, no password, ever. From then on everything you do
+— roadmap progress, points, solved log, rewards — is stored server-side
+(Supabase), tied to that account, and follows you to every device you sign
+into. See [Account setup](#account-setup) below for the one-time project
+configuration this needs. The app also (optionally) reads a public,
+pre-computed baseline dataset for the Codeforces Analysis page's cohort
+comparisons — see [Codeforces baseline data](#codeforces-baseline-data).
 
 ## Features
 
@@ -269,22 +270,20 @@ page's cohort comparisons — see [Codeforces baseline data](#codeforces-baselin
   top-tags breakdown for whichever period you're looking at.
 - **Backup & restore** — export your account's data as JSON (your own copy,
   for archiving or peace of mind), and import a JSON file back to overwrite
-  it. Not needed to move between devices — signing in with the same email
-  anywhere already gives you the same data — this is for local backups and
-  disaster recovery.
-- **Sign in (magic-link email) + Codeforces handle verification** — two
-  separate steps. Sign in with just an email — Supabase emails you a one-
-  time link (and, in the same email, a 6-digit code you can paste in
-  instead, for when clicking through isn't convenient) — no password, ever.
-  Then, once, verify you own a Codeforces handle (submit a compile-error
-  solution to a specific problem within a time window — the standard trick,
-  since Codeforces has no OAuth); that handle is linked to your account for
-  good — a database-level uniqueness constraint means the same handle can
-  never be claimed by a second account. First-time verification sets your
+  it. Not needed to move between devices — signing in with the same
+  Codeforces handle anywhere already gives you the same data — this is for
+  local backups and disaster recovery.
+- **Sign in by Codeforces handle** — one step, no email. Enter your
+  Codeforces handle, submit a compile-error solution to a randomly-picked
+  problem within a time window (the standard trick, since Codeforces has no
+  OAuth), and a server-side Edge Function (`cf-signin`) re-validates the
+  submission, finds or creates your account, and signs you in — all in one
+  flow. A database-level uniqueness constraint means the same handle can
+  never be claimed by a second account. First-time sign-in sets your
   gamification start date to that moment; sign in again later, from any
-  device, and everything — progress, points, solved log, rewards — is
-  exactly as you left it, because it's stored server-side against your
-  account, not this one browser.
+  device (even after clearing your browser), and everything — progress,
+  points, solved log, rewards — is exactly as you left it, because it's
+  stored server-side against your account, not this one browser.
 - **Polish** — responsive down to ~400px, respects `prefers-color-scheme`
   with a manual light/dark/auto toggle, and a wide multi-column dashboard
   layout (side-by-side cards, a subject grid, a two-pane picker) rather than
@@ -295,7 +294,7 @@ page's cohort comparisons — see [Codeforces baseline data](#codeforces-baselin
 | Page | What's there |
 |---|---|
 | `index.html` (Home) | A small progress teaser and links into the rest of the app |
-| `dashboard.html` | Codeforces handle verification, preferences, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
+| `dashboard.html` | Preferences, Timeline, your Streak, a compact roadmap-progress summary, your 5 most recent solves, Backup & Restore |
 | `codeforces.html` | Sync, your full solved log, Reports, and the Codeforces Analysis card |
 | `team.html` | ICPC Team Analyzer — paste 3 handles, get a role split, tag gaps, and accuracy/speed callouts |
 | `roadmap.html` | The full 99-topic, 8-subject checklist, as a subject picker + detail pane (locked until your Codeforces handle is verified) |
@@ -360,15 +359,14 @@ rewards) need a real Supabase project — there's no local-only fallback mode.
 3. In **Project Settings → API**, copy the **Project URL** and **anon
    public** key into [`js/config.js`](js/config.js). (Not a secret — see the
    comment in that file for why it's safe to commit.)
-4. **Authentication → Providers**: confirm **Email** is enabled (it is by
-   default on a new project).
-5. **Authentication → URL Configuration**: add every URL you'll actually sign
-   in from to **Redirect URLs** — your local dev server (e.g.
-   `http://localhost:8000/*`) and your real deployed URL (e.g.
-   `https://<you>.github.io/icpc-prep-hub/*`). Skipping this makes the magic-
-   link *click-through* fail after sending — the 6-digit code the same email
-   also contains still works regardless, since it doesn't depend on a
-   redirect at all.
+4. **Authentication → Settings**: enable **Anonymous Sign-Ins** (required for
+   the Codeforces-handle sign-in flow — each new user starts as an anonymous
+   Supabase auth user, then gets their verified handle linked server-side).
+5. Deploy the `cf-signin` Edge Function (handles server-side handle
+   verification and account creation/login):
+   ```bash
+   npx supabase functions deploy cf-signin
+   ```
 
 That's the whole required setup. Everything below this is optional.
 
@@ -395,9 +393,8 @@ project, not just a one-off SQL file:
   scaffold one with the right timestamped filename), then
   `npx supabase db push`. Keep old migration files — they're the history of
   how the schema got here, not something to edit after the fact.
-- **Server-side logic** (e.g. a scheduled job, or moving Codeforces-handle
-  verification server-side — see Known limitations below) → Edge Functions,
-  via `npx supabase functions new <name>`, which creates
+- **Server-side logic** (e.g. a scheduled job, or a custom auth flow) →
+  Edge Functions, via `npx supabase functions new <name>`, which creates
   `supabase/functions/<name>/index.ts`. Deploy with
   `npx supabase functions deploy <name>`.
 - **Actual secrets** used *inside* a function (a service-role key, a
@@ -408,29 +405,22 @@ project, not just a one-off SQL file:
   from the anon key in `js/config.js`, which is meant to be public.
 
 This isn't hypothetical — `supabase/functions/sync-cf-baseline` (see
-[Codeforces baseline data](#codeforces-baseline-data) below) is exactly this
-pattern in real use: a migration added its tables, and it's a real deployed
-Edge Function, not just a template. Adding the next table or function is
-"write a migration / function file and push," not "improvise in the SQL
-editor with no history of what changed."
+[Codeforces baseline data](#codeforces-baseline-data) below) and
+`supabase/functions/cf-signin` (the Codeforces-handle sign-in flow) are
+exactly this pattern in real use: migrations added their tables, and they're
+real deployed Edge Functions, not just templates. Adding the next table or
+function is "write a migration / function file and push," not "improvise in
+the SQL editor with no history of what changed."
 
 **Known limitations**, honestly stated rather than hidden:
-
-- Codeforces-handle *verification* itself (the compile-error-submission
-  check) is judged client-side — there's no server function independently
-  re-checking that specific proof. What IS enforced server-side, and matters
-  more: a database-level uniqueness constraint
+- Codeforces-handle verification is now checked server-side by the
+  `cf-signin` Edge Function (it re-fetches the user's recent submissions
+  from the Codeforces API and validates the compile-error submission
+  independently), and a database-level uniqueness constraint
   (`supabase/migrations/20260917000000_cf_handle_uniqueness.sql`) guarantees
-  the same handle can never end up verified on two different accounts, and
-  every write to your own data is RLS-scoped so no account can read or write
-  another's row. The remaining gap is narrow — a determined user could in
-  principle call the Supabase REST API directly and mark their own account
-  "verified" for a handle without ever completing the real compile-error
-  check — but they'd only be fooling their own account's data, not gaining
-  access to anyone else's or spoofing a handle someone else already holds.
-  Moving the verification check itself server-side (a Supabase Edge
-  Function, so the client can't skip it) would close that fully, and is a
-  reasonable next step if this ever needs to be airtight rather than honest.
+  the same handle can never end up verified on two different accounts. Every
+  write to your own data is RLS-scoped so no account can read or write
+  another's row.
 - No compare-and-swap concurrency control on writes — if you somehow edit
   from two devices within the same ~15-second window (see the focus-refetch
   behavior in `js/storage.js`), the later write wins and the earlier one's
@@ -561,23 +551,26 @@ resource, not a one-person project.
   client SDK, loaded from its CDN build, is the one exception, and only on
   `codeforces.html`):
   - Cross-cutting, loaded on every page: `storage.js`, `dom-utils.js`,
-    `theme.js`, `nav.js`, `shell.js` (the shared bootstrap).
+    `theme.js`, `auth.js`, `cf-verify.js`, `auth-ui.js`, `nav.js`,
+    `shell.js` (the shared bootstrap).
   - Codeforces-page-only, backing the baseline comparison feature:
     `config.js`, `supabase-client.js` (see [Codeforces baseline
     data](#codeforces-baseline-data)).
   - Feature modules, loaded only where needed: `roadmap.js` (+
     `roadmap-data.js`), `timeline.js`, `gamification.js`, `cf-sync.js`,
-    `cf-verify.js`, `cf-baseline.js` (fetches synced data from Supabase —
+    `cf-baseline.js` (fetches synced data from Supabase —
     see [Codeforces baseline data](#codeforces-baseline-data)),
     `cf-recommend.js`, `cf-analysis.js`, `cf-team-analysis.js`, `reports.js`,
     `solved-log-ui.js`, `rewards-ui.js`.
   - `js/pages/*.js` — one thin file per page (`home.js`, `dashboard.js`,
     `codeforces.js`, `team.js`, `roadmap.js`, `self-rule.js`) wiring that
     page's forms and handlers.
-  - `supabase/functions/sync-cf-baseline` — the one piece of actual
-    server-side code in this project (a Deno Edge Function, cron-triggered;
-    see [Codeforces baseline data](#codeforces-baseline-data)). Everything
-    else genuinely runs client-side.
+  - `supabase/functions/cf-signin` — server-side Codeforces-handle sign-in
+    (validates the compile-error submission, finds or creates the account,
+    returns a session token). `supabase/functions/sync-cf-baseline` — the
+    cron-triggered baseline data job (see [Codeforces baseline
+    data](#codeforces-baseline-data)). Everything else genuinely runs
+    client-side.
   Keep it that way; it's what makes this project approachable to clone and
   hack on.
 - See [`TODO.md`](TODO.md) for planned features that are deliberately out of

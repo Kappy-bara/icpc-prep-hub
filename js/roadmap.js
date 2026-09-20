@@ -36,7 +36,7 @@ const Roadmap = {
 
   /** Keys of every problem in the user's solved log, for O(1) per-problem lookups below. */
   solvedKeySet() {
-    return new Set(Store.data.solvedLog.map((p) => p.key));
+    return new Set((Store.isLoaded() ? Store.data.solvedLog : []).map((p) => p.key));
   },
 
   /** { problems: [...each with a .solved flag], solvedCount, total, done } for one practice-problem topic. */
@@ -54,11 +54,12 @@ const Roadmap = {
    */
   isDone(topicId) {
     if (this.hasPracticeProblems(topicId)) return this.practiceStatus(topicId).done;
-    return !!Store.data.roadmapProgress[topicId];
+    return Store.isLoaded() ? !!Store.data.roadmapProgress[topicId] : false;
   },
 
   /** Manual toggle — only meaningful, and only exposed in the UI, for topics with no practice-problem entry. */
   setDone(topicId, done) {
+    if (!Store.isLoaded()) return;
     Store.update((d) => {
       if (done) d.roadmapProgress[topicId] = true;
       else delete d.roadmapProgress[topicId];
@@ -278,6 +279,7 @@ const Roadmap = {
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = this.isDone(topic.id);
+      checkbox.disabled = !Auth.isSignedIn();
       checkbox.addEventListener("change", () => {
         this.setDone(topic.id, checkbox.checked);
         this.render(container);
@@ -328,7 +330,12 @@ const Roadmap = {
     const panel = document.createElement("div");
     panel.className = "practice-questions-panel";
 
-    if (!Store.data.solvedLog.length) {
+    if (!Auth.isSignedIn()) {
+      const note = document.createElement("p");
+      note.className = "card-subtitle";
+      note.textContent = "Sign in to track your progress on these automatically.";
+      panel.appendChild(note);
+    } else if (!Store.data.solvedLog.length) {
       const note = document.createElement("p");
       note.className = "card-subtitle";
       note.textContent = "Sync your Codeforces handle on the Codeforces page to have solved problems reflected here automatically.";

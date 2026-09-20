@@ -28,19 +28,14 @@ over-built now:
 
 ## Other ideas
 
-- Real accounts shipped: magic-link email sign-in (Supabase Auth) + one
-  verified Codeforces handle per account, server-stored, synced across every
-  device you sign into (see README's "Account setup"). Codeforces-handle
-  *verification itself* (the compile-error check) is still judged
-  client-side, but a DB-level uniqueness constraint now guarantees the same
-  handle can never be verified on two accounts — see README's "Known
-  limitations" for the honest remaining gap and what closing it fully would
-  take (an Edge Function re-checking the proof server-side). Worth doing if
-  a future feature ever shows one user's claimed/verified handle to another
-  (e.g. a leaderboard) — nothing today does. (The Team Analyzer's 3-handle
-  comparison doesn't trigger this either — it only shows public Codeforces
-  data fetched live, the same as Compare with someone, never this app's own
-  verification/points state.)
+- ~~Real accounts shipped: Codeforces-handle sign-in (Supabase Auth anonymous
+  users + `cf-signin` Edge Function) with server-side verification of the
+  compile-error submission, one verified handle per account, server-stored,
+  synced across every device you sign into (see README's "Account setup").
+  A DB-level uniqueness constraint guarantees the same handle can never be
+  verified on two accounts. The `cf-signin` Edge Function re-checks the
+  compile-error proof server-side, so a determined client can't skip it.~~
+  **Done** — shipped in the current version.
 - Map raw Codeforces tags (`dp`, `binary search`, `number theory`, etc.) to
   the 99 roadmap topics, so weak-tag call-outs (Codeforces Analysis, the
   Team Analyzer's team-gap list) can link straight to "practice this roadmap
